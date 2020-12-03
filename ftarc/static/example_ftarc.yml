@@ -1,0 +1,33 @@
+---
+reference_name: hs38DH
+adapter_removal: true
+resources:  # These files can be downloaded with `ftarc download`.
+  ref_fa: /path/to/hs38DH/GRCh38_full_analysis_set_plus_decoy_hla.fa
+  dbsnp_vcf: /path/to/hs38DH/other_mapping_resources/ALL_20141222.dbSNP142_human_GRCh38.snps.vcf.gz
+  mills_indel_vcf: /path/to/hs38DH/other_mapping_resources/Mills_and_1000G_gold_standard.indels.b38.primary_assembly.vcf.gz
+  known_indel_vcf: /path/to/hs38DH/other_mapping_resources/ALL.wgs.1000G_phase3.GRCh38.ncbi_remapper.20150424.shapeit2_indels.vcf.gz
+runs:
+  - fq:
+      - /path/to/sample01.tumor_FFPE.WGS.R1.fq.gz
+      - /path/to/sample01.tumor_FFPE.WGS.R2.fq.gz
+  - fq:
+      - /path/to/sample01.blood_frozen.WGS.R1.fq.gz
+      - /path/to/sample01.blood_frozen.WGS.R2.fq.gz
+  - fq:
+      - /path/to/sample02.tumor_FFPE.WGS.R1.fq.gz
+      - /path/to/sample02.tumor_FFPE.WGS.R2.fq.gz
+    read_group:
+      ID: FLOWCELL-1
+      PU: UNIT-1
+      SM: sample02.tumor_FFPE
+      PL: ILLUMINA
+      LB: LIBRARY-1
+  - fq:
+      - /path/to/sample02.blood_frozen.WGS.R1.fq.gz
+      - /path/to/sample02.blood_frozen.WGS.R2.fq.gz
+    read_group:
+      ID: FLOWCELL-2
+      PU: UNIT-2
+      SM: sample02.blood_frozen
+      PL: ILLUMINA
+      LB: LIBRARY-2

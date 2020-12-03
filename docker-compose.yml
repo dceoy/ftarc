@@ -1,0 +1,17 @@
+---
+version: '3'
+
+services:
+  ftarc:
+    container_name: ftarc
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: dceoy/ftarc:latest
+    user: ${UID}:${GID}
+    userns_mode: host
+    volumes:
+      - .:/wd
+    working_dir: /wd
+    entrypoint:
+      - ftarc
