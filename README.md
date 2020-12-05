@@ -3,7 +3,7 @@ ftarc
 
 FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 
-[![wercker status](https://app.wercker.com/status/5009106bfe21f2c24d5084a3ba336463/s/master "wercker status")](https://app.wercker.com/project/byKey/5009106bfe21f2c24d5084a3ba336463)
+[![wercker status](https://app.wercker.com/status/5009106bfe21f2c24d5084a3ba336463/s/main "wercker status")](https://app.wercker.com/project/byKey/5009106bfe21f2c24d5084a3ba336463)
 
 Installation
 ------------
@@ -45,11 +45,11 @@ Usage
     $ ftarc download --dest-dir=/path/to/download/dir
     ```
 
-2.  Create `ftarc.yml`.
+2.  Write input file paths and configurations into `ftarc.yml`.
 
     ```sh
     $ ftarc init
-    $ vi ftarc.yml  # => edit configurations
+    $ vi ftarc.yml  # => edit
     ```
 
 3.  Create analysis-ready CRAM files from FASTQ files

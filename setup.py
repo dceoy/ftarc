@@ -28,9 +28,10 @@ setup(
         'Development Status :: 4 - Beta',
         'Environment :: Console',
         'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
+        'Operating System :: POSIX :: Linux',
+        'Operating System :: MacOS',
         'Programming Language :: Python :: 3',
-        'Topic :: Software Development'
+        'Topic :: Scientific/Engineering :: Bio-Informatics'
     ],
     python_requires='>=3.6',
 )
