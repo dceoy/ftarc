@@ -27,6 +27,7 @@ class AlignReads(ShellTask):
                 ('.trim' if self.cf['adapter_removal'] else ''),
                 (
                     self.cf['reference_name']
+                    or Path(self.input()[1][0].path).stem
                 )
             )
         )
