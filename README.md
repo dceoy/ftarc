@@ -5,6 +5,16 @@ FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 
 [![wercker status](https://app.wercker.com/status/5009106bfe21f2c24d5084a3ba336463/s/main "wercker status")](https://app.wercker.com/project/byKey/5009106bfe21f2c24d5084a3ba336463)
 
+- Input:
+  - read1/read2 FASTQ files from Illumina DNA sequencers
+- Workflow:
+  - Trim adapters
+  - Map reads to a human reference genome
+  - Mark duplicates
+  - Apply BQSR (Base Quality Score Recalibration)
+- Output:
+  - analysis-ready CRAM files
+
 Installation
 ------------
 
