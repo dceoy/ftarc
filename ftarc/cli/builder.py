@@ -12,8 +12,8 @@ import luigi
 import yaml
 from psutil import cpu_count, virtual_memory
 
-from ..cli.util import (fetch_executable, parse_fq_id, print_log, read_yml,
-                        render_template)
+from ..cli.util import (fetch_executable, load_default_dict, parse_fq_id,
+                        print_log, read_yml, render_template)
 from ..task.align import RemoveDuplicates
 from ..task.base import PrintEnvVersions
 
@@ -55,6 +55,17 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     )
     logger.debug(f'adapter_removal:\t{adapter_removal}')
 
+    default_dict = load_default_dict(stem='example_ftarc')
+    metrics_collectors = (
+        [
+            k for k in default_dict['metrics_collectors']
+            if config['metrics_collectors'].get(k)
+        ] if 'metrics_collectors' in config else list()
+    )
+    logger.debug(
+        'metrics_collectors:' + os.linesep + pformat(metrics_collectors)
+    )
+
     command_dict = {
         c: fetch_executable(c) for c in {
             'bgzip', 'gatk', 'java', 'pbzip2', 'pigz', 'samtools', 'tabix',
@@ -91,12 +102,13 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         ]),
         'reference_name': config.get('reference_name'),
         'use_bwa_mem2': use_bwa_mem2, 'adapter_removal': adapter_removal,
+        'metrics_collectors': metrics_collectors,
         'save_memory': (memory_mb_per_worker < 8 * 1024),
         'remove_if_failed': (not skip_cleaning),
         'quiet': (not print_subprocesses),
         **{
             (k.replace('/', '_') + '_dir_path'): str(dest_dir.joinpath(k))
-            for k in {'trim', 'align'}
+            for k in {'trim', 'align', 'qc'}
         },
         **command_dict
     }
@@ -127,6 +139,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         yaml.dump([
             {'workers': n_worker}, {'runs': len(runs)},
             {'adapter_removal': adapter_removal},
+            {'metrics_collectors': metrics_collectors},
             {
                 'samples': [
                     dict(zip(['tumor', 'normal'], d['sample_names']))

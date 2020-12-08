@@ -42,7 +42,15 @@ class PrepareFASTQs(luigi.Task):
                 dest_dir_path=str(
                     Path(self.cf['trim_dir_path']).joinpath(self.sample_name)
                 ),
-                sample_name=self.sample_name, fastqc=True, cf=self.cf
+                sample_name=self.sample_name,
+                qc_dir_path=(
+                    str(
+                        Path(
+                            self.cf['qc_dir_path']
+                        ).joinpath('fastq').joinpath(self.sample_name)
+                    ) if 'fastqc' in self.cf['metrics_collectors'] else ''
+                ),
+                cf=self.cf
             )
         else:
             yield [
@@ -65,7 +73,7 @@ class TrimAdapters(ShellTask):
     fq_paths = luigi.ListParameter()
     dest_dir_path = luigi.Parameter()
     sample_name = luigi.Parameter()
-    fastqc = luigi.BoolParameter(default=True)
+    qc_dir_path = luigi.Parameter(default='')
     cf = luigi.DictParameter()
     priority = 50
 
@@ -111,12 +119,23 @@ class TrimAdapters(ShellTask):
                 f'set -e && {trim_galore} --cores {n_cpu}'
                 + f' --output_dir {run_dir}'
                 + (' --paired' if len(work_fq_paths) > 1 else '')
-                + (' --fastqc' if self.fastqc else '')
+                + (' --fastqc' if self.qc_dir_path else '')
                 + ''.join([f' {p}' for p in work_fq_paths])
             ),
             input_files_or_dirs=work_fq_paths,
             output_files_or_dirs=[*output_fq_paths, run_dir]
         )
+        if self.qc_dir_path:
+            qc_dir = Path(self.qc_dir_path).resolve()
+            self.run_shell(
+                args=f'mkdir -p {qc_dir}', output_files_or_dirs=qc_dir
+            )
+            for o in run_dir.iterdir():
+                if o.name.endswith(('_fastqc.html', '_fastqc.zip')):
+                    self.run_shell(
+                        args=f'mv {o} {qc_dir}', input_files_or_dirs=o,
+                        output_files_or_dirs=qc_dir.joinpath(o.name)
+                    )
         tmp_dir = run_dir.joinpath('?')
         if tmp_dir.is_dir():
             self.run_shell(args=f'rm -rf {tmp_dir}')
