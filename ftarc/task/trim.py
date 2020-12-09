@@ -127,9 +127,9 @@ class TrimAdapters(ShellTask):
         )
         if self.qc_dir_path:
             qc_dir = Path(self.qc_dir_path).resolve()
-            self.run_shell(
-                args=f'mkdir -p {qc_dir}', output_files_or_dirs=qc_dir
-            )
+            if not qc_dir.is_dir():
+                self.print_log(f'Make a directory:\t{qc_dir}')
+                qc_dir.mkdir(parents=True, exist_ok=True)
             for o in run_dir.iterdir():
                 if o.name.endswith(('_fastqc.html', '_fastqc.zip')):
                     self.run_shell(

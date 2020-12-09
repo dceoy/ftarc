@@ -49,7 +49,7 @@ $ docker image pull dceoy/ftarc
 Usage
 -----
 
-1.  Download mapping resource data.
+1.  Download hg38 resource data.
 
     ```sh
     $ ftarc download --dest-dir=/path/to/download/dir
