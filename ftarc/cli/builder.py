@@ -140,12 +140,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
             {'workers': n_worker}, {'runs': len(runs)},
             {'adapter_removal': adapter_removal},
             {'metrics_collectors': metrics_collectors},
-            {
-                'samples': [
-                    dict(zip(['tumor', 'normal'], d['sample_names']))
-                    for d in sample_dict_list
-                ]
-            }
+            {'samples': [d['sample_name'] for d in sample_dict_list]}
         ])
     )
 
