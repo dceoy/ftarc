@@ -96,6 +96,10 @@ class TrimAdapters(ShellTask):
         java_options = '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
         output_fq_paths = [o.path for o in self.output()]
         run_dir = Path(output_fq_paths[0]).parent
+        fastqc_args = (
+            '--outdir {}'.format(Path(self.qc_dir_path).resolve())
+            if self.qc_dir_path else None
+        )
         work_fq_paths = [
             (
                 str(run_dir.joinpath(Path(p).stem + '.gz'))
@@ -117,28 +121,15 @@ class TrimAdapters(ShellTask):
         self.run_shell(
             args=(
                 f'set -e && {trim_galore} --cores {n_cpu}'
+                + f' --path_to_cutadapt {cutadapt}'
+                + (f' --fastqc_args "{fastqc_args}"' if fastqc_args else '')
                 + f' --output_dir {run_dir}'
                 + (' --paired' if len(work_fq_paths) > 1 else '')
-                + (' --fastqc' if self.qc_dir_path else '')
                 + ''.join([f' {p}' for p in work_fq_paths])
             ),
             input_files_or_dirs=work_fq_paths,
             output_files_or_dirs=[*output_fq_paths, run_dir]
         )
-        if self.qc_dir_path:
-            qc_dir = Path(self.qc_dir_path).resolve()
-            if not qc_dir.is_dir():
-                self.print_log(f'Make a directory:\t{qc_dir}')
-                qc_dir.mkdir(parents=True, exist_ok=True)
-            for o in run_dir.iterdir():
-                if o.name.endswith(('_fastqc.html', '_fastqc.zip')):
-                    self.run_shell(
-                        args=f'mv {o} {qc_dir}', input_files_or_dirs=o,
-                        output_files_or_dirs=qc_dir.joinpath(o.name)
-                    )
-        tmp_dir = run_dir.joinpath('?')
-        if tmp_dir.is_dir():
-            self.run_shell(args=f'rm -rf {tmp_dir}')
 
 
 class Bunzip2AndGzip(ShellTask):
