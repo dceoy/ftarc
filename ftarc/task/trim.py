@@ -97,7 +97,7 @@ class TrimAdapters(ShellTask):
         output_fq_paths = [o.path for o in self.output()]
         run_dir = Path(output_fq_paths[0]).parent
         fastqc_args = (
-            '--outdir {}'.format(Path(self.qc_dir_path).resolve())
+            '--nogroup --outdir {}'.format(Path(self.qc_dir_path).resolve())
             if self.qc_dir_path else None
         )
         work_fq_paths = [
