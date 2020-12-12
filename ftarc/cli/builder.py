@@ -14,8 +14,7 @@ from psutil import cpu_count, virtual_memory
 
 from ..cli.util import (fetch_executable, load_default_dict, parse_fq_id,
                         print_log, read_yml, render_template)
-from ..task.align import RemoveDuplicates
-from ..task.base import PrintEnvVersions
+from ..task.controller import PrepareAnalysisReadyCRAM, PrintEnvVersions
 
 
 def build_luigi_tasks(*args, **kwargs):
@@ -178,7 +177,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     )
     build_luigi_tasks(
         tasks=[
-            RemoveDuplicates(**d, **resource_path_dict, cf=cf_dict)
+            PrepareAnalysisReadyCRAM(**d, **resource_path_dict, cf=cf_dict)
             for d in sample_dict_list
         ],
         workers=n_worker, log_level=console_log_level,
