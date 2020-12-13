@@ -8,6 +8,7 @@ from luigi.util import requires
 
 from .base import ShellTask
 from .gatk import ApplyBQSR
+from .picard import CollectSamMetricsWithPicard
 from .resource import FetchReferenceFASTA
 from .samtools import CollectSamMetricsWithSamtools, SamtoolsView
 
@@ -77,14 +78,26 @@ class PrepareAnalysisReadyCRAM(luigi.Task):
             remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet']
         )
+        qc_dir = Path(self.cf['qc_dir_path'])
+        if 'picard' in self.cf['metrics_collectors']:
+            yield CollectSamMetricsWithPicard(
+                input_sam_path=self.input()[0][0].path,
+                fa_path=self.input()[1][0].path,
+                dest_dir_path=str(
+                    qc_dir.joinpath('picard').joinpath(self.sample_name)
+                ),
+                picard=(self.cf.get('gatk') or self.cf['picard']),
+                java_tool_options=self.cf['gatk_java_options'],
+                log_dir_path=self.cf['log_dir_path'],
+                remove_if_failed=self.cf['remove_if_failed'],
+                quiet=self.cf['quiet']
+            )
         if 'samtools' in self.cf['metrics_collectors']:
             yield CollectSamMetricsWithSamtools(
                 input_sam_path=self.input()[0][0].path,
                 fa_path=self.input()[1][0].path,
                 dest_dir_path=str(
-                    Path(
-                        self.cf['qc_dir_path']
-                    ).joinpath('samtools').joinpath(self.sample_name)
+                    qc_dir.joinpath('samtools').joinpath(self.sample_name)
                 ),
                 samtools=self.cf['samtools'], pigz=self.cf['pigz'],
                 n_cpu=self.cf['n_cpu_per_worker'],
@@ -92,3 +105,7 @@ class PrepareAnalysisReadyCRAM(luigi.Task):
                 remove_if_failed=self.cf['remove_if_failed'],
                 quiet=self.cf['quiet']
             )
+
+
+if __name__ == '__main__':
+    luigi.run()

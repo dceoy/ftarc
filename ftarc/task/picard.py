@@ -115,5 +115,84 @@ class MarkDuplicates(ShellTask):
         )
 
 
+class CollectSamMetricsWithPicard(ShellTask):
+    input_sam_path = luigi.Parameter()
+    fa_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
+    picard = luigi.Parameter()
+    java_tool_options = luigi.Parameter(default='')
+    picard_commands = luigi.ListParameter(
+        default=[
+            'CollectRawWgsMetrics', 'CollectAlignmentSummaryMetrics',
+            'CollectInsertSizeMetrics', 'QualityScoreDistribution',
+            'MeanQualityByCycle', 'CollectBaseDistributionByCycle',
+            'CollectGcBiasMetrics', 'CollectOxoGMetrics'
+        ]
+    )
+    log_dir_path = luigi.Parameter(default='')
+    remove_if_failed = luigi.BoolParameter(default=True)
+    quiet = luigi.BoolParameter(default=False)
+    priority = 10
+
+    def output(self):
+        output_path_prefix = str(
+            Path(self.dest_dir_path).joinpath(Path(self.input_sam_path).stem)
+        )
+        return [
+            luigi.LocalTarget(f'{output_path_prefix}.{c}.txt')
+            for c in self.picard_commands
+        ]
+
+    def run(self):
+        input_sam = Path(self.input_sam_path)
+        run_id = input_sam.stem
+        self.print_log(f'Collect SAM metrics using Picard:\t{run_id}')
+        dest_dir = Path(self.dest_dir_path)
+        self.setup_shell(
+            run_id=run_id, log_dir_path=(self.log_dir_path or None),
+            commands=self.picard, cwd=dest_dir,
+            remove_if_failed=self.remove_if_failed, quiet=self.quiet,
+            env={'JAVA_TOOL_OPTIONS': self.java_tool_options}
+        )
+        self.run_shell(
+            args=(
+                f'set -e && {self.picard} ValidateSamFile'
+                + f' --INPUT {input_sam}'
+                + f' --REFERENCE_SEQUENCE {self.fa_path}'
+            ),
+            input_files_or_dirs=input_sam
+        )
+        for c in self.picard_commands:
+            prefix = str(dest_dir.joinpath(f'{input_sam.stem}.{c}'))
+            if c == 'CollectRawWgsMetrics':
+                add_args = {'INCLUDE_BQ_HISTOGRAM': 'true'}
+            elif c in {'MeanQualityByCycle', 'QualityScoreDistribution',
+                       'CollectBaseDistributionByCycle'}:
+                add_args = {'CHART_OUTPUT': f'{prefix}.pdf'}
+            elif c == 'CollectInsertSizeMetrics':
+                add_args = {'Histogram_FILE': f'{prefix}.histogram.pdf'}
+            elif c == 'CollectGcBiasMetrics':
+                add_args = {
+                    'CHART_OUTPUT': f'{prefix}.pdf',
+                    'SUMMARY_OUTPUT': f'{prefix}.summary.txt'
+                }
+            else:
+                add_args = dict()
+            output_args = {'OUTPUT': f'{prefix}.txt', **add_args}
+            self.run_shell(
+                args=(
+                    f'set -e && {self.picard} {c}'
+                    + f' --INPUT {input_sam}'
+                    + f' --REFERENCE_SEQUENCE {self.fa_path}'
+                    + ''.join([f' --{k} {v}' for k, v in output_args.items()])
+                ),
+                input_files_or_dirs=input_sam,
+                output_files_or_dirs=[
+                    v for v in output_args.values()
+                    if v.endswith(('.txt', '.pdf'))
+                ]
+            )
+
+
 if __name__ == '__main__':
     luigi.run()

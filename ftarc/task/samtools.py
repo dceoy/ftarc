@@ -95,26 +95,28 @@ class CollectSamMetricsWithSamtools(ShellTask):
     priority = 10
 
     def output(self):
+        output_path_prefix = str(
+            Path(self.dest_dir_path).joinpath(Path(self.input_sam_path).stem)
+        )
         return [
             luigi.LocalTarget(
-                Path(self.dest_dir_path).joinpath(
-                    Path(self.input_sam_path).stem + f'.samtools_{c}.txt'
-                    + ('.gz' if c in {'depth', 'stats'} else '')
-                )
+                f'{output_path_prefix}.{c}.txt'
+                + ('.gz' if c in {'depth', 'stats'} else '')
             ) for c in self.samtools_commands
         ]
 
     def run(self):
-        run_id = Path(self.input_sam_path).stem
+        input_sam = Path(self.input_sam_path)
+        run_id = input_sam.stem
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
+        output_file_paths = [o.path for o in self.output()]
         self.setup_shell(
             run_id=run_id, log_dir_path=(self.log_dir_path or None),
             commands=[self.samtools, self.pigz], cwd=self.dest_dir_path,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
             env={'REF_CACHE': '.ref_cache'}
         )
-        for c, o in zip(self.samtools_commands, self.output()):
-            txt_path = o.path
+        for c, p in zip(self.samtools_commands, output_file_paths):
             self.run_shell(
                 args=(
                     f'set -e && {self.samtools} {c}'
@@ -122,17 +124,18 @@ class CollectSamMetricsWithSamtools(ShellTask):
                         f' --reference {self.fa_path}'
                         if c in {'coverage', 'depth', 'stats'} else ''
                     ) + (
+                        ' -a' if c == 'depth' else ''
+                    ) + (
                         f' -@ {self.n_cpu}'
                         if c in {'flagstat', 'idxstats', 'stats'} else ''
                     )
-                    + f' {self.input_sam_path}'
                     + (
-                        f' | {self.pigz} -p {self.n_cpu} -c - > {txt_path}'
-                        if txt_path.endswith('.gz') else f' > {txt_path}'
+                        f' {input_sam} | {self.pigz} -p {self.n_cpu} -c -'
+                        if p.endswith('.gz') else f' {input_sam}'
                     )
+                    + f' > {p}'
                 ),
-                input_files_or_dirs=self.input_sam_path,
-                output_files_or_dirs=txt_path
+                input_files_or_dirs=input_sam, output_files_or_dirs=p
             )
 
 
