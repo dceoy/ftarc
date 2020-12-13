@@ -83,38 +83,6 @@ class FetchResourceFASTA(ShellTask):
         samtools_faidx(shelltask=self, samtools=samtools, fa_path=fa)
 
 
-@requires(FetchReferenceFASTA)
-class CreateSequenceDictionary(ShellTask):
-    cf = luigi.DictParameter()
-    priority = 70
-
-    def output(self):
-        fa = Path(self.input()[0].path)
-        return luigi.LocalTarget(fa.parent.joinpath(f'{fa.stem}.dict'))
-
-    def run(self):
-        fa = Path(self.input()[0].path)
-        run_id = fa.stem
-        self.print_log(f'Create a sequence dictionary:\t{run_id}')
-        gatk = self.cf['gatk']
-        gatk_opts = ' --java-options "{}"'.format(self.cf['gatk_java_options'])
-        seq_dict_path = self.output().path
-        self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'], commands=gatk,
-            cwd=fa.parent, remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
-        )
-        self.run_shell(
-            args=(
-                'set -e && '
-                + f'{gatk}{gatk_opts} CreateSequenceDictionary'
-                + f' --REFERENCE {fa}'
-                + f' --OUTPUT {seq_dict_path}'
-            ),
-            input_files_or_dirs=fa, output_files_or_dirs=seq_dict_path
-        )
-
-
 class FetchResourceVCF(ShellTask):
     src_path = luigi.ListParameter()
     cf = luigi.DictParameter()
@@ -187,38 +155,6 @@ class FetchKnownIndelVCF(luigi.WrapperTask):
 
     def output(self):
         return self.input()
-
-
-@requires(FetchReferenceFASTA)
-class CreateBWAIndices(ShellTask):
-    cf = luigi.DictParameter()
-    priority = 100
-
-    def output(self):
-        fa_path = self.input()[0].path
-        return [
-            luigi.LocalTarget(f'{fa_path}.{s}') for s in (
-                ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64', 'bwt.8bit.32']
-                if self.cf['use_bwa_mem2'] else
-                ['pac', 'bwt', 'ann', 'amb', 'sa']
-            )
-        ]
-
-    def run(self):
-        fa = Path(self.input()[0].path)
-        run_id = fa.stem
-        self.print_log(f'Create BWA indices:\t{run_id}')
-        bwa = self.cf['bwa']
-        self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=bwa, cwd=fa.parent,
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
-        )
-        self.run_shell(
-            args=f'set -e && {bwa} index {fa}', input_files_or_dirs=fa,
-            output_files_or_dirs=[o.path for o in self.output()]
-        )
 
 
 if __name__ == '__main__':

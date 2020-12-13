@@ -6,8 +6,8 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
-from .align import RemoveDuplicates
 from .base import ShellTask
+from .gatk import RemoveDuplicates
 
 
 class PrintEnvVersions(ShellTask):

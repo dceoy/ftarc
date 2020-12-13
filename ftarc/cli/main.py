@@ -38,7 +38,7 @@ from pathlib import Path
 from docopt import docopt
 
 from .. import __version__
-from ..task.download import DownloadResourceFilesRecursively
+from ..task.wget import DownloadResourceFilesRecursively
 from .builder import build_luigi_tasks, run_processing_pipeline
 from .util import fetch_executable, load_default_dict, write_config_yml
 
