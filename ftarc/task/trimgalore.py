@@ -96,10 +96,7 @@ class TrimAdapters(ShellTask):
         java_options = '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
         output_fq_paths = [o.path for o in self.output()]
         run_dir = Path(output_fq_paths[0]).parent
-        fastqc_args = (
-            '--nogroup --outdir {}'.format(Path(self.qc_dir_path).resolve())
-            if self.qc_dir_path else None
-        )
+        qc_dir = Path(self.qc_dir_path).resolve() if self.qc_dir_path else None
         work_fq_paths = [
             (
                 str(run_dir.joinpath(Path(p).stem + '.gz'))
@@ -112,6 +109,9 @@ class TrimAdapters(ShellTask):
             cwd=run_dir, remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet'], env={'JAVA_TOOL_OPTIONS': java_options}
         )
+        if qc_dir and not qc_dir.is_dir():
+            self.print_log(f'Make a directory:\t{qc_dir}')
+            qc_dir.mkdir(parents=True, exist_ok=True)
         for i, o in zip(self.fq_paths, work_fq_paths):
             if i.endswith('.bz2'):
                 _bunzip2_and_gzip(
@@ -122,7 +122,10 @@ class TrimAdapters(ShellTask):
             args=(
                 f'set -e && {trim_galore} --cores {n_cpu}'
                 + f' --path_to_cutadapt {cutadapt}'
-                + (f' --fastqc_args "{fastqc_args}"' if fastqc_args else '')
+                + (
+                    f' --fastqc_args "--nogroup --outdir {qc_dir}"'
+                    if qc_dir else ''
+                )
                 + f' --output_dir {run_dir}'
                 + (' --paired' if len(work_fq_paths) > 1 else '')
                 + ''.join([f' {p}' for p in work_fq_paths])

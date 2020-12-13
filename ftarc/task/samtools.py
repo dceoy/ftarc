@@ -114,7 +114,7 @@ class CollectSamMetricsWithSamtools(ShellTask):
             env={'REF_CACHE': '.ref_cache'}
         )
         for c, o in zip(self.samtools_commands, self.output()):
-            output_txt = o.path
+            txt_path = o.path
             self.run_shell(
                 args=(
                     f'set -e && {self.samtools} {c}'
@@ -127,12 +127,12 @@ class CollectSamMetricsWithSamtools(ShellTask):
                     )
                     + f' {self.input_sam_path}'
                     + (
-                        f' | {self.pigz} -p {self.n_cpu} -c - > {output_txt}'
-                        if output_txt.endswith('.gz') else f' > {output_txt}'
+                        f' | {self.pigz} -p {self.n_cpu} -c - > {txt_path}'
+                        if txt_path.endswith('.gz') else f' > {txt_path}'
                     )
                 ),
                 input_files_or_dirs=self.input_sam_path,
-                output_files_or_dirs=output_txt
+                output_files_or_dirs=txt_path
             )
 
 
