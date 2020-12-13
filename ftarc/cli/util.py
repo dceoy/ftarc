@@ -37,7 +37,7 @@ def parse_fq_id(fq_path):
     )
 
 
-def fetch_executable(cmd):
+def fetch_executable(cmd, ignore_errors=False):
     executables = [
         cp for cp in [
             str(Path(p).joinpath(cmd))
@@ -46,6 +46,8 @@ def fetch_executable(cmd):
     ]
     if executables:
         return executables[0]
+    elif ignore_errors:
+        return None
     else:
         raise RuntimeError(f'command not found: {cmd}')
 

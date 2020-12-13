@@ -107,5 +107,41 @@ class PrepareAnalysisReadyCRAM(luigi.Task):
             )
 
 
+class CollectMultipleSamMetrics(luigi.WrapperTask):
+    input_sam_path = luigi.Parameter()
+    fa_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
+    samtools = luigi.Parameter()
+    pigz = luigi.Parameter()
+    picard = luigi.Parameter()
+    n_cpu = luigi.IntParameter(default=1)
+    java_tool_options = luigi.Parameter(default='')
+    log_dir_path = luigi.Parameter(default='')
+    remove_if_failed = luigi.BoolParameter(default=True)
+    quiet = luigi.BoolParameter(default=False)
+    priority = luigi.IntParameter(default=sys.maxsize)
+
+    def requires(self):
+        return [
+            CollectSamMetricsWithPicard(
+                input_sam_path=self.input_sam_path, fa_path=self.fa_path,
+                dest_dir_path=self.dest_dir_path, picard=self.picard,
+                java_tool_options=self.java_tool_options,
+                log_dir_path=self.log_dir_path,
+                remove_if_failed=self.remove_if_failed, quiet=self.quiet
+            ),
+            CollectSamMetricsWithSamtools(
+                input_sam_path=self.input_sam_path, fa_path=self.fa_path,
+                dest_dir_path=self.dest_dir_path, samtools=self.samtools,
+                pigz=self.pigz, n_cpu=self.n_cpu,
+                log_dir_path=self.log_dir_path,
+                remove_if_failed=self.remove_if_failed, quiet=self.quiet
+            )
+        ]
+
+    def output(self):
+        return self.input()
+
+
 if __name__ == '__main__':
     luigi.run()
