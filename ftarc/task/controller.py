@@ -7,7 +7,9 @@ import luigi
 from luigi.util import requires
 
 from .base import ShellTask
-from .gatk import RemoveDuplicates
+from .gatk import ApplyBQSR
+from .resource import FetchReferenceFASTA
+from .samtools import CollectSamMetricsWithSamtools, SamtoolsView
 
 
 class PrintEnvVersions(ShellTask):
@@ -50,9 +52,43 @@ class PrintEnvVersions(ShellTask):
         self.__is_completed = True
 
 
-@requires(RemoveDuplicates)
-class PrepareAnalysisReadyCRAM(luigi.WrapperTask):
+@requires(ApplyBQSR, FetchReferenceFASTA)
+class PrepareAnalysisReadyCRAM(luigi.Task):
+    sample_name = luigi.Parameter()
+    cf = luigi.DictParameter()
     priority = luigi.IntParameter(default=sys.maxsize)
 
     def output(self):
-        return self.input()
+        input_cram = Path(self.input()[0][0].path)
+        return [
+            luigi.LocalTarget(
+                input_cram.parent.joinpath(f'{input_cram.stem}.dedup.cram{s}')
+            ) for s in ['', '.crai']
+        ]
+
+    def run(self):
+        yield SamtoolsView(
+            input_sam_path=self.input()[0][0].path,
+            output_sam_path=self.output()[0].path,
+            fa_path=self.input()[1][0].path, samtools=self.cf['samtools'],
+            n_cpu=self.cf['n_cpu_per_worker'], add_args='-F 1024',
+            message='Remove duplicates', remove_input=False, index_sam=True,
+            log_dir_path=self.cf['log_dir_path'],
+            remove_if_failed=self.cf['remove_if_failed'],
+            quiet=self.cf['quiet']
+        )
+        if 'samtools' in self.cf['metrics_collectors']:
+            yield CollectSamMetricsWithSamtools(
+                input_sam_path=self.input()[0][0].path,
+                fa_path=self.input()[1][0].path,
+                dest_dir_path=str(
+                    Path(
+                        self.cf['qc_dir_path']
+                    ).joinpath('samtools').joinpath(self.sample_name)
+                ),
+                samtools=self.cf['samtools'], pigz=self.cf['pigz'],
+                n_cpu=self.cf['n_cpu_per_worker'],
+                log_dir_path=self.cf['log_dir_path'],
+                remove_if_failed=self.cf['remove_if_failed'],
+                quiet=self.cf['quiet']
+            )

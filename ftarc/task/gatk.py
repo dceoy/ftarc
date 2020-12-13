@@ -10,7 +10,7 @@ from .base import ShellTask
 from .picard import CreateSequenceDictionary, MarkDuplicates
 from .resource import (FetchDbsnpVCF, FetchKnownIndelVCF, FetchMillsIndelVCF,
                        FetchReferenceFASTA)
-from .samtools import SamtoolsView, samtools_view_and_index
+from .samtools import samtools_view_and_index
 
 
 @requires(MarkDuplicates, FetchReferenceFASTA, CreateSequenceDictionary,
@@ -89,33 +89,6 @@ class ApplyBQSR(ShellTask):
         )
         self.run_shell(
             args=f'rm -f {tmp_bam_path}', input_files_or_dirs=tmp_bam_path
-        )
-
-
-@requires(ApplyBQSR, FetchReferenceFASTA)
-class RemoveDuplicates(luigi.Task):
-    sample_name = luigi.Parameter()
-    cf = luigi.DictParameter()
-    priority = 70
-
-    def output(self):
-        input_cram = Path(self.input()[0][0].path)
-        return [
-            luigi.LocalTarget(
-                input_cram.parent.joinpath(f'{input_cram.stem}.dedup.cram{s}')
-            ) for s in ['', '.crai']
-        ]
-
-    def run(self):
-        yield SamtoolsView(
-            input_sam_path=self.input()[0][0].path,
-            output_sam_path=self.output()[0].path,
-            fa_path=self.input()[1][0].path, samtools=self.cf['samtools'],
-            n_cpu=self.cf['n_cpu_per_worker'], add_args='-F 1024',
-            message='Remove duplicates', remove_input=False, index_sam=True,
-            log_dir_path=self.cf['log_dir_path'],
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
         )
 
 

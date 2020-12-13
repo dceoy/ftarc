@@ -79,6 +79,63 @@ class SamtoolsView(ShellTask):
             )
 
 
+class CollectSamMetricsWithSamtools(ShellTask):
+    input_sam_path = luigi.Parameter()
+    fa_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
+    samtools = luigi.Parameter()
+    pigz = luigi.Parameter()
+    n_cpu = luigi.IntParameter(default=1)
+    samtools_commands = luigi.ListParameter(
+        default=['coverage', 'depth', 'flagstat', 'idxstats', 'stats']
+    )
+    log_dir_path = luigi.Parameter(default='')
+    remove_if_failed = luigi.BoolParameter(default=True)
+    quiet = luigi.BoolParameter(default=False)
+    priority = 10
+
+    def output(self):
+        return [
+            luigi.LocalTarget(
+                Path(self.dest_dir_path).joinpath(
+                    Path(self.input_sam_path).stem + f'.samtools_{c}.txt'
+                    + ('.gz' if c in {'depth', 'stats'} else '')
+                )
+            ) for c in self.samtools_commands
+        ]
+
+    def run(self):
+        run_id = Path(self.input_sam_path).stem
+        self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
+        self.setup_shell(
+            run_id=run_id, log_dir_path=(self.log_dir_path or None),
+            commands=[self.samtools, self.pigz], cwd=self.dest_dir_path,
+            remove_if_failed=self.remove_if_failed, quiet=self.quiet,
+            env={'REF_CACHE': '.ref_cache'}
+        )
+        for c, o in zip(self.samtools_commands, self.output()):
+            output_txt = o.path
+            self.run_shell(
+                args=(
+                    f'set -e && {self.samtools} {c}'
+                    + (
+                        f' --reference {self.fa_path}'
+                        if c in {'coverage', 'depth', 'stats'} else ''
+                    ) + (
+                        f' -@ {self.n_cpu}'
+                        if c in {'flagstat', 'idxstats', 'stats'} else ''
+                    )
+                    + f' {self.input_sam_path}'
+                    + (
+                        f' | {self.pigz} -p {self.n_cpu} -c - > {output_txt}'
+                        if output_txt.endswith('.gz') else f' > {output_txt}'
+                    )
+                ),
+                input_files_or_dirs=self.input_sam_path,
+                output_files_or_dirs=output_txt
+            )
+
+
 def samtools_faidx(shelltask, samtools, fa_path):
     shelltask.run_shell(
         args=f'set -e && {samtools} faidx {fa_path}',
