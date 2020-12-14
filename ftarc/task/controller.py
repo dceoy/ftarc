@@ -68,12 +68,14 @@ class PrepareAnalysisReadyCRAM(luigi.Task):
         ]
 
     def run(self):
+        input_sam_path = self.input()[0][0].path
+        fa_path = self.input()[1][0].path
         yield SamtoolsView(
-            input_sam_path=self.input()[0][0].path,
-            output_sam_path=self.output()[0].path,
-            fa_path=self.input()[1][0].path, samtools=self.cf['samtools'],
-            n_cpu=self.cf['n_cpu_per_worker'], add_args='-F 1024',
-            message='Remove duplicates', remove_input=False, index_sam=True,
+            input_sam_path=input_sam_path,
+            output_sam_path=self.output()[0].path, fa_path=fa_path,
+            samtools=self.cf['samtools'], n_cpu=self.cf['n_cpu_per_worker'],
+            add_args='-F 1024', message='Remove duplicates',
+            remove_input=False, index_sam=True,
             log_dir_path=self.cf['log_dir_path'],
             remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet']
@@ -81,8 +83,7 @@ class PrepareAnalysisReadyCRAM(luigi.Task):
         qc_dir = Path(self.cf['qc_dir_path'])
         if 'picard' in self.cf['metrics_collectors']:
             yield CollectSamMetricsWithPicard(
-                input_sam_path=self.input()[0][0].path,
-                fa_path=self.input()[1][0].path,
+                input_sam_path=input_sam_path, fa_path=fa_path,
                 dest_dir_path=str(
                     qc_dir.joinpath('picard').joinpath(self.sample_name)
                 ),
@@ -94,8 +95,7 @@ class PrepareAnalysisReadyCRAM(luigi.Task):
             )
         if 'samtools' in self.cf['metrics_collectors']:
             yield CollectSamMetricsWithSamtools(
-                input_sam_path=self.input()[0][0].path,
-                fa_path=self.input()[1][0].path,
+                input_sam_path=input_sam_path, fa_path=fa_path,
                 dest_dir_path=str(
                     qc_dir.joinpath('samtools').joinpath(self.sample_name)
                 ),
