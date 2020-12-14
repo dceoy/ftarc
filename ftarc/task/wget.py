@@ -26,8 +26,9 @@ class DownloadResourceFilesRecursively(ShellTask):
         self.run_shell(
             args=[
                 (
-                    'set -e && {self.wget} -qSL --recursive --convert-links'
-                    f' --no-clobber --random-wait --no-parent {uo.geturl()}'
+                    f'set -e && {self.wget} -qSL --recursive --convert-links'
+                    + ' --no-clobber --random-wait --no-parent'
+                    + f' {self.ftp_src_url}'
                 ),
                 f'mv {tmp_dest} {dest}',
                 f'rm -rf {tmp_root_dir}'
