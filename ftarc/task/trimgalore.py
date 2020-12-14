@@ -123,7 +123,7 @@ class TrimAdapters(ShellTask):
                 f'set -e && {trim_galore} --cores {n_cpu}'
                 + f' --path_to_cutadapt {cutadapt}'
                 + (
-                    f' --fastqc_args "--nogroup --outdir {qc_dir}"'
+                    f' --fastqc --fastqc_args "--nogroup --outdir {qc_dir}"'
                     if qc_dir else ''
                 )
                 + f' --output_dir {run_dir}'
