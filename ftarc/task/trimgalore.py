@@ -5,10 +5,10 @@ from pathlib import Path
 
 import luigi
 
-from .base import ShellTask
+from .base import BaseTask, ShellTask
 
 
-class PrepareFASTQs(luigi.Task):
+class PrepareFASTQs(BaseTask):
     fq_paths = luigi.ListParameter()
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()

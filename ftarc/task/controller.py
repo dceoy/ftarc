@@ -87,7 +87,7 @@ class PrepareAnalysisReadyCRAM(BaseTask):
                 dest_dir_path=str(
                     qc_dir.joinpath('picard').joinpath(self.sample_name)
                 ),
-                picard=(self.cf.get('gatk') or self.cf['picard']),
+                picard=self.cf['gatk'],
                 java_tool_options=self.cf['gatk_java_options'],
                 log_dir_path=self.cf['log_dir_path'],
                 remove_if_failed=self.cf['remove_if_failed'],
@@ -111,9 +111,9 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
-    samtools = luigi.Parameter()
-    pigz = luigi.Parameter()
-    picard = luigi.Parameter()
+    samtools = luigi.Parameter(default='samtools')
+    pigz = luigi.Parameter(default='pigz')
+    picard = luigi.Parameter(default='picard')
     n_cpu = luigi.IntParameter(default=1)
     java_tool_options = luigi.Parameter(default='')
     log_dir_path = luigi.Parameter(default='')

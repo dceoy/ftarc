@@ -44,10 +44,10 @@ class ShellTask(BaseTask):
                     **kwargs):
         cls.__log_txt_path = (
             str(
-                Path(log_dir_path or '.').joinpath(
+                Path(log_dir_path).joinpath(
                     f'{cls.__module__}.{cls.__name__}.{run_id}.sh.log.txt'
                 ).resolve()
-            ) if run_id else None
+            ) if log_dir_path and run_id else None
         )
         cls.__sh = ShellOperator(
             log_txt=cls.__log_txt_path, quiet=quiet,
@@ -97,5 +97,7 @@ class ShellTask(BaseTask):
                 yield f'{c} -version'
             elif Path(c).name == 'dotnet':
                 yield f'{c} --info'
+            elif Path(c).name == 'picard':
+                yield f'{c} CreateSequenceDictionary --version'
             else:
                 yield f'{c} --version'

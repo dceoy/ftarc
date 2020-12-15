@@ -191,7 +191,7 @@ def samtools_view(shelltask, samtools, input_sam_path, fa_path,
     )
 
 
-def tabix_tbi(shelltask, tabix, tsv_path, preset='bed'):
+def tabix_tbi(shelltask, tabix, tsv_path, preset='vcf'):
     shelltask.run_shell(
         args=f'set -e && {tabix} --preset {preset} {tsv_path}',
         input_files_or_dirs=tsv_path, output_files_or_dirs=f'{tsv_path}.tbi'

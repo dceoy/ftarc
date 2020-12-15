@@ -84,7 +84,7 @@ class FetchResourceFASTA(ShellTask):
 
 
 class FetchResourceVCF(ShellTask):
-    src_path = luigi.ListParameter()
+    src_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 70
 

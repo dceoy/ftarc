@@ -83,13 +83,16 @@ def main():
         dest_dir = Path(args['--dest-dir']).resolve()
         n_cpu = int(args['--cpus'] or cpu_count())
         memory_mb = virtual_memory().total / 1024 / 1024 / 2
-        picard_path = (
+        gatk_or_picard_path = (
             fetch_executable('gatk', ignore_errors=True)
             or fetch_executable('picard')
         )
         if args['download']:
             kwargs = {
-                **{f'{k}_url': v for k, v in load_default_dict(stem='urls')},
+                **{
+                    f'{k}_url': v
+                    for k, v in load_default_dict(stem='urls').items()
+                },
                 'dest_dir_path': str(dest_dir),
                 **{
                     c: fetch_executable(c) for c
@@ -98,7 +101,7 @@ def main():
                 'bwa': fetch_executable(
                     'bwa-mem2' if args['--use-bwa-mem2'] else 'bwa'
                 ),
-                'picard': picard_path, 'n_cpu': n_cpu,
+                'gatk': gatk_or_picard_path, 'n_cpu': n_cpu,
                 'java_tool_options': '-Xmx{}m'.format(int(memory_mb)),
                 'use_bwa_mem2': args['--use-bwa-mem2'],
                 'remove_if_failed': (not args['--skip-cleaning'])
@@ -114,7 +117,7 @@ def main():
                 'fa_path': str(Path(args['<fa_path>']).resolve()),
                 'dest_dir_path': str(dest_dir),
                 **{c: fetch_executable(c) for c in ['samtools', 'pigz']},
-                'picard': picard_path,
+                'picard': gatk_or_picard_path,
                 'n_cpu': (floor(n_cpu / n_sam) if n_cpu > n_sam else 1),
                 'java_tool_options':
                 '-Xmx{}m'.format(int(memory_mb / n_worker)),
