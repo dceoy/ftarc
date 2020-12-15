@@ -5,12 +5,12 @@ FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 Usage:
     ftarc init [--debug|--info] [--yml=<path>]
     ftarc download [--debug|--info] [--cpus=<int>] [--use-bwa-mem2]
-        [--dest-dir=<path>]
+        [--skip-cleaning] [--dest-dir=<path>]
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
         [--dest-dir=<path>]
-    ftarc qc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>] <fa_path>
-        <sam_path>...
+    ftarc qc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
+        [--skip-cleaning] <fa_path> <sam_path>...
     ftarc -h|--help
     ftarc --version
 
@@ -100,7 +100,8 @@ def main():
                 ),
                 'picard': picard_path, 'n_cpu': n_cpu,
                 'java_tool_options': '-Xmx{}m'.format(int(memory_mb)),
-                'use_bwa_mem2': args['--use-bwa-mem2']
+                'use_bwa_mem2': args['--use-bwa-mem2'],
+                'remove_if_failed': (not args['--skip-cleaning'])
             }
             build_luigi_tasks(
                 tasks=[DownloadAndProcessResourceFiles(**kwargs)],
@@ -116,7 +117,8 @@ def main():
                 'picard': picard_path,
                 'n_cpu': (floor(n_cpu / n_sam) if n_cpu > n_sam else 1),
                 'java_tool_options':
-                '-Xmx{}m'.format(int(memory_mb / n_worker))
+                '-Xmx{}m'.format(int(memory_mb / n_worker)),
+                'remove_if_failed': (not args['--skip-cleaning'])
             }
             build_luigi_tasks(
                 tasks=[
