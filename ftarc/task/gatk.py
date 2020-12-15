@@ -46,7 +46,7 @@ class ApplyBQSR(ShellTask):
             commands=[gatk, samtools], cwd=input_cram.parent,
             remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet'],
-            env={'JAVA_TOOL_OPTIONS': self.cf['gatk_java_options']}
+            env={'JAVA_TOOL_OPTIONS': (self.cf.get('gatk_java_options') or '')}
         )
         self.run_shell(
             args=(

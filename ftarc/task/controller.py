@@ -6,7 +6,7 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
-from .base import ShellTask
+from .base import BaseTask, ShellTask
 from .gatk import ApplyBQSR
 from .picard import CollectSamMetricsWithPicard
 from .resource import FetchReferenceFASTA
@@ -54,7 +54,7 @@ class PrintEnvVersions(ShellTask):
 
 
 @requires(ApplyBQSR, FetchReferenceFASTA)
-class PrepareAnalysisReadyCRAM(luigi.Task):
+class PrepareAnalysisReadyCRAM(BaseTask):
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = luigi.IntParameter(default=sys.maxsize)

@@ -31,7 +31,7 @@ class CreateSequenceDictionary(ShellTask):
             run_id=run_id, log_dir_path=self.cf['log_dir_path'], commands=gatk,
             cwd=fa.parent, remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet'],
-            env={'JAVA_TOOL_OPTIONS': self.cf['gatk_java_options']}
+            env={'JAVA_TOOL_OPTIONS': (self.cf.get('gatk_java_options') or '')}
         )
         self.run_shell(
             args=(
@@ -77,7 +77,7 @@ class MarkDuplicates(ShellTask):
             quiet=self.cf['quiet'],
             env={
                 'REF_CACHE': '.ref_cache',
-                'JAVA_TOOL_OPTIONS': self.cf['gatk_java_options']
+                'JAVA_TOOL_OPTIONS': (self.cf.get('gatk_java_options') or '')
             }
         )
         self.run_shell(
