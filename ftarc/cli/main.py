@@ -52,7 +52,8 @@ from .. import __version__
 from ..task.controller import CollectMultipleSamMetrics
 from ..task.downloader import DownloadAndProcessResourceFiles
 from .builder import build_luigi_tasks, run_processing_pipeline
-from .util import fetch_executable, load_default_dict, write_config_yml
+from .util import (fetch_executable, load_default_dict, print_log,
+                   write_config_yml)
 
 
 def main():
@@ -69,6 +70,7 @@ def main():
     )
     logger = logging.getLogger(__name__)
     logger.debug(f'args:{os.linesep}{args}')
+    print_log(f'Start the workflow of ftarc {__version__}')
     if args['init']:
         write_config_yml(path=args['--yml'])
     elif args['run']:
