@@ -11,7 +11,7 @@ from .base import ShellTask
 
 class CollectFqMetricsWithFastqc(ShellTask):
     input_fq_paths = luigi.ListParameter()
-    dest_dir_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
     fastqc = luigi.Parameter(default='fastqc')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)

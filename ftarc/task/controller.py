@@ -85,7 +85,7 @@ class PrepareAnalysisReadyCRAM(BaseTask):
         qc_dir = Path(self.cf['qc_dir_path'])
         if 'fastqc' in self.cf['metrics_collectors']:
             yield CollectFqMetricsWithFastqc(
-                input_fq_paths=[i.path for i in self.output()[2]],
+                input_fq_paths=[i.path for i in self.input()[2]],
                 dest_dir_path=str(
                     qc_dir.joinpath('fastqc').joinpath(self.sample_name)
                 ),

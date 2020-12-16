@@ -42,7 +42,14 @@ class PrepareFASTQs(BaseTask):
                 dest_dir_path=str(
                     Path(self.cf['trim_dir_path']).joinpath(self.sample_name)
                 ),
-                sample_name=self.sample_name, cf=self.cf
+                sample_name=self.sample_name, pigz=self.cf['pigz'],
+                pbzip2=self.cf['pbzip2'], trim_galore=self.cf['trim_galore'],
+                cutadapt=self.cf['cutadapt'], fastqc=self.cf['fastqc'],
+                n_cpu=self.cf['n_cpu_per_worker'],
+                memory_mb=self.cf['memory_mb_per_worker'],
+                log_dir_path=self.cf['log_dir_path'],
+                remove_if_failed=self.cf['remove_if_failed'],
+                quiet=self.cf['quiet']
             )
         else:
             yield [
@@ -63,9 +70,18 @@ def _generate_trimmed_fqs(raw_fq_paths, dest_dir_path):
 
 class TrimAdapters(ShellTask):
     fq_paths = luigi.ListParameter()
-    dest_dir_path = luigi.Parameter()
-    sample_name = luigi.Parameter()
-    cf = luigi.DictParameter()
+    dest_dir_path = luigi.Parameter(default='.')
+    sample_name = luigi.Parameter(default='')
+    pigz = luigi.Parameter(default='pigz')
+    pbzip2 = luigi.Parameter(default='pbzip2')
+    trim_galore = luigi.Parameter(default='trim_galore')
+    cutadapt = luigi.Parameter(default='cutadapt')
+    fastqc = luigi.Parameter(default='fastqc')
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
+    log_dir_path = luigi.Parameter(default='')
+    remove_if_failed = luigi.BoolParameter(default=True)
+    quiet = luigi.BoolParameter(default=False)
     priority = 50
 
     def output(self):
@@ -76,14 +92,11 @@ class TrimAdapters(ShellTask):
         ]
 
     def run(self):
-        run_id = self.sample_name
+        run_id = (
+            self.sample_name
+            or Path(Path(Path(self.fq_paths[0]).stem).stem).stem
+        )
         self.print_log(f'Trim adapters:\t{run_id}')
-        cutadapt = self.cf['cutadapt']
-        fastqc = self.cf['fastqc']
-        pigz = self.cf['pigz']
-        trim_galore = self.cf['trim_galore']
-        pbzip2 = self.cf['pbzip2']
-        n_cpu = self.cf['n_cpu_per_worker']
         output_fq_paths = [o.path for o in self.output()]
         run_dir = Path(output_fq_paths[0]).parent
         work_fq_paths = [
@@ -93,25 +106,28 @@ class TrimAdapters(ShellTask):
             ) for p in self.fq_paths
         ]
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=[cutadapt, fastqc, pigz, trim_galore, pbzip2],
-            cwd=run_dir, remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet'],
-            env={
-                'JAVA_TOOL_OPTIONS':
-                '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
-            }
+            run_id=run_id, log_dir_path=(self.log_dir_path or None),
+            commands=[
+                self.pigz, self.pbzip2, self.trim_galore, self.cutadapt,
+                self.fastqc
+            ],
+            cwd=run_dir,
+            remove_if_failed=self.remove_if_failed,
+            quiet=self.quiet,
+            env={'JAVA_TOOL_OPTIONS': '-Xmx{}m'.format(int(self.memory_mb))}
         )
         for i, o in zip(self.fq_paths, work_fq_paths):
             if i.endswith('.bz2'):
                 _bunzip2_and_gzip(
-                    shelltask=self, pbzip2=pbzip2, pigz=pigz, src_bz2_path=i,
-                    dest_gz_path=o, n_cpu=n_cpu
+                    shelltask=self, pbzip2=self.pbzip2, pigz=self.pigz,
+                    src_bz2_path=i, dest_gz_path=o, n_cpu=self.n_cpu
                 )
         self.run_shell(
             args=(
-                f'set -e && {trim_galore} --path_to_cutadapt {cutadapt}'
-                + f' --cores {n_cpu} --output_dir {run_dir}'
+                f'set -e && {self.trim_galore}'
+                + f' --path_to_cutadapt {self.cutadapt}'
+                + f' --cores {self.n_cpu}'
+                + f' --output_dir {run_dir}'
                 + (' --paired' if len(work_fq_paths) > 1 else '')
                 + ''.join([f' {p}' for p in work_fq_paths])
             ),
