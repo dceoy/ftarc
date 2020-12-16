@@ -140,7 +140,8 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
             CollectSamMetricsWithPicard(
                 input_sam_path=self.input_sam_path, fa_path=self.fa_path,
                 dest_dir_path=self.dest_dir_path, picard=self.picard,
-                memory_mb=self.memory_mb, log_dir_path=self.log_dir_path,
+                n_cpu=self.n_cpu, memory_mb=self.memory_mb,
+                log_dir_path=self.log_dir_path,
                 remove_if_failed=self.remove_if_failed, quiet=self.quiet
             ),
             CollectSamMetricsWithSamtools(

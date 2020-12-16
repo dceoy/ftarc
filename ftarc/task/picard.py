@@ -27,15 +27,16 @@ class CreateSequenceDictionary(ShellTask):
         self.print_log(f'Create a sequence dictionary:\t{run_id}')
         gatk = self.cf.get('gatk') or self.cf['picard']
         seq_dict_path = self.output().path
-        java_tool_options = (
-            self.cf.get('gatk_java_options')
-            or '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
-        )
         self.setup_shell(
             run_id=run_id, log_dir_path=self.cf['log_dir_path'], commands=gatk,
             cwd=fa.parent, remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet'],
-            env={'JAVA_TOOL_OPTIONS': java_tool_options}
+            env={
+                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                    n_cpu=self.cf['n_cpu_per_worker'],
+                    memory_mb=self.cf['memory_mb_per_worker']
+                )
+            }
         )
         self.run_shell(
             args=(
@@ -67,10 +68,6 @@ class MarkDuplicates(ShellTask):
         samtools = self.cf['samtools']
         n_cpu = self.cf['n_cpu_per_worker']
         memory_mb_per_thread = int(self.cf['memory_mb_per_worker'] / n_cpu / 8)
-        java_tool_options = (
-            self.cf.get('gatk_java_options')
-            or '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
-        )
         fa_path = self.input()[1][0].path
         output_cram_path = self.output()[0].path
         tmp_bam_paths = [
@@ -85,7 +82,10 @@ class MarkDuplicates(ShellTask):
             quiet=self.cf['quiet'],
             env={
                 'REF_CACHE': '.ref_cache',
-                'JAVA_TOOL_OPTIONS': java_tool_options
+                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                    n_cpu=self.cf['n_cpu_per_worker'],
+                    memory_mb=self.cf['memory_mb_per_worker']
+                )
             }
         )
         self.run_shell(
@@ -128,6 +128,7 @@ class CollectSamMetricsWithPicard(ShellTask):
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
     picard = luigi.Parameter(default='picard')
+    n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     picard_commands = luigi.ListParameter(
         default=[
@@ -160,7 +161,11 @@ class CollectSamMetricsWithPicard(ShellTask):
             run_id=run_id, log_dir_path=(self.log_dir_path or None),
             commands=self.picard, cwd=dest_dir,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
-            env={'JAVA_TOOL_OPTIONS': '-Xmx{}m'.format(int(self.memory_mb))}
+            env={
+                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
+                )
+            }
         )
         self.run_shell(
             args=(
@@ -200,6 +205,17 @@ class CollectSamMetricsWithPicard(ShellTask):
                     if v.endswith(('.txt', '.pdf'))
                 ]
             )
+
+
+def generate_gatk_java_options(n_cpu=1, memory_mb=4096):
+    return ' '.join([
+        '-Dsamjdk.compression_level=5',
+        '-Dsamjdk.use_async_io_read_samtools=true',
+        '-Dsamjdk.use_async_io_write_samtools=true',
+        '-Dsamjdk.use_async_io_write_tribble=false',
+        '-Xmx{}m'.format(int(memory_mb)), '-XX:+UseParallelGC',
+        '-XX:ParallelGCThreads={}'.format(int(n_cpu))
+    ])
 
 
 if __name__ == '__main__':

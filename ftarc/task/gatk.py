@@ -7,7 +7,8 @@ import luigi
 from luigi.util import requires
 
 from .base import ShellTask
-from .picard import CreateSequenceDictionary, MarkDuplicates
+from .picard import (CreateSequenceDictionary, MarkDuplicates,
+                     generate_gatk_java_options)
 from .resource import (FetchDbsnpVCF, FetchKnownIndelVCF, FetchMillsIndelVCF,
                        FetchReferenceFASTA)
 from .samtools import samtools_view_and_index
@@ -34,10 +35,6 @@ class ApplyBQSR(ShellTask):
         gatk = self.cf['gatk']
         samtools = self.cf['samtools']
         n_cpu = self.cf['n_cpu_per_worker']
-        java_tool_options = (
-            self.cf.get('gatk_java_options')
-            or '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
-        )
         save_memory = str(self.cf['save_memory']).lower()
         output_cram_path = self.output()[0].path
         fa_path = self.input()[1][0].path
@@ -50,7 +47,12 @@ class ApplyBQSR(ShellTask):
             commands=[gatk, samtools], cwd=input_cram.parent,
             remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet'],
-            env={'JAVA_TOOL_OPTIONS': java_tool_options}
+            env={
+                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                    n_cpu=self.cf['n_cpu_per_worker'],
+                    memory_mb=self.cf['memory_mb_per_worker']
+                )
+            }
         )
         self.run_shell(
             args=(
