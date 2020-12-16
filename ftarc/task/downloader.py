@@ -28,7 +28,7 @@ class DownloadAndProcessResourceFiles(BaseTask):
     tabix = luigi.Parameter(default='tabix')
     gatk = luigi.Parameter(default='gatk')
     n_cpu = luigi.IntParameter(default=1)
-    java_tool_options = luigi.Parameter(default='')
+    memory_mb = luigi.FloatParameter(default=4096)
     use_bwa_mem2 = luigi.BoolParameter(default=False)
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
@@ -72,7 +72,7 @@ class DownloadAndProcessResourceFiles(BaseTask):
             'pigz': self.pigz, 'pbzip2': self.pbzip2, 'bgzip': self.bgzip,
             'bwa': self.bwa, 'samtools': self.samtools, 'tabix': self.tabix,
             'gatk': self.gatk, 'n_cpu_per_worker': self.n_cpu,
-            'gatk_java_options': self.java_tool_options,
+            'memory_mb_per_worker': self.memory_mb,
             'use_bwa_mem2': self.use_bwa_mem2,
             'ref_dir_path': self.dest_dir_path,
             'log_dir_path': self.log_dir_path,

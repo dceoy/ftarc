@@ -12,7 +12,10 @@ setup(
     version=__version__,
     author='Daichi Narushima',
     author_email='dnarsil+github@gmail.com',
-    description='Preprocessor for Human Genome Sequencing Data',
+    description=(
+        'FASTQ-to-analysis-ready-CRAM Workflow Executor'
+        ' for Human Genome Sequencing'
+    ),
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='git@github.com:dceoy/ftarc.git',

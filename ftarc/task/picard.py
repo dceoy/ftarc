@@ -27,11 +27,15 @@ class CreateSequenceDictionary(ShellTask):
         self.print_log(f'Create a sequence dictionary:\t{run_id}')
         gatk = self.cf.get('gatk') or self.cf['picard']
         seq_dict_path = self.output().path
+        java_tool_options = (
+            self.cf.get('gatk_java_options')
+            or '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
+        )
         self.setup_shell(
             run_id=run_id, log_dir_path=self.cf['log_dir_path'], commands=gatk,
             cwd=fa.parent, remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet'],
-            env={'JAVA_TOOL_OPTIONS': (self.cf.get('gatk_java_options') or '')}
+            env={'JAVA_TOOL_OPTIONS': java_tool_options}
         )
         self.run_shell(
             args=(
@@ -63,6 +67,10 @@ class MarkDuplicates(ShellTask):
         samtools = self.cf['samtools']
         n_cpu = self.cf['n_cpu_per_worker']
         memory_mb_per_thread = int(self.cf['memory_mb_per_worker'] / n_cpu / 8)
+        java_tool_options = (
+            self.cf.get('gatk_java_options')
+            or '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
+        )
         fa_path = self.input()[1][0].path
         output_cram_path = self.output()[0].path
         tmp_bam_paths = [
@@ -77,7 +85,7 @@ class MarkDuplicates(ShellTask):
             quiet=self.cf['quiet'],
             env={
                 'REF_CACHE': '.ref_cache',
-                'JAVA_TOOL_OPTIONS': (self.cf.get('gatk_java_options') or '')
+                'JAVA_TOOL_OPTIONS': java_tool_options
             }
         )
         self.run_shell(
@@ -119,8 +127,8 @@ class CollectSamMetricsWithPicard(ShellTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
-    picard = luigi.Parameter()
-    java_tool_options = luigi.Parameter(default='')
+    picard = luigi.Parameter(default='picard')
+    memory_mb = luigi.FloatParameter(default=4096)
     picard_commands = luigi.ListParameter(
         default=[
             'CollectRawWgsMetrics', 'CollectAlignmentSummaryMetrics',
@@ -152,7 +160,7 @@ class CollectSamMetricsWithPicard(ShellTask):
             run_id=run_id, log_dir_path=(self.log_dir_path or None),
             commands=self.picard, cwd=dest_dir,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
-            env={'JAVA_TOOL_OPTIONS': self.java_tool_options}
+            env={'JAVA_TOOL_OPTIONS': '-Xmx{}m'.format(int(self.memory_mb))}
         )
         self.run_shell(
             args=(

@@ -7,10 +7,12 @@ import luigi
 from luigi.util import requires
 
 from .base import BaseTask, ShellTask
+from .fastqc import CollectFqMetricsWithFastqc
 from .gatk import ApplyBQSR
 from .picard import CollectSamMetricsWithPicard
 from .resource import FetchReferenceFASTA
 from .samtools import CollectSamMetricsWithSamtools, SamtoolsView
+from .trimgalore import PrepareFASTQs
 
 
 class PrintEnvVersions(ShellTask):
@@ -53,7 +55,7 @@ class PrintEnvVersions(ShellTask):
         self.__is_completed = True
 
 
-@requires(ApplyBQSR, FetchReferenceFASTA)
+@requires(ApplyBQSR, FetchReferenceFASTA, PrepareFASTQs)
 class PrepareAnalysisReadyCRAM(BaseTask):
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()
@@ -81,6 +83,18 @@ class PrepareAnalysisReadyCRAM(BaseTask):
             quiet=self.cf['quiet']
         )
         qc_dir = Path(self.cf['qc_dir_path'])
+        if 'fastqc' in self.cf['metrics_collectors']:
+            yield CollectFqMetricsWithFastqc(
+                input_fq_paths=[i.path for i in self.output()[2]],
+                dest_dir_path=str(
+                    qc_dir.joinpath('fastqc').joinpath(self.sample_name)
+                ),
+                fastqc=self.cf['fastqc'], n_cpu=self.cf['n_cpu_per_worker'],
+                memory_mb=self.cf['memory_mb_per_worker'],
+                log_dir_path=self.cf['log_dir_path'],
+                remove_if_failed=self.cf['remove_if_failed'],
+                quiet=self.cf['quiet']
+            )
         if 'picard' in self.cf['metrics_collectors']:
             yield CollectSamMetricsWithPicard(
                 input_sam_path=input_sam_path, fa_path=fa_path,
@@ -88,7 +102,7 @@ class PrepareAnalysisReadyCRAM(BaseTask):
                     qc_dir.joinpath('picard').joinpath(self.sample_name)
                 ),
                 picard=self.cf['gatk'],
-                java_tool_options=self.cf['gatk_java_options'],
+                memory_mb=self.cf['memory_mb_per_worker'],
                 log_dir_path=self.cf['log_dir_path'],
                 remove_if_failed=self.cf['remove_if_failed'],
                 quiet=self.cf['quiet']
@@ -115,7 +129,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     pigz = luigi.Parameter(default='pigz')
     picard = luigi.Parameter(default='picard')
     n_cpu = luigi.IntParameter(default=1)
-    java_tool_options = luigi.Parameter(default='')
+    memory_mb = luigi.FloatParameter(default=4096)
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
     quiet = luigi.BoolParameter(default=False)
@@ -126,8 +140,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
             CollectSamMetricsWithPicard(
                 input_sam_path=self.input_sam_path, fa_path=self.fa_path,
                 dest_dir_path=self.dest_dir_path, picard=self.picard,
-                java_tool_options=self.java_tool_options,
-                log_dir_path=self.log_dir_path,
+                memory_mb=self.memory_mb, log_dir_path=self.log_dir_path,
                 remove_if_failed=self.remove_if_failed, quiet=self.quiet
             ),
             CollectSamMetricsWithSamtools(

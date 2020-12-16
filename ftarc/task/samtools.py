@@ -83,8 +83,8 @@ class CollectSamMetricsWithSamtools(ShellTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
-    samtools = luigi.Parameter()
-    pigz = luigi.Parameter()
+    samtools = luigi.Parameter(default='samtools')
+    pigz = luigi.Parameter(default='pigz')
     n_cpu = luigi.IntParameter(default=1)
     samtools_commands = luigi.ListParameter(
         default=['coverage', 'depth', 'flagstat', 'idxstats', 'stats']

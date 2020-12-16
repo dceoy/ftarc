@@ -42,15 +42,7 @@ class PrepareFASTQs(BaseTask):
                 dest_dir_path=str(
                     Path(self.cf['trim_dir_path']).joinpath(self.sample_name)
                 ),
-                sample_name=self.sample_name,
-                qc_dir_path=(
-                    str(
-                        Path(
-                            self.cf['qc_dir_path']
-                        ).joinpath('fastq').joinpath(self.sample_name)
-                    ) if 'fastqc' in self.cf['metrics_collectors'] else ''
-                ),
-                cf=self.cf
+                sample_name=self.sample_name, cf=self.cf
             )
         else:
             yield [
@@ -73,7 +65,6 @@ class TrimAdapters(ShellTask):
     fq_paths = luigi.ListParameter()
     dest_dir_path = luigi.Parameter()
     sample_name = luigi.Parameter()
-    qc_dir_path = luigi.Parameter(default='')
     cf = luigi.DictParameter()
     priority = 50
 
@@ -93,10 +84,8 @@ class TrimAdapters(ShellTask):
         trim_galore = self.cf['trim_galore']
         pbzip2 = self.cf['pbzip2']
         n_cpu = self.cf['n_cpu_per_worker']
-        java_options = '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
         output_fq_paths = [o.path for o in self.output()]
         run_dir = Path(output_fq_paths[0]).parent
-        qc_dir = Path(self.qc_dir_path).resolve() if self.qc_dir_path else None
         work_fq_paths = [
             (
                 str(run_dir.joinpath(Path(p).stem + '.gz'))
@@ -107,11 +96,12 @@ class TrimAdapters(ShellTask):
             run_id=run_id, log_dir_path=self.cf['log_dir_path'],
             commands=[cutadapt, fastqc, pigz, trim_galore, pbzip2],
             cwd=run_dir, remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet'], env={'JAVA_TOOL_OPTIONS': java_options}
+            quiet=self.cf['quiet'],
+            env={
+                'JAVA_TOOL_OPTIONS':
+                '-Xmx{}m'.format(int(self.cf['memory_mb_per_worker']))
+            }
         )
-        if qc_dir and not qc_dir.is_dir():
-            self.print_log(f'Make a directory:\t{qc_dir}')
-            qc_dir.mkdir(parents=True, exist_ok=True)
         for i, o in zip(self.fq_paths, work_fq_paths):
             if i.endswith('.bz2'):
                 _bunzip2_and_gzip(
@@ -120,13 +110,8 @@ class TrimAdapters(ShellTask):
                 )
         self.run_shell(
             args=(
-                f'set -e && {trim_galore} --cores {n_cpu}'
-                + f' --path_to_cutadapt {cutadapt}'
-                + (
-                    f' --fastqc --fastqc_args "--nogroup --outdir {qc_dir}"'
-                    if qc_dir else ''
-                )
-                + f' --output_dir {run_dir}'
+                f'set -e && {trim_galore} --path_to_cutadapt {cutadapt}'
+                + f' --cores {n_cpu} --output_dir {run_dir}'
                 + (' --paired' if len(work_fq_paths) > 1 else '')
                 + ''.join([f' {p}' for p in work_fq_paths])
             ),

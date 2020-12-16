@@ -9,8 +9,10 @@ Usage:
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
         [--dest-dir=<path>]
-    ftarc qc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
+    ftarc samqc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
         [--skip-cleaning] <fa_path> <sam_path>...
+    ftarc fastqc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
+        [--skip-cleaning] <fq_path>...
     ftarc -h|--help
     ftarc --version
 
@@ -20,7 +22,9 @@ Commands:
     run                     Create analysis-ready CRAM files from FASTQ files
                             (Trim adapters, align reads, mark duplicates, and
                              apply BQSR)
-    qc                      Collect multiple metrics from CRAM or BAM files
+    samqc                   Collect metrics from CRAM or BAM files using Picard
+                            and Samtools
+    fastqc                  Collect metrics from FASTQ files using FastQC
 
 Options:
     -h, --help              Print help and exit
@@ -38,6 +42,7 @@ Args:
     <fa_path>               Path to an reference FASTA file
                             (The index and sequence dictionary are required.)
     <sam_path>              Path to a CRAM or BAM file
+    <fq_path>               Path to a FASTQ file
 """
 
 import logging
@@ -51,6 +56,7 @@ from psutil import cpu_count, virtual_memory
 from .. import __version__
 from ..task.controller import CollectMultipleSamMetrics
 from ..task.downloader import DownloadAndProcessResourceFiles
+from ..task.fastqc import CollectFqMetricsWithFastqc
 from .builder import build_luigi_tasks, run_processing_pipeline
 from .util import (fetch_executable, load_default_dict, print_log,
                    write_config_yml)
@@ -89,6 +95,7 @@ def main():
             fetch_executable('gatk', ignore_errors=True)
             or fetch_executable('picard')
         )
+        remove_if_failed = (not args['--skip-cleaning'])
         if args['download']:
             kwargs = {
                 **{
@@ -104,15 +111,14 @@ def main():
                     'bwa-mem2' if args['--use-bwa-mem2'] else 'bwa'
                 ),
                 'gatk': gatk_or_picard_path, 'n_cpu': n_cpu,
-                'java_tool_options': '-Xmx{}m'.format(int(memory_mb)),
-                'use_bwa_mem2': args['--use-bwa-mem2'],
-                'remove_if_failed': (not args['--skip-cleaning'])
+                'memory_mb': memory_mb, 'use_bwa_mem2': args['--use-bwa-mem2'],
+                'remove_if_failed': remove_if_failed
             }
             build_luigi_tasks(
                 tasks=[DownloadAndProcessResourceFiles(**kwargs)],
                 log_level=log_level
             )
-        elif args['qc']:
+        elif args['samqc']:
             n_sam = len(args['<sam_path>'])
             n_worker = min(n_sam, n_cpu)
             kwargs = {
@@ -120,10 +126,9 @@ def main():
                 'dest_dir_path': str(dest_dir),
                 **{c: fetch_executable(c) for c in ['samtools', 'pigz']},
                 'picard': gatk_or_picard_path,
-                'n_cpu': (floor(n_cpu / n_sam) if n_cpu > n_sam else 1),
-                'java_tool_options':
-                '-Xmx{}m'.format(int(memory_mb / n_worker)),
-                'remove_if_failed': (not args['--skip-cleaning'])
+                'n_cpu': max(floor(n_cpu / n_worker), 1),
+                'memory_mb': (memory_mb / n_worker),
+                'remove_if_failed': remove_if_failed
             }
             build_luigi_tasks(
                 tasks=[
@@ -132,4 +137,18 @@ def main():
                     ) for p in args['<sam_path>']
                 ],
                 workers=n_worker, log_level=log_level
+            )
+        elif args['fastqc']:
+            build_luigi_tasks(
+                tasks=[
+                    CollectFqMetricsWithFastqc(
+                        input_fq_path=[
+                            Path(p).resolve() for p in args['<fq_path>']
+                        ],
+                        dest_dir_path=str(dest_dir),
+                        fastqc=fetch_executable('fastqc'), n_cpu=n_cpu,
+                        memory_mb=memory_mb, remove_if_failed=remove_if_failed
+                    )
+                ],
+                log_level=log_level
             )
