@@ -24,58 +24,56 @@ class SamtoolsView(ShellTask):
     priority = 100
 
     def output(self):
+        output_sam = Path(self.output_sam_path).resolve()
         return [
-            luigi.LocalTarget(self.output_sam_path),
+            luigi.LocalTarget(output_sam),
             *(
                 [
                     luigi.LocalTarget(
-                        re.sub(
-                            r'\.(cr|b)am$', '.\\1am.\\1ai',
-                            self.output_sam_path
-                        )
+                        re.sub(r'\.(cr|b)am$', '.\\1am.\\1ai', str(output_sam))
                     )
                 ] if self.index_sam else list()
             )
         ]
 
     def run(self):
-        run_id = Path(self.input_sam_path).stem
+        input_sam = Path(self.input_sam_path).resolve()
+        fa = Path(self.fa_path).resolve()
+        output_sam = Path(self.output_sam_path).resolve()
+        run_id = input_sam.stem
         if self.message:
             message = self.message
-        elif (self.input_sam_path.endswith('.bam')
-              and self.output_sam_path.endswith('.cram')):
-            message = 'Convert BAM to CRAM'
-        elif (self.input_sam_path.endswith('.cram')
-              and self.output_sam_path.endswith('.bam')):
-            message = 'Convert CRAM to BAM'
-        else:
+        elif input_sam.suffix == output_sam.suffix:
             message = None
+        else:
+            message = 'Convert {0} to {1}'.format(
+                *[s.suffix.upper() for s in [input_sam, output_sam]]
+            )
         if message:
             self.print_log(f'{message}:\t{run_id}')
         self.setup_shell(
-            run_id=run_id, log_dir_path=(self.log_dir_path or None),
-            commands=self.samtools, cwd=Path(self.output_sam_path).parent,
+            run_id=run_id, log_dir_path=self.log_dir_path,
+            commands=self.samtools, cwd=output_sam.parent,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
             env={'REF_CACHE': '.ref_cache'}
         )
         if self.index_sam:
             samtools_view_and_index(
                 shelltask=self, samtools=self.samtools,
-                input_sam_path=self.input_sam_path, fa_path=self.fa_path,
-                output_sam_path=self.output_sam_path, n_cpu=self.n_cpu,
+                input_sam_path=str(input_sam), fa_path=str(fa),
+                output_sam_path=str(output_sam), n_cpu=self.n_cpu,
                 add_args=self.add_args
             )
         else:
             samtools_view(
                 shelltask=self, samtools=self.samtools,
-                input_sam_path=self.input_sam_path, fa_path=self.fa_path,
-                output_sam_path=self.output_sam_path, n_cpu=self.n_cpu,
+                input_sam_path=str(input_sam), fa_path=str(fa),
+                output_sam_path=str(output_sam), n_cpu=self.n_cpu,
                 add_args=self.add_args
             )
         if self.remove_input:
             self.run_shell(
-                args=f'rm -f {self.input_sam_path}',
-                input_files_or_dirs=self.input_sam_path
+                args=f'rm -f {input_sam}', input_files_or_dirs=input_sam
             )
 
 
@@ -96,7 +94,9 @@ class CollectSamMetricsWithSamtools(ShellTask):
 
     def output(self):
         output_path_prefix = str(
-            Path(self.dest_dir_path).joinpath(Path(self.input_sam_path).stem)
+            Path(self.dest_dir_path).resolve().joinpath(
+                Path(self.input_sam_path).stem
+            )
         )
         return [
             luigi.LocalTarget(
@@ -106,22 +106,24 @@ class CollectSamMetricsWithSamtools(ShellTask):
         ]
 
     def run(self):
-        input_sam = Path(self.input_sam_path)
+        input_sam = Path(self.input_sam_path).resolve()
         run_id = input_sam.stem
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
-        output_file_paths = [o.path for o in self.output()]
+        fa = Path(self.fa_path).resolve()
+        dest_dir = Path(self.dest_dir_path).resolve()
         self.setup_shell(
-            run_id=run_id, log_dir_path=(self.log_dir_path or None),
-            commands=[self.samtools, self.pigz], cwd=self.dest_dir_path,
+            run_id=run_id, log_dir_path=self.log_dir_path,
+            commands=[self.samtools, self.pigz], cwd=dest_dir,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
             env={'REF_CACHE': '.ref_cache'}
         )
-        for c, p in zip(self.samtools_commands, output_file_paths):
+        for c, o in zip(self.samtools_commands, self.output()):
+            p = o.path
             self.run_shell(
                 args=(
-                    f'set -e && {self.samtools} {c}'
+                    f'set -eo pipefail && {self.samtools} {c}'
                     + (
-                        f' --reference {self.fa_path}'
+                        f' --reference {fa}'
                         if c in {'coverage', 'depth', 'stats'} else ''
                     ) + (
                         ' -a' if c == 'depth' else ''

@@ -106,7 +106,7 @@ class TrimAdapters(ShellTask):
             ) for p in self.fq_paths
         ]
         self.setup_shell(
-            run_id=run_id, log_dir_path=(self.log_dir_path or None),
+            run_id=run_id, log_dir_path=self.log_dir_path,
             commands=[
                 self.pigz, self.pbzip2, self.trim_galore, self.cutadapt,
                 self.fastqc

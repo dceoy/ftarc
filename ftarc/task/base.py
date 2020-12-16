@@ -87,17 +87,18 @@ class ShellTask(BaseTask):
     @staticmethod
     def _generate_version_commands(commands):
         for c in ([commands] if isinstance(commands, str) else commands):
-            if Path(c).name in {'bwa', 'msisensor'}:
-                yield f'{c} 2>&1 | grep -e "Program:" -e "Version:"'
-            elif Path(c).name == 'wget':
-                yield f'{c} --version | head -1'
-            elif Path(c).name == 'bwa-mem2':
-                yield f'{c} version'
-            elif Path(c).name in {'java', 'snpEff'}:
+            n = Path(c).name
+            if n in {'java', 'snpEff'} or n.endswith('.jar'):
                 yield f'{c} -version'
-            elif Path(c).name == 'dotnet':
+            elif n in {'bwa', 'msisensor'}:
+                yield f'{c} 2>&1 | grep -e "Program:" -e "Version:"'
+            elif n == 'wget':
+                yield f'{c} --version | head -1'
+            elif n == 'bwa-mem2':
+                yield f'{c} version'
+            elif n == 'dotnet':
                 yield f'{c} --info'
-            elif Path(c).name == 'picard':
+            elif n == 'picard':
                 yield f'{c} CreateSequenceDictionary --version'
             else:
                 yield f'{c} --version'

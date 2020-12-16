@@ -8,7 +8,7 @@ from luigi.util import requires
 
 from .base import BaseTask, ShellTask
 from .fastqc import CollectFqMetricsWithFastqc
-from .gatk import ApplyBQSR
+from .gatk import RecalibrateBaseQualityScores
 from .picard import CollectSamMetricsWithPicard
 from .resource import FetchReferenceFASTA
 from .samtools import CollectSamMetricsWithSamtools, SamtoolsView
@@ -55,7 +55,7 @@ class PrintEnvVersions(ShellTask):
         self.__is_completed = True
 
 
-@requires(ApplyBQSR, FetchReferenceFASTA, PrepareFASTQs)
+@requires(RecalibrateBaseQualityScores, FetchReferenceFASTA, PrepareFASTQs)
 class PrepareAnalysisReadyCRAM(BaseTask):
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()

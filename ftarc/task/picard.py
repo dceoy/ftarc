@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import re
 from pathlib import Path
 
 import luigi
@@ -68,10 +67,11 @@ class MarkDuplicates(ShellTask):
         samtools = self.cf['samtools']
         n_cpu = self.cf['n_cpu_per_worker']
         memory_mb_per_thread = int(self.cf['memory_mb_per_worker'] / n_cpu / 8)
-        fa_path = self.input()[1][0].path
-        output_cram_path = self.output()[0].path
-        tmp_bam_paths = [
-            re.sub(r'\.cram', f'{s}.bam', output_cram_path)
+        fa = Path(self.input()[1][0].path)
+        fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
+        output_cram = Path(self.output()[0].path)
+        tmp_bams = [
+            output_cram.parent.joinpath(f'{output_cram.stem}{s}.bam')
             for s in ['.unfixed.unsorted', '']
         ]
         markdup_metrics_txt_path = self.output()[2].path
@@ -92,34 +92,34 @@ class MarkDuplicates(ShellTask):
             args=(
                 f'set -e && {gatk} MarkDuplicates'
                 + f' --INPUT {input_cram}'
-                + f' --REFERENCE_SEQUENCE {fa_path}'
+                + f' --REFERENCE_SEQUENCE {fa}'
                 + f' --METRICS_FILE {markdup_metrics_txt_path}'
-                + f' --OUTPUT {tmp_bam_paths[0]}'
+                + f' --OUTPUT {tmp_bams[0]}'
                 + ' --ASSUME_SORT_ORDER coordinate'
             ),
-            input_files_or_dirs=[input_cram, fa_path],
-            output_files_or_dirs=tmp_bam_paths[0]
+            input_files_or_dirs=[input_cram, fa, fa_dict],
+            output_files_or_dirs=tmp_bams[0]
         )
         self.run_shell(
             args=(
                 f'set -eo pipefail && {samtools} sort -@ {n_cpu}'
                 + f' -m {memory_mb_per_thread}M -O bam -l 0'
-                + f' -T {output_cram_path}.sort {tmp_bam_paths[0]}'
+                + f' -T {output_cram}.sort {tmp_bams[0]}'
                 + f' | {gatk} SetNmMdAndUqTags'
                 + ' --INPUT /dev/stdin'
-                + f' --OUTPUT {tmp_bam_paths[1]}'
-                + f' --REFERENCE_SEQUENCE {fa_path}'
+                + f' --OUTPUT {tmp_bams[1]}'
+                + f' --REFERENCE_SEQUENCE {fa}'
             ),
-            input_files_or_dirs=[tmp_bam_paths[0], fa_path],
-            output_files_or_dirs=tmp_bam_paths[1]
+            input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
+            output_files_or_dirs=tmp_bams[1]
         )
         samtools_view_and_index(
-            shelltask=self, samtools=samtools, input_sam_path=tmp_bam_paths[1],
-            fa_path=fa_path, output_sam_path=output_cram_path, n_cpu=n_cpu
+            shelltask=self, samtools=samtools, input_sam_path=str(tmp_bams[1]),
+            fa_path=str(fa), output_sam_path=str(output_cram), n_cpu=n_cpu
         )
         self.run_shell(
-            args='rm -f {0} {1}'.format(*tmp_bam_paths),
-            input_files_or_dirs=tmp_bam_paths
+            args='rm -f {0} {1}'.format(*tmp_bams),
+            input_files_or_dirs=tmp_bams
         )
 
 
@@ -145,7 +145,9 @@ class CollectSamMetricsWithPicard(ShellTask):
 
     def output(self):
         output_path_prefix = str(
-            Path(self.dest_dir_path).joinpath(Path(self.input_sam_path).stem)
+            Path(self.dest_dir_path).resolve().joinpath(
+                Path(self.input_sam_path).stem
+            )
         )
         return [
             luigi.LocalTarget(f'{output_path_prefix}.{c}.txt')
@@ -153,12 +155,14 @@ class CollectSamMetricsWithPicard(ShellTask):
         ]
 
     def run(self):
-        input_sam = Path(self.input_sam_path)
+        input_sam = Path(self.input_sam_path).resolve()
         run_id = input_sam.stem
         self.print_log(f'Collect SAM metrics using Picard:\t{run_id}')
-        dest_dir = Path(self.dest_dir_path)
+        fa = Path(self.fa_path).resolve()
+        fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
+        dest_dir = Path(self.dest_dir_path).resolve()
         self.setup_shell(
-            run_id=run_id, log_dir_path=(self.log_dir_path or None),
+            run_id=run_id, log_dir_path=self.log_dir_path,
             commands=self.picard, cwd=dest_dir,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
             env={
@@ -170,10 +174,9 @@ class CollectSamMetricsWithPicard(ShellTask):
         self.run_shell(
             args=(
                 f'set -e && {self.picard} ValidateSamFile'
-                + f' --INPUT {input_sam}'
-                + f' --REFERENCE_SEQUENCE {self.fa_path}'
+                + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
             ),
-            input_files_or_dirs=input_sam
+            input_files_or_dirs=[input_sam, fa, fa_dict]
         )
         for c in self.picard_commands:
             prefix = str(dest_dir.joinpath(f'{input_sam.stem}.{c}'))
@@ -195,11 +198,10 @@ class CollectSamMetricsWithPicard(ShellTask):
             self.run_shell(
                 args=(
                     f'set -e && {self.picard} {c}'
-                    + f' --INPUT {input_sam}'
-                    + f' --REFERENCE_SEQUENCE {self.fa_path}'
+                    + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
                     + ''.join([f' --{k} {v}' for k, v in output_args.items()])
                 ),
-                input_files_or_dirs=input_sam,
+                input_files_or_dirs=[input_sam, fa, fa_dict],
                 output_files_or_dirs=[
                     v for v in output_args.values()
                     if v.endswith(('.txt', '.pdf'))
