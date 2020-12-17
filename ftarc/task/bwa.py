@@ -99,7 +99,7 @@ class AlignReads(ShellTask):
                 + f'{bwa} mem -t {n_cpu} -R \'{rg}\' -T 0 -P {fa_path}'
                 + ''.join([f' {a}' for a in fq_paths])
                 + f' | {samtools} sort -@ {n_cpu} -m {memory_mb_per_thread}M'
-                + f' -O bam -l 0 -T {output_cram}.sort -'
+                + f' -O BAM -l 0 -T {output_cram}.sort -'
                 + f' | {samtools} view -@ {n_cpu} -T {fa_path} -CS'
                 + f' -o {output_cram} -'
             ),

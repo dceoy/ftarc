@@ -8,7 +8,7 @@ from luigi.util import requires
 from .base import ShellTask
 from .bwa import AlignReads
 from .resource import FetchReferenceFASTA
-from .samtools import samtools_view_and_index
+from .samtools import samtools_index, samtools_view_and_index
 
 
 @requires(FetchReferenceFASTA)
@@ -49,6 +49,7 @@ class CreateSequenceDictionary(ShellTask):
 @requires(AlignReads, FetchReferenceFASTA, CreateSequenceDictionary)
 class MarkDuplicates(ShellTask):
     cf = luigi.DictParameter()
+    set_nm_md_uq = luigi.BoolParameter(default=False)
     priority = 70
 
     def output(self):
@@ -70,11 +71,11 @@ class MarkDuplicates(ShellTask):
         fa = Path(self.input()[1][0].path)
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         output_cram = Path(self.output()[0].path)
+        markdup_metrics_txt = Path(self.output()[2].path)
         tmp_bams = [
             output_cram.parent.joinpath(f'{output_cram.stem}{s}.bam')
-            for s in ['.unfixed.unsorted', '']
+            for s in ['.unsorted', '']
         ]
-        markdup_metrics_txt_path = self.output()[2].path
         self.setup_shell(
             run_id=run_id, log_dir_path=self.cf['log_dir_path'],
             commands=[gatk, samtools], cwd=input_cram.parent,
@@ -93,34 +94,50 @@ class MarkDuplicates(ShellTask):
                 f'set -e && {gatk} MarkDuplicates'
                 + f' --INPUT {input_cram}'
                 + f' --REFERENCE_SEQUENCE {fa}'
-                + f' --METRICS_FILE {markdup_metrics_txt_path}'
+                + f' --METRICS_FILE {markdup_metrics_txt}'
                 + f' --OUTPUT {tmp_bams[0]}'
                 + ' --ASSUME_SORT_ORDER coordinate'
             ),
             input_files_or_dirs=[input_cram, fa, fa_dict],
-            output_files_or_dirs=tmp_bams[0]
+            output_files_or_dirs=[tmp_bams[0], markdup_metrics_txt]
         )
-        self.run_shell(
-            args=(
-                f'set -eo pipefail && {samtools} sort -@ {n_cpu}'
-                + f' -m {memory_mb_per_thread}M -O bam -l 0'
-                + f' -T {output_cram}.sort {tmp_bams[0]}'
-                + f' | {gatk} SetNmMdAndUqTags'
-                + ' --INPUT /dev/stdin'
-                + f' --OUTPUT {tmp_bams[1]}'
-                + f' --REFERENCE_SEQUENCE {fa}'
-            ),
-            input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
-            output_files_or_dirs=tmp_bams[1]
-        )
-        samtools_view_and_index(
-            shelltask=self, samtools=samtools, input_sam_path=str(tmp_bams[1]),
-            fa_path=str(fa), output_sam_path=str(output_cram), n_cpu=n_cpu
-        )
-        self.run_shell(
-            args='rm -f {0} {1}'.format(*tmp_bams),
-            input_files_or_dirs=tmp_bams
-        )
+        if self.set_nm_md_uq:
+            self.run_shell(
+                args=(
+                    f'set -eo pipefail && {samtools} sort -@ {n_cpu}'
+                    + f' -m {memory_mb_per_thread}M -O BAM -l 0'
+                    + f' -T {output_cram}.sort {tmp_bams[0]}'
+                    + f' | {gatk} SetNmMdAndUqTags'
+                    + ' --INPUT /dev/stdin'
+                    + f' --OUTPUT {tmp_bams[1]}'
+                    + f' --REFERENCE_SEQUENCE {fa}'
+                ),
+                input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
+                output_files_or_dirs=tmp_bams[1]
+            )
+            samtools_view_and_index(
+                shelltask=self, samtools=samtools,
+                input_sam_path=str(tmp_bams[1]),
+                fa_path=str(fa), output_sam_path=str(output_cram), n_cpu=n_cpu
+            )
+        else:
+            self.run_shell(
+                args=(
+                    f'set -eo pipefail && {samtools} sort -@ {n_cpu}'
+                    + f' -m {memory_mb_per_thread}M -O BAM -l 0'
+                    + f' -T {output_cram}.sort {tmp_bams[0]}'
+                    + f' | {samtools} view -@ {n_cpu} -T {fa} -CS'
+                    + f' -o {output_cram} -'
+                ),
+                input_files_or_dirs=[tmp_bams[0], fa],
+                output_files_or_dirs=output_cram
+            )
+            samtools_index(
+                shelltask=self, samtools=samtools, sam_path=str(output_cram),
+                n_cpu=n_cpu
+            )
+        for b in tmp_bams[0:(1 + int(self.set_nm_md_uq))]:
+            self.run_shell(args=f'rm -f {b}', input_files_or_dirs=b)
 
 
 class CollectSamMetricsWithPicard(ShellTask):
@@ -138,6 +155,7 @@ class CollectSamMetricsWithPicard(ShellTask):
             'CollectGcBiasMetrics', 'CollectOxoGMetrics'
         ]
     )
+    ignore_warnings = luigi.BoolParameter(default=True)
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
     quiet = luigi.BoolParameter(default=False)
@@ -175,7 +193,8 @@ class CollectSamMetricsWithPicard(ShellTask):
             args=(
                 f'set -e && {self.picard} ValidateSamFile'
                 + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
-                + ' --MODE SUMMARY'
+                + ' --MODE SUMMARY --IGNORE_WARNINGS '
+                + str(self.ignore_warnings).lower()
             ),
             input_files_or_dirs=[input_sam, fa, fa_dict]
         )
