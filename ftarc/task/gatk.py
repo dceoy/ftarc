@@ -21,10 +21,10 @@ class RecalibrateBaseQualityScores(luigi.WrapperTask):
     priority = 70
 
     def output(self):
-        input_sam = Path(self.input()[0][0].path)
+        input_cram = Path(self.input()[0][0].path)
         return [
             luigi.LocalTarget(
-                input_sam.parent.joinpath(f'{input_sam.stem}.bqsr.{s}')
+                input_cram.parent.joinpath(f'{input_cram.stem}.bqsr.{s}')
             ) for s in ['cram', 'cram.crai', 'data.csv']
         ]
 
@@ -66,7 +66,7 @@ class ApplyBQSR(ShellTask):
             )
         )
         return [
-            luigi.LocalTarget(f'{output_path_prefix}.{s}')
+            luigi.LocalTarget(f'{output_path_prefix}.bqsr.{s}')
             for s in ['cram', 'cram.crai', 'data.csv']
         ]
 
@@ -120,7 +120,7 @@ class ApplyBQSR(ShellTask):
                 + ' --disable-bam-index-caching '
                 + str(self.save_memory).lower()
             ),
-            input_files_or_dirs=[input_sam, fa, bqsr_csv],
+            input_files_or_dirs=[input_sam, fa, fa_dict, bqsr_csv],
             output_files_or_dirs=tmp_bam
         )
         samtools_view_and_index(
