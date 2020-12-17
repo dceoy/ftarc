@@ -5,10 +5,10 @@ from pathlib import Path
 
 import luigi
 
-from .base import ShellTask
+from .core import FtarcTask
 
 
-class SamtoolsView(ShellTask):
+class SamtoolsView(FtarcTask):
     input_sam_path = luigi.Parameter()
     output_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
@@ -77,7 +77,7 @@ class SamtoolsView(ShellTask):
             )
 
 
-class CollectSamMetricsWithSamtools(ShellTask):
+class CollectSamMetricsWithSamtools(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')

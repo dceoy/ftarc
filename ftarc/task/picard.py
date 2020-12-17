@@ -6,14 +6,14 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
-from .base import ShellTask
 from .bwa import AlignReads
+from .core import FtarcTask
 from .resource import FetchReferenceFASTA
 from .samtools import samtools_index, samtools_view_and_index
 
 
 @requires(FetchReferenceFASTA)
-class CreateSequenceDictionary(ShellTask):
+class CreateSequenceDictionary(FtarcTask):
     cf = luigi.DictParameter()
     priority = 70
 
@@ -48,7 +48,7 @@ class CreateSequenceDictionary(ShellTask):
 
 
 @requires(AlignReads, FetchReferenceFASTA, CreateSequenceDictionary)
-class MarkDuplicates(ShellTask):
+class MarkDuplicates(FtarcTask):
     cf = luigi.DictParameter()
     set_nm_md_uq = luigi.BoolParameter(default=False)
     priority = 70
@@ -141,7 +141,7 @@ class MarkDuplicates(ShellTask):
             self.run_shell(args=f'rm -f {b}', input_files_or_dirs=b)
 
 
-class CollectSamMetricsWithPicard(ShellTask):
+class CollectSamMetricsWithPicard(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
@@ -220,7 +220,7 @@ class CollectSamMetricsWithPicard(ShellTask):
             )
 
 
-class ValidateSamFile(ShellTask):
+class ValidateSamFile(FtarcTask):
     input_sam_paths = luigi.ListParameter()
     fa_path = luigi.Parameter()
     picard = luigi.Parameter(default='picard')

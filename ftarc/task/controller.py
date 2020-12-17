@@ -6,7 +6,7 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
-from .base import BaseTask, ShellTask
+from .core import FtarcTask
 from .fastqc import CollectFqMetricsWithFastqc
 from .gatk import RecalibrateBaseQualityScores
 from .picard import CollectSamMetricsWithPicard
@@ -15,7 +15,7 @@ from .samtools import CollectSamMetricsWithSamtools, SamtoolsView
 from .trimgalore import PrepareFASTQs
 
 
-class PrintEnvVersions(ShellTask):
+class PrintEnvVersions(FtarcTask):
     log_dir_path = luigi.Parameter()
     command_paths = luigi.ListParameter(default=list())
     run_id = luigi.Parameter(default='env')
@@ -56,7 +56,7 @@ class PrintEnvVersions(ShellTask):
 
 
 @requires(RecalibrateBaseQualityScores, FetchReferenceFASTA, PrepareFASTQs)
-class PrepareAnalysisReadyCRAM(BaseTask):
+class PrepareAnalysisReadyCRAM(luigi.Task):
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = luigi.IntParameter(default=sys.maxsize)

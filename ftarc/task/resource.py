@@ -6,7 +6,7 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
-from .base import ShellTask
+from .core import FtarcTask
 from .samtools import samtools_faidx, tabix_tbi
 
 
@@ -22,7 +22,7 @@ class FetchReferenceFASTA(luigi.WrapperTask):
         return self.input()
 
 
-class FetchResourceFile(ShellTask):
+class FetchResourceFile(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 70
@@ -61,7 +61,7 @@ class FetchResourceFile(ShellTask):
 
 
 @requires(FetchResourceFile)
-class FetchResourceFASTA(ShellTask):
+class FetchResourceFASTA(FtarcTask):
     cf = luigi.DictParameter()
     priority = 70
 
@@ -83,7 +83,7 @@ class FetchResourceFASTA(ShellTask):
         samtools_faidx(shelltask=self, samtools=samtools, fa_path=fa)
 
 
-class FetchResourceVCF(ShellTask):
+class FetchResourceVCF(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 70

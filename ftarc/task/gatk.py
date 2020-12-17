@@ -6,7 +6,7 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
-from .base import ShellTask
+from .core import FtarcTask
 from .picard import (CreateSequenceDictionary, MarkDuplicates,
                      generate_gatk_java_options)
 from .resource import (FetchDbsnpVCF, FetchKnownIndelVCF, FetchMillsIndelVCF,
@@ -44,7 +44,7 @@ class RecalibrateBaseQualityScores(luigi.WrapperTask):
         )
 
 
-class ApplyBQSR(ShellTask):
+class ApplyBQSR(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     known_sites_vcf_paths = luigi.ListParameter()

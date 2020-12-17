@@ -6,10 +6,10 @@ from pathlib import Path
 
 import luigi
 
-from .base import ShellTask
+from .core import FtarcTask
 
 
-class CollectFqMetricsWithFastqc(ShellTask):
+class CollectFqMetricsWithFastqc(FtarcTask):
     input_fq_paths = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
     fastqc = luigi.Parameter(default='fastqc')

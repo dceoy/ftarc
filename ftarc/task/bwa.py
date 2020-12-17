@@ -5,14 +5,14 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
-from .base import ShellTask
+from .core import FtarcTask
 from .resource import FetchReferenceFASTA
 from .samtools import samtools_index
 from .trimgalore import PrepareFASTQs
 
 
 @requires(FetchReferenceFASTA)
-class CreateBWAIndices(ShellTask):
+class CreateBWAIndices(FtarcTask):
     cf = luigi.DictParameter()
     priority = 100
 
@@ -44,7 +44,7 @@ class CreateBWAIndices(ShellTask):
 
 
 @requires(PrepareFASTQs, FetchReferenceFASTA, CreateBWAIndices)
-class AlignReads(ShellTask):
+class AlignReads(FtarcTask):
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()
     cf = luigi.DictParameter()

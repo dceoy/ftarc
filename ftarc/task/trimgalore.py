@@ -5,10 +5,10 @@ from pathlib import Path
 
 import luigi
 
-from .base import BaseTask, ShellTask
+from .core import FtarcTask
 
 
-class PrepareFASTQs(BaseTask):
+class PrepareFASTQs(luigi.Task):
     fq_paths = luigi.ListParameter()
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()
@@ -68,7 +68,7 @@ def _generate_trimmed_fqs(raw_fq_paths, dest_dir_path):
         )
 
 
-class TrimAdapters(ShellTask):
+class TrimAdapters(FtarcTask):
     fq_paths = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
     sample_name = luigi.Parameter(default='')
@@ -136,7 +136,7 @@ class TrimAdapters(ShellTask):
         )
 
 
-class Bunzip2AndGzip(ShellTask):
+class Bunzip2AndGzip(FtarcTask):
     bz2_path = luigi.Parameter()
     gz_path = luigi.Parameter()
     cf = luigi.DictParameter()

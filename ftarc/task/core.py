@@ -2,6 +2,7 @@
 
 import logging
 import os
+from abc import ABCMeta, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -9,7 +10,7 @@ import luigi
 from shoper.shelloperator import ShellOperator
 
 
-class BaseTask(luigi.Task):
+class CoreTask(luigi.Task):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -30,7 +31,7 @@ class BaseTask(luigi.Task):
         print((os.linesep if new_line else '') + f'>>\t{message}', flush=True)
 
 
-class ShellTask(BaseTask):
+class ShellTask(CoreTask, metaclass=ABCMeta):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__log_txt_path = None
@@ -65,7 +66,7 @@ class ShellTask(BaseTask):
                     cls.print_log(f'Make a directory:\t{d}', new_line=False)
                     d.mkdir(parents=True, exist_ok=True)
         if commands:
-            cls.run_shell(args=list(cls._generate_version_commands(commands)))
+            cls.run_shell(args=list(cls.generate_version_commands(commands)))
 
     @classmethod
     def run_shell(cls, *args, **kwargs):
@@ -85,19 +86,27 @@ class ShellTask(BaseTask):
                 f.write(f'### {message}{os.linesep}')
 
     @staticmethod
-    def _generate_version_commands(commands):
+    @abstractmethod
+    def generate_version_commands(commands):
+        pass
+
+
+class FtarcTask(ShellTask):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def generate_version_commands(commands):
         for c in ([commands] if isinstance(commands, str) else commands):
             n = Path(c).name
-            if n in {'java', 'snpEff'} or n.endswith('.jar'):
+            if n == 'java' or n.endswith('.jar'):
                 yield f'{c} -version'
-            elif n in {'bwa', 'msisensor'}:
+            elif n == 'bwa':
                 yield f'{c} 2>&1 | grep -e "Program:" -e "Version:"'
             elif n == 'wget':
                 yield f'{c} --version | head -1'
             elif n == 'bwa-mem2':
                 yield f'{c} version'
-            elif n == 'dotnet':
-                yield f'{c} --info'
             elif n == 'picard':
                 yield f'{c} CreateSequenceDictionary --version'
             else:

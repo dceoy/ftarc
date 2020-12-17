@@ -6,13 +6,13 @@ from pathlib import Path
 
 import luigi
 
-from .base import BaseTask, ShellTask
 from .bwa import CreateBWAIndices
+from .core import FtarcTask
 from .picard import CreateSequenceDictionary
 from .resource import FetchResourceVCF
 
 
-class DownloadAndProcessResourceFiles(BaseTask):
+class DownloadAndProcessResourceFiles(luigi.Task):
     ref_fa_url = luigi.Parameter()
     ref_fa_alt_url = luigi.Parameter()
     dbsnp_vcf_url = luigi.Parameter()
@@ -85,7 +85,7 @@ class DownloadAndProcessResourceFiles(BaseTask):
         ]
 
 
-class DownloadResourceFiles(ShellTask):
+class DownloadResourceFiles(FtarcTask):
     src_urls = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
     n_cpu = luigi.IntParameter(default=1)
