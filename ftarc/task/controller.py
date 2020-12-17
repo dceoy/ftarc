@@ -63,10 +63,20 @@ class PrepareAnalysisReadyCRAM(BaseTask):
 
     def output(self):
         input_cram = Path(self.input()[0][0].path)
+        qc_dir = Path(self.cf['qc_dir_path'])
         return [
-            luigi.LocalTarget(
-                input_cram.parent.joinpath(f'{input_cram.stem}.dedup.cram{s}')
-            ) for s in ['', '.crai']
+            *[
+                luigi.LocalTarget(
+                    input_cram.parent.joinpath(
+                        f'{input_cram.stem}.dedup.cram{s}'
+                    )
+                ) for s in ['', '.crai']
+            ],
+            *[
+                luigi.LocalTarget(
+                    qc_dir.joinpath(m).joinpath(self.sample_name)
+                ) for m in self.cf['metrics_collectors']
+            ]
         ]
 
     def run(self):

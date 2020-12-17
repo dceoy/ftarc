@@ -27,19 +27,20 @@ class CollectFqMetricsWithFastqc(ShellTask):
             for p in self.input_fq_paths
         ]
         return [
-            dest_dir.joinpath(n) for n in chain.from_iterable(
+            luigi.LocalTarget(dest_dir.joinpath(n))
+            for n in chain.from_iterable(
                 [f'{s}_fastqc.{e}' for e in ['html', 'zip']] for s in fq_stems
             )
         ]
 
     def run(self):
-        run_id = self.sample_name
-        self.print_log(f'Collect FASTQ metrics using FastQC:\t{run_id}')
         input_fqs = [Path(p).resolve() for p in self.input_fq_paths]
+        run_id = Path(Path(input_fqs[0].stem).stem).stem
+        self.print_log(f'Collect FASTQ metrics using FastQC:\t{run_id}')
         dest_dir = Path(self.dest_dir_path).resolve()
         self.setup_shell(
             run_id=run_id, log_dir_path=self.log_dir_path,
-            commands=self.picard, cwd=dest_dir,
+            commands=self.fastqc, cwd=dest_dir,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
             env={'JAVA_TOOL_OPTIONS': '-Xmx{}m'.format(int(self.memory_mb))}
         )
@@ -49,9 +50,12 @@ class CollectFqMetricsWithFastqc(ShellTask):
                 + f' --threads {self.n_cpu} --outdir {dest_dir}'
                 + ''.join([f' {f}' for f in input_fqs])
             ),
-            input_files_or_dirs=self.input_fqs,
+            input_files_or_dirs=input_fqs,
             output_files_or_dirs=[o.path for o in self.output()]
         )
+        tmp_dir = dest_dir.joinpath('?')
+        if tmp_dir.is_dir():
+            self.run_shell(args=f'rm -rf {tmp_dir}')
 
 
 if __name__ == '__main__':

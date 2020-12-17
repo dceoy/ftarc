@@ -175,6 +175,7 @@ class CollectSamMetricsWithPicard(ShellTask):
             args=(
                 f'set -e && {self.picard} ValidateSamFile'
                 + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
+                + ' --MODE SUMMARY'
             ),
             input_files_or_dirs=[input_sam, fa, fa_dict]
         )
