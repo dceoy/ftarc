@@ -13,6 +13,8 @@ Usage:
         [--skip-cleaning] <fa_path> <sam_path>...
     ftarc fastqc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
         [--skip-cleaning] <fq_path>...
+    ftarc validate [--debug|--info] [--cpus=<int>] [--summary] <fa_path>
+        <sam_path>...
     ftarc -h|--help
     ftarc --version
 
@@ -25,6 +27,7 @@ Commands:
     samqc                   Collect metrics from CRAM or BAM files using Picard
                             and Samtools
     fastqc                  Collect metrics from FASTQ files using FastQC
+    validate                Validate SAM/BAM/CRAM files using Picard
 
 Options:
     -h, --help              Print help and exit
@@ -37,6 +40,7 @@ Options:
     --print-subprocesses    Print STDOUT/STDERR outputs from subprocesses
     --use-bwa-mem2          Use BWA-MEM2 for read alignment
     --dest-dir=<path>       Specify a destination directory path [default: .]
+    --summary               Set SUMMARY to the mode of output
 
 Args:
     <fa_path>               Path to an reference FASTA file
@@ -57,6 +61,7 @@ from .. import __version__
 from ..task.controller import CollectMultipleSamMetrics
 from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
+from ..task.picard import ValidateSamFile
 from .builder import build_luigi_tasks, run_processing_pipeline
 from .util import (fetch_executable, load_default_dict, print_log,
                    write_config_yml)
@@ -88,10 +93,10 @@ def main():
             console_log_level=log_level, use_bwa_mem2=args['--use-bwa-mem2']
         )
     else:
-        dest_dir = Path(args['--dest-dir']).resolve()
+        dest_dir = Path(args['--dest-dir'])
         n_cpu = int(args['--cpus'] or cpu_count())
         memory_mb = virtual_memory().total / 1024 / 1024 / 2
-        gatk_or_picard_path = (
+        gatk_or_picard = (
             fetch_executable('gatk', ignore_errors=True)
             or fetch_executable('picard')
         )
@@ -110,7 +115,7 @@ def main():
                 'bwa': fetch_executable(
                     'bwa-mem2' if args['--use-bwa-mem2'] else 'bwa'
                 ),
-                'gatk': gatk_or_picard_path, 'n_cpu': n_cpu,
+                'gatk': gatk_or_picard, 'n_cpu': n_cpu,
                 'memory_mb': memory_mb, 'use_bwa_mem2': args['--use-bwa-mem2'],
                 'remove_if_failed': remove_if_failed
             }
@@ -118,23 +123,35 @@ def main():
                 tasks=[DownloadAndProcessResourceFiles(**kwargs)],
                 log_level=log_level
             )
+        elif args['validate']:
+            kwargs = {
+                'fa_path': args['<fa_path>'], 'picard': gatk_or_picard,
+                'mode_of_output':
+                ('SUMMARY' if args['--summary'] else 'VERBOSE'),
+                'n_cpu': n_cpu, 'memory_mb': memory_mb
+            }
+            build_luigi_tasks(
+                tasks=[
+                    ValidateSamFile(input_sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
+                ],
+                log_level=log_level
+            )
         elif args['samqc']:
             n_sam = len(args['<sam_path>'])
             n_worker = min(n_sam, n_cpu)
             kwargs = {
-                'fa_path': str(Path(args['<fa_path>']).resolve()),
-                'dest_dir_path': str(dest_dir),
+                'fa_path': args['<fa_path>'], 'dest_dir_path': str(dest_dir),
                 **{c: fetch_executable(c) for c in ['samtools', 'pigz']},
-                'picard': gatk_or_picard_path,
+                'picard': gatk_or_picard,
                 'n_cpu': max(floor(n_cpu / n_worker), 1),
                 'memory_mb': (memory_mb / n_worker),
                 'remove_if_failed': remove_if_failed
             }
             build_luigi_tasks(
                 tasks=[
-                    CollectMultipleSamMetrics(
-                        input_sam_path=str(Path(p).resolve()), **kwargs
-                    ) for p in args['<sam_path>']
+                    CollectMultipleSamMetrics(input_sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
                 ],
                 workers=n_worker, log_level=log_level
             )
@@ -142,9 +159,7 @@ def main():
             build_luigi_tasks(
                 tasks=[
                     CollectFqMetricsWithFastqc(
-                        input_fq_path=[
-                            Path(p).resolve() for p in args['<fq_path>']
-                        ],
+                        input_fq_paths=args['<fq_path>'],
                         dest_dir_path=str(dest_dir),
                         fastqc=fetch_executable('fastqc'), n_cpu=n_cpu,
                         memory_mb=memory_mb, remove_if_failed=remove_if_failed

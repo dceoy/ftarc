@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 from pathlib import Path
 
 import luigi
@@ -152,10 +153,9 @@ class CollectSamMetricsWithPicard(ShellTask):
             'CollectRawWgsMetrics', 'CollectAlignmentSummaryMetrics',
             'CollectInsertSizeMetrics', 'QualityScoreDistribution',
             'MeanQualityByCycle', 'CollectBaseDistributionByCycle',
-            'CollectGcBiasMetrics', 'CollectOxoGMetrics'
+            'CollectGcBiasMetrics'
         ]
     )
-    ignore_warnings = luigi.BoolParameter(default=True)
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
     quiet = luigi.BoolParameter(default=False)
@@ -189,15 +189,6 @@ class CollectSamMetricsWithPicard(ShellTask):
                 )
             }
         )
-        self.run_shell(
-            args=(
-                f'set -e && {self.picard} ValidateSamFile'
-                + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
-                + ' --MODE SUMMARY --IGNORE_WARNINGS '
-                + str(self.ignore_warnings).lower()
-            ),
-            input_files_or_dirs=[input_sam, fa, fa_dict]
-        )
         for c in self.picard_commands:
             prefix = str(dest_dir.joinpath(f'{input_sam.stem}.{c}'))
             if c == 'CollectRawWgsMetrics':
@@ -227,6 +218,47 @@ class CollectSamMetricsWithPicard(ShellTask):
                     if v.endswith(('.txt', '.pdf'))
                 ]
             )
+
+
+class ValidateSamFile(ShellTask):
+    input_sam_paths = luigi.ListParameter()
+    fa_path = luigi.Parameter()
+    picard = luigi.Parameter(default='picard')
+    mode_of_output = luigi.Parameter(default='VERBOSE')
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
+    log_dir_path = luigi.Parameter(default='')
+    quiet = luigi.BoolParameter(default=False)
+    priority = luigi.IntParameter(default=sys.maxsize)
+    __is_completed = False
+
+    def complete(self):
+        return self.__is_completed
+
+    def run(self):
+        input_sam = Path(self.input_sam_path).resolve()
+        run_id = input_sam.stem
+        self.print_log(f'Validate a SAM file:\t{run_id}')
+        fa = Path(self.fa_path).resolve()
+        fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
+        self.setup_shell(
+            run_id=run_id, log_dir_path=self.log_dir_path,
+            commands=self.picard, quiet=self.quiet,
+            env={
+                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
+                )
+            }
+        )
+        self.run_shell(
+            args=(
+                f'set -e && {self.picard} ValidateSamFile'
+                + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
+                + f' --MODE {self.mode_of_output}'
+            ),
+            input_files_or_dirs=[input_sam, fa, fa_dict]
+        )
+        self.__is_completed = True
 
 
 def generate_gatk_java_options(n_cpu=1, memory_mb=4096):

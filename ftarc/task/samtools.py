@@ -85,7 +85,7 @@ class CollectSamMetricsWithSamtools(ShellTask):
     pigz = luigi.Parameter(default='pigz')
     n_cpu = luigi.IntParameter(default=1)
     samtools_commands = luigi.ListParameter(
-        default=['coverage', 'depth', 'flagstat', 'idxstats', 'stats']
+        default=['coverage', 'flagstat', 'idxstats', 'stats']
     )
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
@@ -101,7 +101,7 @@ class CollectSamMetricsWithSamtools(ShellTask):
         return [
             luigi.LocalTarget(
                 f'{output_path_prefix}.{c}.txt'
-                + ('.gz' if c in {'depth', 'stats'} else '')
+                + ('.gz' if c == 'depth' else '')
             ) for c in self.samtools_commands
         ]
 

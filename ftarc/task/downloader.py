@@ -46,7 +46,7 @@ class DownloadAndProcessResourceFiles(BaseTask):
         )
 
     def output(self):
-        dest_dir = Path(self.dest_dir_path)
+        dest_dir = Path(self.dest_dir_path).resolve()
         bwa_suffixes = (
             ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64', 'bwt.8bit.32']
             if self.use_bwa_mem2 else ['pac', 'bwt', 'ann', 'amb', 'sa']
@@ -67,14 +67,14 @@ class DownloadAndProcessResourceFiles(BaseTask):
                 yield luigi.LocalTarget(file)
 
     def run(self):
-        input_paths = [i.path for i in self.input()]
+        input_paths = [str(Path(i.path).resolve()) for i in self.input()]
         cf = {
             'pigz': self.pigz, 'pbzip2': self.pbzip2, 'bgzip': self.bgzip,
             'bwa': self.bwa, 'samtools': self.samtools, 'tabix': self.tabix,
             'gatk': self.gatk, 'n_cpu_per_worker': self.n_cpu,
             'memory_mb_per_worker': self.memory_mb,
             'use_bwa_mem2': self.use_bwa_mem2,
-            'ref_dir_path': self.dest_dir_path,
+            'ref_dir_path': Path(self.dest_dir_path).resolve(),
             'log_dir_path': self.log_dir_path,
             'remove_if_failed': self.remove_if_failed, 'quiet': self.quiet
         }
@@ -106,7 +106,7 @@ class DownloadResourceFiles(ShellTask):
                 yield luigi.LocalTarget(p)
 
     def run(self):
-        dest_dir = Path(self.dest_dir_path)
+        dest_dir = Path(self.dest_dir_path).resolve()
         self.print_log(f'Download resource files:\t{dest_dir}')
         self.setup_shell(
             commands=[self.wget, self.bgzip, self.pbzip2], cwd=dest_dir,
