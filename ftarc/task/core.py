@@ -167,7 +167,7 @@ class FtarcTask(ShellTask):
                 f'set -e && {samtools} quickcheck -v {input_sam_path}'
                 + f' && {samtools} view -@ {n_cpu} -T {fa_path}'
                 + ' -{0}S{1}'.format(
-                    ('C' if output_sam_path.endswith('.cram') else 'b'),
+                    ('C' if str(output_sam_path).endswith('.cram') else 'b'),
                     (f' {add_args}' if add_args else '')
                 )
                 + f' -o {output_sam_path} {input_sam_path}'

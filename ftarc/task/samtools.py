@@ -58,9 +58,9 @@ class SamtoolsView(FtarcTask):
             env={'REF_CACHE': '.ref_cache'}
         )
         self.samtools_view(
-            input_sam_path=str(input_sam), fa_path=str(fa),
-            output_sam_path=str(output_sam), samtools=self.samtools,
-            n_cpu=self.n_cpu, add_args=self.add_args, index_sam=self.index_sam
+            input_sam_path=input_sam, fa_path=fa, output_sam_path=output_sam,
+            samtools=self.samtools, n_cpu=self.n_cpu, add_args=self.add_args,
+            index_sam=self.index_sam
         )
         if self.remove_input:
             self.remove_files_and_dirs(input_sam)

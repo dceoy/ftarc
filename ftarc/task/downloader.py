@@ -41,7 +41,8 @@ class DownloadAndProcessResourceFiles(luigi.Task):
                 self.mills_indel_vcf_url, self.known_indel_vcf_url
             ],
             dest_dir_path=self.dest_dir_path, n_cpu=self.n_cpu,
-            wget=self.wget, pbzip2=self.pbzip2, bgzip=self.bgzip
+            wget=self.wget, bgzip=self.bgzip, log_dir_path=self.log_dir_path,
+            remove_if_failed=self.remove_if_failed, quiet=self.quiet
         )
 
     def output(self):
@@ -89,8 +90,10 @@ class DownloadResourceFiles(FtarcTask):
     dest_dir_path = luigi.Parameter(default='.')
     n_cpu = luigi.IntParameter(default=1)
     wget = luigi.Parameter(default='wget')
-    pbzip2 = luigi.Parameter(default='pbzip2')
     bgzip = luigi.Parameter(default='bgzip')
+    log_dir_path = luigi.Parameter(default='')
+    remove_if_failed = luigi.BoolParameter(default=True)
+    quiet = luigi.BoolParameter(default=False)
     priority = 10
 
     def output(self):
@@ -105,11 +108,13 @@ class DownloadResourceFiles(FtarcTask):
                 yield luigi.LocalTarget(p)
 
     def run(self):
+        run_id = 'data'
+        self.print_log(f'Download resource files:\t{run_id}')
         dest_dir = Path(self.dest_dir_path).resolve()
-        self.print_log(f'Download resource files:\t{dest_dir}')
         self.setup_shell(
-            commands=[self.wget, self.bgzip, self.pbzip2], cwd=dest_dir,
-            quiet=False
+            run_id=run_id, log_dir_path=self.log_dir_path,
+            commands=[self.wget, self.bgzip], cwd=dest_dir,
+            remove_if_failed=self.remove_if_failed, quiet=self.quiet
         )
         for u, o in zip(self.src_urls, self.output()):
             t = dest_dir.joinpath(
@@ -125,11 +130,6 @@ class DownloadResourceFiles(FtarcTask):
             elif p.endswith('.gz'):
                 self.run_shell(
                     args=f'set -e && {self.bgzip} -@ {self.n_cpu} {t}',
-                    input_files_or_dirs=t, output_files_or_dirs=p
-                )
-            elif p.endswith('.bz2'):
-                self.run_shell(
-                    args=f'set -e && {self.pbzip2} -p{self.n_cpu} {t}',
                     input_files_or_dirs=t, output_files_or_dirs=p
                 )
 

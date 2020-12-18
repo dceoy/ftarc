@@ -121,9 +121,8 @@ class ApplyBQSR(FtarcTask):
             output_files_or_dirs=tmp_bam
         )
         self.samtools_view(
-            input_sam_path=str(tmp_bam), fa_path=str(fa),
-            output_sam_path=str(output_cram), samtools=self.samtools,
-            n_cpu=self.n_cpu, index_sam=True
+            input_sam_path=tmp_bam, fa_path=fa, output_sam_path=output_cram,
+            samtools=self.samtools, n_cpu=self.n_cpu, index_sam=True
         )
         self.remove_files_and_dirs(tmp_bam)
 

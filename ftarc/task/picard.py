@@ -115,8 +115,8 @@ class MarkDuplicates(FtarcTask):
                 output_files_or_dirs=tmp_bams[1]
             )
             self.samtools_view(
-                input_sam_path=str(tmp_bams[1]), fa_path=str(fa),
-                output_sam_path=str(output_cram), samtools=samtools,
+                input_sam_path=tmp_bams[1], fa_path=fa,
+                output_sam_path=output_cram, samtools=samtools,
                 n_cpu=n_cpu, index_sam=True
             )
         else:
@@ -132,7 +132,7 @@ class MarkDuplicates(FtarcTask):
                 output_files_or_dirs=output_cram
             )
             self.samtools_index(
-                sam_path=str(output_cram), samtools=samtools, n_cpu=n_cpu
+                sam_path=output_cram, samtools=samtools, n_cpu=n_cpu
             )
         self.remove_files_and_dirs(*tmp_bams[0:(1 + int(self.set_nm_md_uq))])
 
