@@ -38,7 +38,7 @@ Options:
     --workers=<int>         Specify the maximum number of workers [default: 1]
     --skip-cleaning         Skip incomlete file removal when a task fails
     --print-subprocesses    Print STDOUT/STDERR outputs from subprocesses
-    --use-bwa-mem2          Use BWA-MEM2 for read alignment
+    --use-bwa-mem2          Use Bwa-mem2 for read alignment
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --summary               Set SUMMARY to the mode of output
 

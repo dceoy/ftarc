@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
 import re
-import sys
 from pathlib import Path
 
 import luigi
 
-from .bwa import CreateBWAIndices
+from .bwa import CreateBwaIndices
 from .core import FtarcTask
 from .picard import CreateSequenceDictionary
-from .resource import FetchResourceVCF
+from .resource import FetchResourceVcf
 
 
 class DownloadAndProcessResourceFiles(luigi.Task):
@@ -33,7 +32,7 @@ class DownloadAndProcessResourceFiles(luigi.Task):
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
     quiet = luigi.BoolParameter(default=False)
-    priority = luigi.IntParameter(default=sys.maxsize)
+    priority = 10
 
     def requires(self):
         return DownloadResourceFiles(
@@ -80,8 +79,8 @@ class DownloadAndProcessResourceFiles(luigi.Task):
         }
         yield [
             CreateSequenceDictionary(ref_fa_path=input_paths[0], cf=cf),
-            CreateBWAIndices(ref_fa_path=input_paths[0], cf=cf),
-            *[FetchResourceVCF(src_path=p, cf=cf) for p in input_paths[2:]]
+            CreateBwaIndices(ref_fa_path=input_paths[0], cf=cf),
+            *[FetchResourceVcf(src_path=p, cf=cf) for p in input_paths[2:]]
         ]
 
 

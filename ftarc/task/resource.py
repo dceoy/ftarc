@@ -10,13 +10,13 @@ from .core import FtarcTask
 from .samtools import samtools_faidx, tabix_tbi
 
 
-class FetchReferenceFASTA(luigi.WrapperTask):
+class FetchReferenceFasta(luigi.WrapperTask):
     ref_fa_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 100
 
     def requires(self):
-        return FetchResourceFASTA(src_path=self.ref_fa_path, cf=self.cf)
+        return FetchResourceFasta(src_path=self.ref_fa_path, cf=self.cf)
 
     def output(self):
         return self.input()
@@ -61,7 +61,7 @@ class FetchResourceFile(FtarcTask):
 
 
 @requires(FetchResourceFile)
-class FetchResourceFASTA(FtarcTask):
+class FetchResourceFasta(FtarcTask):
     cf = luigi.DictParameter()
     priority = 70
 
@@ -83,7 +83,7 @@ class FetchResourceFASTA(FtarcTask):
         samtools_faidx(shelltask=self, samtools=samtools, fa_path=fa)
 
 
-class FetchResourceVCF(FtarcTask):
+class FetchResourceVcf(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 70
@@ -121,37 +121,37 @@ class FetchResourceVCF(FtarcTask):
         tabix_tbi(shelltask=self, tabix=tabix, tsv_path=dest_vcf, preset='vcf')
 
 
-class FetchDbsnpVCF(luigi.WrapperTask):
+class FetchDbsnpVcf(luigi.WrapperTask):
     dbsnp_vcf_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
-        return FetchResourceVCF(src_path=self.dbsnp_vcf_path, cf=self.cf)
+        return FetchResourceVcf(src_path=self.dbsnp_vcf_path, cf=self.cf)
 
     def output(self):
         return self.input()
 
 
-class FetchMillsIndelVCF(luigi.WrapperTask):
+class FetchMillsIndelVcf(luigi.WrapperTask):
     mills_indel_vcf_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
-        return FetchResourceVCF(src_path=self.mills_indel_vcf_path, cf=self.cf)
+        return FetchResourceVcf(src_path=self.mills_indel_vcf_path, cf=self.cf)
 
     def output(self):
         return self.input()
 
 
-class FetchKnownIndelVCF(luigi.WrapperTask):
+class FetchKnownIndelVcf(luigi.WrapperTask):
     known_indel_vcf_path = luigi.Parameter()
     cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
-        return FetchResourceVCF(src_path=self.known_indel_vcf_path, cf=self.cf)
+        return FetchResourceVcf(src_path=self.known_indel_vcf_path, cf=self.cf)
 
     def output(self):
         return self.input()

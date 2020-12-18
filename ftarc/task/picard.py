@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 from pathlib import Path
 
 import luigi
@@ -8,11 +7,11 @@ from luigi.util import requires
 
 from .bwa import AlignReads
 from .core import FtarcTask
-from .resource import FetchReferenceFASTA
+from .resource import FetchReferenceFasta
 from .samtools import samtools_index, samtools_view_and_index
 
 
-@requires(FetchReferenceFASTA)
+@requires(FetchReferenceFasta)
 class CreateSequenceDictionary(FtarcTask):
     cf = luigi.DictParameter()
     priority = 70
@@ -47,7 +46,7 @@ class CreateSequenceDictionary(FtarcTask):
         )
 
 
-@requires(AlignReads, FetchReferenceFASTA, CreateSequenceDictionary)
+@requires(AlignReads, FetchReferenceFasta, CreateSequenceDictionary)
 class MarkDuplicates(FtarcTask):
     cf = luigi.DictParameter()
     set_nm_md_uq = luigi.BoolParameter(default=False)
@@ -145,9 +144,6 @@ class CollectSamMetricsWithPicard(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
-    picard = luigi.Parameter(default='picard')
-    n_cpu = luigi.IntParameter(default=1)
-    memory_mb = luigi.FloatParameter(default=4096)
     picard_commands = luigi.ListParameter(
         default=[
             'CollectRawWgsMetrics', 'CollectAlignmentSummaryMetrics',
@@ -156,10 +152,13 @@ class CollectSamMetricsWithPicard(FtarcTask):
             'CollectGcBiasMetrics'
         ]
     )
+    picard = luigi.Parameter(default='picard')
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
     quiet = luigi.BoolParameter(default=False)
-    priority = 10
+    priority = 100
 
     def output(self):
         output_path_prefix = str(
@@ -179,17 +178,17 @@ class CollectSamMetricsWithPicard(FtarcTask):
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         dest_dir = Path(self.dest_dir_path).resolve()
-        self.setup_shell(
-            run_id=run_id, log_dir_path=self.log_dir_path,
-            commands=self.picard, cwd=dest_dir,
-            remove_if_failed=self.remove_if_failed, quiet=self.quiet,
-            env={
-                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
-                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
-                )
-            }
-        )
         for c in self.picard_commands:
+            self.setup_shell(
+                run_id=f'{run_id}.{c}', log_dir_path=self.log_dir_path,
+                commands=f'{self.picard} {c}', cwd=dest_dir,
+                remove_if_failed=self.remove_if_failed, quiet=self.quiet,
+                env={
+                    'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                        n_cpu=self.n_cpu, memory_mb=self.memory_mb
+                    )
+                }
+            )
             prefix = str(dest_dir.joinpath(f'{input_sam.stem}.{c}'))
             if c == 'CollectRawWgsMetrics':
                 add_args = {'INCLUDE_BQ_HISTOGRAM': 'true'}
@@ -229,7 +228,7 @@ class ValidateSamFile(FtarcTask):
     memory_mb = luigi.FloatParameter(default=4096)
     log_dir_path = luigi.Parameter(default='')
     quiet = luigi.BoolParameter(default=False)
-    priority = luigi.IntParameter(default=sys.maxsize)
+    priority = luigi.IntParameter(default=10)
     __is_completed = False
 
     def complete(self):

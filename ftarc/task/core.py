@@ -34,9 +34,13 @@ class CoreTask(luigi.Task):
 class ShellTask(CoreTask, metaclass=ABCMeta):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__log_txt_path = None
-        self.__sh = None
-        self.__run_kwargs = None
+        self.initialize_shell()
+
+    @classmethod
+    def initialize_shell(cls):
+        cls.__log_txt_path = None
+        cls.__sh = None
+        cls.__run_kwargs = None
 
     @classmethod
     def setup_shell(cls, run_id=None, log_dir_path=None, commands=None,

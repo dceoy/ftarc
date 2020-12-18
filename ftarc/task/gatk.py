@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 from pathlib import Path
 
 import luigi
@@ -9,13 +8,13 @@ from luigi.util import requires
 from .core import FtarcTask
 from .picard import (CreateSequenceDictionary, MarkDuplicates,
                      generate_gatk_java_options)
-from .resource import (FetchDbsnpVCF, FetchKnownIndelVCF, FetchMillsIndelVCF,
-                       FetchReferenceFASTA)
+from .resource import (FetchDbsnpVcf, FetchKnownIndelVcf, FetchMillsIndelVcf,
+                       FetchReferenceFasta)
 from .samtools import samtools_view_and_index
 
 
-@requires(MarkDuplicates, FetchReferenceFASTA, CreateSequenceDictionary,
-          FetchDbsnpVCF, FetchMillsIndelVCF, FetchKnownIndelVCF)
+@requires(MarkDuplicates, FetchReferenceFasta, CreateSequenceDictionary,
+          FetchDbsnpVcf, FetchMillsIndelVcf, FetchKnownIndelVcf)
 class RecalibrateBaseQualityScores(luigi.WrapperTask):
     cf = luigi.DictParameter()
     priority = 70
@@ -40,7 +39,7 @@ class RecalibrateBaseQualityScores(luigi.WrapperTask):
             memory_mb=self.cf['memory_mb_per_worker'],
             log_dir_path=self.cf['log_dir_path'],
             remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet'], priority=self.priority
+            quiet=self.cf['quiet']
         )
 
 
@@ -57,7 +56,7 @@ class ApplyBQSR(FtarcTask):
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
     quiet = luigi.BoolParameter(default=False)
-    priority = luigi.IntParameter(default=sys.maxsize)
+    priority = 70
 
     def output(self):
         output_path_prefix = str(

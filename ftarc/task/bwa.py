@@ -6,13 +6,13 @@ import luigi
 from luigi.util import requires
 
 from .core import FtarcTask
-from .resource import FetchReferenceFASTA
+from .resource import FetchReferenceFasta
 from .samtools import samtools_index
-from .trimgalore import PrepareFASTQs
+from .trimgalore import PrepareFastqs
 
 
-@requires(FetchReferenceFASTA)
-class CreateBWAIndices(FtarcTask):
+@requires(FetchReferenceFasta)
+class CreateBwaIndices(FtarcTask):
     cf = luigi.DictParameter()
     priority = 100
 
@@ -43,7 +43,7 @@ class CreateBWAIndices(FtarcTask):
         )
 
 
-@requires(PrepareFASTQs, FetchReferenceFASTA, CreateBWAIndices)
+@requires(PrepareFastqs, FetchReferenceFasta, CreateBwaIndices)
 class AlignReads(FtarcTask):
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()

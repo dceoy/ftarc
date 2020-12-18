@@ -8,7 +8,7 @@ import luigi
 from .core import FtarcTask
 
 
-class PrepareFASTQs(luigi.Task):
+class PrepareFastqs(luigi.Task):
     fq_paths = luigi.ListParameter()
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()

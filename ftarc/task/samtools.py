@@ -81,12 +81,12 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
+    samtools_commands = luigi.ListParameter(
+        default=['coverage', 'flagstat', 'idxstats', 'stats', 'depth']
+    )
     samtools = luigi.Parameter(default='samtools')
     pigz = luigi.Parameter(default='pigz')
     n_cpu = luigi.IntParameter(default=1)
-    samtools_commands = luigi.ListParameter(
-        default=['coverage', 'flagstat', 'idxstats', 'stats']
-    )
     log_dir_path = luigi.Parameter(default='')
     remove_if_failed = luigi.BoolParameter(default=True)
     quiet = luigi.BoolParameter(default=False)
@@ -111,13 +111,13 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
         fa = Path(self.fa_path).resolve()
         dest_dir = Path(self.dest_dir_path).resolve()
-        self.setup_shell(
-            run_id=run_id, log_dir_path=self.log_dir_path,
-            commands=[self.samtools, self.pigz], cwd=dest_dir,
-            remove_if_failed=self.remove_if_failed, quiet=self.quiet,
-            env={'REF_CACHE': '.ref_cache'}
-        )
         for c, o in zip(self.samtools_commands, self.output()):
+            self.setup_shell(
+                run_id=f'{run_id}.{c}', log_dir_path=self.log_dir_path,
+                commands=[self.samtools, self.pigz], cwd=dest_dir,
+                remove_if_failed=self.remove_if_failed, quiet=self.quiet,
+                env={'REF_CACHE': '.ref_cache'}
+            )
             p = o.path
             self.run_shell(
                 args=(
@@ -131,11 +131,11 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                         f' -@ {self.n_cpu}'
                         if c in {'flagstat', 'idxstats', 'stats'} else ''
                     )
+                    + f' {input_sam}'
                     + (
-                        f' {input_sam} | {self.pigz} -p {self.n_cpu} -c -'
-                        if p.endswith('.gz') else f' {input_sam}'
+                        f' | {self.pigz} -p {self.n_cpu} -c - > {p}'
+                        if p.endswith('.gz') else f' | tee {p}'
                     )
-                    + f' > {p}'
                 ),
                 input_files_or_dirs=input_sam, output_files_or_dirs=p
             )
