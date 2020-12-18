@@ -12,26 +12,17 @@ resources:  # These files can be downloaded with `ftarc download`.
   known_indel_vcf: /path/to/Homo_sapiens_assembly38.known_indels.vcf.gz
 runs:
   - fq:
-      - /path/to/sample01.tumor_FFPE.WGS.R1.fq.gz
-      - /path/to/sample01.tumor_FFPE.WGS.R2.fq.gz
+      - /path/to/sample01.WGS.R1.fq.gz
+      - /path/to/sample01.WGS.R2.fq.gz
   - fq:
-      - /path/to/sample01.blood_frozen.WGS.R1.fq.gz
-      - /path/to/sample01.blood_frozen.WGS.R2.fq.gz
+      - /path/to/sample02.WGS.R1.fq.gz
+      - /path/to/sample02.WGS.R2.fq.gz
   - fq:
-      - /path/to/sample02.tumor_FFPE.WGS.R1.fq.gz
-      - /path/to/sample02.tumor_FFPE.WGS.R2.fq.gz
+      - /path/to/sample03.WGS.R1.fq.gz
+      - /path/to/sample03.WGS.R2.fq.gz
     read_group:
       ID: FLOWCELL-1
       PU: UNIT-1
-      SM: sample02.tumor_FFPE
+      SM: sample03
       PL: ILLUMINA
       LB: LIBRARY-1
-  - fq:
-      - /path/to/sample02.blood_frozen.WGS.R1.fq.gz
-      - /path/to/sample02.blood_frozen.WGS.R2.fq.gz
-    read_group:
-      ID: FLOWCELL-2
-      PU: UNIT-2
-      SM: sample02.blood_frozen
-      PL: ILLUMINA
-      LB: LIBRARY-2
