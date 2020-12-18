@@ -115,3 +115,36 @@ class FtarcTask(ShellTask):
                 yield f'{c} CreateSequenceDictionary --version'
             else:
                 yield f'{c} --version'
+
+    @classmethod
+    def bzip2_to_gzip(cls, src_bz2_path, dest_gz_path, pbzip2='pbzip2',
+                      pigz='pigz', n_cpu=1):
+        cls.run_shell(
+            args=(
+                f'set -eo pipefail && {pbzip2} -p{n_cpu} -dc {src_bz2_path}'
+                + f' | {pigz} -p {n_cpu} -c - > {dest_gz_path}'
+            ),
+            input_files_or_dirs=src_bz2_path, output_files_or_dirs=dest_gz_path
+        )
+
+    @classmethod
+    def remove_files_and_dirs(cls, *paths):
+        cls.run_shell(
+            args=''.join([
+                'rm -{}f'.format(
+                    'r' if any([Path(str(p)).is_dir() for p in paths]) else ''
+                ),
+                *[f' {p}' for p in paths]
+            ])
+        )
+
+    @staticmethod
+    def generate_gatk_java_options(n_cpu=1, memory_mb=4096):
+        return ' '.join([
+            '-Dsamjdk.compression_level=5',
+            '-Dsamjdk.use_async_io_read_samtools=true',
+            '-Dsamjdk.use_async_io_write_samtools=true',
+            '-Dsamjdk.use_async_io_write_tribble=false',
+            '-Xmx{}m'.format(int(memory_mb)), '-XX:+UseParallelGC',
+            '-XX:ParallelGCThreads={}'.format(int(n_cpu))
+        ])

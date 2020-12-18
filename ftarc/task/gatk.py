@@ -6,8 +6,7 @@ import luigi
 from luigi.util import requires
 
 from .core import FtarcTask
-from .picard import (CreateSequenceDictionary, MarkDuplicates,
-                     generate_gatk_java_options)
+from .picard import CreateSequenceDictionary, MarkDuplicates
 from .resource import (FetchDbsnpVcf, FetchKnownIndelVcf, FetchMillsIndelVcf,
                        FetchReferenceFasta)
 from .samtools import samtools_view_and_index
@@ -86,7 +85,7 @@ class ApplyBQSR(FtarcTask):
             commands=[self.gatk, self.samtools], cwd=output_cram.parent,
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
             env={
-                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb
                 )
             }
@@ -127,7 +126,7 @@ class ApplyBQSR(FtarcTask):
             input_sam_path=str(tmp_bam), fa_path=str(fa),
             output_sam_path=str(output_cram), n_cpu=self.n_cpu
         )
-        self.run_shell(args=f'rm -f {tmp_bam}', input_files_or_dirs=tmp_bam)
+        self.remove_files_and_dirs(tmp_bam)
 
 
 if __name__ == '__main__':

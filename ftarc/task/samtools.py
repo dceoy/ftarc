@@ -72,9 +72,7 @@ class SamtoolsView(FtarcTask):
                 add_args=self.add_args
             )
         if self.remove_input:
-            self.run_shell(
-                args=f'rm -f {input_sam}', input_files_or_dirs=input_sam
-            )
+            self.remove_files_and_dirs(input_sam)
 
 
 class CollectSamMetricsWithSamtools(FtarcTask):

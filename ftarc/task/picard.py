@@ -31,7 +31,7 @@ class CreateSequenceDictionary(FtarcTask):
             cwd=fa.parent, remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet'],
             env={
-                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.cf['n_cpu_per_worker'],
                     memory_mb=self.cf['memory_mb_per_worker']
                 )
@@ -83,7 +83,7 @@ class MarkDuplicates(FtarcTask):
             quiet=self.cf['quiet'],
             env={
                 'REF_CACHE': '.ref_cache',
-                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.cf['n_cpu_per_worker'],
                     memory_mb=self.cf['memory_mb_per_worker']
                 )
@@ -136,8 +136,7 @@ class MarkDuplicates(FtarcTask):
                 shelltask=self, samtools=samtools, sam_path=str(output_cram),
                 n_cpu=n_cpu
             )
-        for b in tmp_bams[0:(1 + int(self.set_nm_md_uq))]:
-            self.run_shell(args=f'rm -f {b}', input_files_or_dirs=b)
+        self.remove_files_and_dirs(*tmp_bams[0:(1 + int(self.set_nm_md_uq))])
 
 
 class CollectSamMetricsWithPicard(FtarcTask):
@@ -184,7 +183,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
                 commands=f'{self.picard} {c}', cwd=dest_dir,
                 remove_if_failed=self.remove_if_failed, quiet=self.quiet,
                 env={
-                    'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                    'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                         n_cpu=self.n_cpu, memory_mb=self.memory_mb
                     )
                 }
@@ -244,7 +243,7 @@ class ValidateSamFile(FtarcTask):
             run_id=run_id, log_dir_path=self.log_dir_path,
             commands=self.picard, quiet=self.quiet,
             env={
-                'JAVA_TOOL_OPTIONS': generate_gatk_java_options(
+                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb
                 )
             }
@@ -258,17 +257,6 @@ class ValidateSamFile(FtarcTask):
             input_files_or_dirs=[input_sam, fa, fa_dict]
         )
         self.__is_completed = True
-
-
-def generate_gatk_java_options(n_cpu=1, memory_mb=4096):
-    return ' '.join([
-        '-Dsamjdk.compression_level=5',
-        '-Dsamjdk.use_async_io_read_samtools=true',
-        '-Dsamjdk.use_async_io_write_samtools=true',
-        '-Dsamjdk.use_async_io_write_tribble=false',
-        '-Xmx{}m'.format(int(memory_mb)), '-XX:+UseParallelGC',
-        '-XX:ParallelGCThreads={}'.format(int(n_cpu))
-    ])
 
 
 if __name__ == '__main__':

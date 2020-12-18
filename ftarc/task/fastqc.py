@@ -54,8 +54,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
             output_files_or_dirs=[o.path for o in self.output()]
         )
         tmp_dir = dest_dir.joinpath('?')
-        if tmp_dir.is_dir():
-            self.run_shell(args=f'rm -rf {tmp_dir}')
+        self.remove_files_and_dirs(tmp_dir)
 
 
 if __name__ == '__main__':
