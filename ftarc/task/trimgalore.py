@@ -33,6 +33,9 @@ class PrepareFastqs(luigi.WrapperTask):
         else:
             return LocateFastqs(fq_paths=self.fq_paths, cf=self.cf)
 
+    def output(self):
+        return self.input()
+
 
 class TrimAdapters(FtarcTask):
     fq_paths = luigi.ListParameter()

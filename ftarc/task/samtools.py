@@ -57,20 +57,11 @@ class SamtoolsView(FtarcTask):
             remove_if_failed=self.remove_if_failed, quiet=self.quiet,
             env={'REF_CACHE': '.ref_cache'}
         )
-        if self.index_sam:
-            samtools_view_and_index(
-                shelltask=self, samtools=self.samtools,
-                input_sam_path=str(input_sam), fa_path=str(fa),
-                output_sam_path=str(output_sam), n_cpu=self.n_cpu,
-                add_args=self.add_args
-            )
-        else:
-            samtools_view(
-                shelltask=self, samtools=self.samtools,
-                input_sam_path=str(input_sam), fa_path=str(fa),
-                output_sam_path=str(output_sam), n_cpu=self.n_cpu,
-                add_args=self.add_args
-            )
+        self.samtools_view(
+            input_sam_path=str(input_sam), fa_path=str(fa),
+            output_sam_path=str(output_sam), samtools=self.samtools,
+            n_cpu=self.n_cpu, add_args=self.add_args, index_sam=self.index_sam
+        )
         if self.remove_input:
             self.remove_files_and_dirs(input_sam)
 
@@ -137,65 +128,6 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                 ),
                 input_files_or_dirs=input_sam, output_files_or_dirs=p
             )
-
-
-def samtools_faidx(shelltask, samtools, fa_path):
-    shelltask.run_shell(
-        args=f'set -e && {samtools} faidx {fa_path}',
-        input_files_or_dirs=fa_path, output_files_or_dirs=f'{fa_path}.fai'
-    )
-
-
-def samtools_index(shelltask, samtools, sam_path, n_cpu=1):
-    shelltask.run_shell(
-        args=(
-            f'set -e && {samtools} quickcheck -v {sam_path}'
-            + f' && {samtools} index -@ {n_cpu} {sam_path}'
-        ),
-        input_files_or_dirs=sam_path,
-        output_files_or_dirs=re.sub(
-            r'\.(cr|b)am$', '.\\1am.\\1ai', str(sam_path)
-        )
-    )
-
-
-def samtools_view_and_index(shelltask, samtools, input_sam_path, fa_path,
-                            output_sam_path, n_cpu=1, add_args=None):
-    samtools_view(
-        shelltask=shelltask, samtools=samtools, input_sam_path=input_sam_path,
-        fa_path=fa_path, output_sam_path=output_sam_path, n_cpu=n_cpu,
-        add_args=add_args
-    )
-    samtools_index(
-        shelltask=shelltask, samtools=samtools, sam_path=output_sam_path,
-        n_cpu=n_cpu
-    )
-
-
-def samtools_view(shelltask, samtools, input_sam_path, fa_path,
-                  output_sam_path, n_cpu=1, add_args=None):
-    shelltask.run_shell(
-        args=(
-            f'set -e && {samtools} quickcheck -v {input_sam_path}'
-            + f' && {samtools} view -@ {n_cpu} -T {fa_path}'
-            + ' -{0}S{1}'.format(
-                ('C' if output_sam_path.endswith('.cram') else 'b'),
-                (f' {add_args}' if add_args else '')
-            )
-            + f' -o {output_sam_path} {input_sam_path}'
-        ),
-        input_files_or_dirs=[
-            input_sam_path, fa_path, f'{fa_path}.fai'
-        ],
-        output_files_or_dirs=output_sam_path
-    )
-
-
-def tabix_tbi(shelltask, tabix, tsv_path, preset='vcf'):
-    shelltask.run_shell(
-        args=f'set -e && {tabix} --preset {preset} {tsv_path}',
-        input_files_or_dirs=tsv_path, output_files_or_dirs=f'{tsv_path}.tbi'
-    )
 
 
 if __name__ == '__main__':

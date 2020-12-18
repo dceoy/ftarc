@@ -7,7 +7,6 @@ from luigi.util import requires
 
 from .core import FtarcTask
 from .resource import FetchReferenceFasta
-from .samtools import samtools_index
 from .trimgalore import PrepareFastqs
 
 
@@ -106,9 +105,8 @@ class AlignReads(FtarcTask):
             input_files_or_dirs=[fa_path, *index_paths, *fq_paths],
             output_files_or_dirs=[output_cram, output_cram.parent]
         )
-        samtools_index(
-            shelltask=self, samtools=samtools, sam_path=output_cram,
-            n_cpu=n_cpu
+        self.samtools_index(
+            sam_path=output_cram, samtools=samtools, n_cpu=n_cpu
         )
 
 

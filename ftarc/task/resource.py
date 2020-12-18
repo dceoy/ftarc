@@ -7,7 +7,6 @@ import luigi
 from luigi.util import requires
 
 from .core import FtarcTask
-from .samtools import samtools_faidx, tabix_tbi
 
 
 class FetchReferenceFasta(luigi.WrapperTask):
@@ -80,7 +79,10 @@ class FetchResourceFasta(FtarcTask):
             remove_if_failed=self.cf['remove_if_failed'],
             quiet=self.cf['quiet']
         )
-        samtools_faidx(shelltask=self, samtools=samtools, fa_path=fa)
+        self.run_shell(
+            args=f'set -e && {samtools} faidx {fa}',
+            input_files_or_dirs=fa, output_files_or_dirs=f'{fa}.fai'
+        )
 
 
 class FetchResourceVcf(FtarcTask):
@@ -118,7 +120,11 @@ class FetchResourceVcf(FtarcTask):
             ),
             input_files_or_dirs=self.src_path, output_files_or_dirs=dest_vcf
         )
-        tabix_tbi(shelltask=self, tabix=tabix, tsv_path=dest_vcf, preset='vcf')
+        self.run_shell(
+            args=f'set -e && {tabix} --preset vcf {dest_vcf}',
+            input_files_or_dirs=dest_vcf,
+            output_files_or_dirs=f'{dest_vcf}.tbi'
+        )
 
 
 class FetchDbsnpVcf(luigi.WrapperTask):

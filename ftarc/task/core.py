@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -10,9 +11,10 @@ import luigi
 from shoper.shelloperator import ShellOperator
 
 
-class CoreTask(luigi.Task):
+class ShellTask(luigi.Task, metaclass=ABCMeta):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.initialize_shell()
 
     @luigi.Task.event_handler(luigi.Event.PROCESSING_TIME)
     def print_execution_time(self, processing_time):
@@ -29,12 +31,6 @@ class CoreTask(luigi.Task):
         logger = logging.getLogger(cls.__name__)
         logger.info(message)
         print((os.linesep if new_line else '') + f'>>\t{message}', flush=True)
-
-
-class ShellTask(CoreTask, metaclass=ABCMeta):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.initialize_shell()
 
     @classmethod
     def initialize_shell(cls):
@@ -148,3 +144,40 @@ class FtarcTask(ShellTask):
             '-Xmx{}m'.format(int(memory_mb)), '-XX:+UseParallelGC',
             '-XX:ParallelGCThreads={}'.format(int(n_cpu))
         ])
+
+    @classmethod
+    def samtools_index(cls, sam_path, samtools='samtools', n_cpu=1):
+        cls.run_shell(
+            args=(
+                f'set -e && {samtools} quickcheck -v {sam_path}'
+                + f' && {samtools} index -@ {n_cpu} {sam_path}'
+            ),
+            input_files_or_dirs=sam_path,
+            output_files_or_dirs=re.sub(
+                r'\.(cr|b)am$', '.\\1am.\\1ai', str(sam_path)
+            )
+        )
+
+    @classmethod
+    def samtools_view(cls, input_sam_path, fa_path, output_sam_path,
+                      samtools='samtools', n_cpu=1, add_args=None,
+                      index_sam=False):
+        cls.run_shell(
+            args=(
+                f'set -e && {samtools} quickcheck -v {input_sam_path}'
+                + f' && {samtools} view -@ {n_cpu} -T {fa_path}'
+                + ' -{0}S{1}'.format(
+                    ('C' if output_sam_path.endswith('.cram') else 'b'),
+                    (f' {add_args}' if add_args else '')
+                )
+                + f' -o {output_sam_path} {input_sam_path}'
+            ),
+            input_files_or_dirs=[
+                input_sam_path, fa_path, f'{fa_path}.fai'
+            ],
+            output_files_or_dirs=output_sam_path
+        )
+        if index_sam:
+            cls.samtools_index(
+                sam_path=output_sam_path, samtools=samtools, n_cpu=n_cpu
+            )

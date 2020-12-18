@@ -8,7 +8,6 @@ from luigi.util import requires
 from .bwa import AlignReads
 from .core import FtarcTask
 from .resource import FetchReferenceFasta
-from .samtools import samtools_index, samtools_view_and_index
 
 
 @requires(FetchReferenceFasta)
@@ -115,10 +114,10 @@ class MarkDuplicates(FtarcTask):
                 input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
                 output_files_or_dirs=tmp_bams[1]
             )
-            samtools_view_and_index(
-                shelltask=self, samtools=samtools,
-                input_sam_path=str(tmp_bams[1]),
-                fa_path=str(fa), output_sam_path=str(output_cram), n_cpu=n_cpu
+            self.samtools_view(
+                input_sam_path=str(tmp_bams[1]), fa_path=str(fa),
+                output_sam_path=str(output_cram), samtools=samtools,
+                n_cpu=n_cpu, index_sam=True
             )
         else:
             self.run_shell(
@@ -132,9 +131,8 @@ class MarkDuplicates(FtarcTask):
                 input_files_or_dirs=[tmp_bams[0], fa],
                 output_files_or_dirs=output_cram
             )
-            samtools_index(
-                shelltask=self, samtools=samtools, sam_path=str(output_cram),
-                n_cpu=n_cpu
+            self.samtools_index(
+                sam_path=str(output_cram), samtools=samtools, n_cpu=n_cpu
             )
         self.remove_files_and_dirs(*tmp_bams[0:(1 + int(self.set_nm_md_uq))])
 

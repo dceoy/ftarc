@@ -9,7 +9,6 @@ from .core import FtarcTask
 from .picard import CreateSequenceDictionary, MarkDuplicates
 from .resource import (FetchDbsnpVcf, FetchKnownIndelVcf, FetchMillsIndelVcf,
                        FetchReferenceFasta)
-from .samtools import samtools_view_and_index
 
 
 @requires(MarkDuplicates, FetchReferenceFasta, CreateSequenceDictionary,
@@ -121,10 +120,10 @@ class ApplyBQSR(FtarcTask):
             input_files_or_dirs=[input_sam, fa, fa_dict, bqsr_csv],
             output_files_or_dirs=tmp_bam
         )
-        samtools_view_and_index(
-            shelltask=self, samtools=self.samtools,
+        self.samtools_view(
             input_sam_path=str(tmp_bam), fa_path=str(fa),
-            output_sam_path=str(output_cram), n_cpu=self.n_cpu
+            output_sam_path=str(output_cram), samtools=self.samtools,
+            n_cpu=self.n_cpu, index_sam=True
         )
         self.remove_files_and_dirs(tmp_bam)
 
