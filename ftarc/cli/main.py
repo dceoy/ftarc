@@ -9,11 +9,14 @@ Usage:
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
         [--dest-dir=<path>]
-    ftarc samqc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
-        [--skip-cleaning] <fa_path> <sam_path>...
     ftarc fastqc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
         [--skip-cleaning] <fq_path>...
-    ftarc validate [--debug|--info] [--cpus=<int>] [--summary] <fa_path>
+    ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--dest-dir=<path>] [--skip-cleaning] <fa_path> <sam_path>...
+    ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--summary] <fa_path> <sam_path>...
+    ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--dest-dir=<path>] [--skip-cleaning] (--known-vcf=<path>)... <fa_path>
         <sam_path>...
     ftarc -h|--help
     ftarc --version
@@ -24,10 +27,11 @@ Commands:
     run                     Create analysis-ready CRAM files from FASTQ files
                             (Trim adapters, align reads, mark duplicates, and
                              apply BQSR)
+    fastqc                  Collect metrics from FASTQ files using FastQC
     samqc                   Collect metrics from CRAM or BAM files using Picard
                             and Samtools
-    fastqc                  Collect metrics from FASTQ files using FastQC
-    validate                Validate SAM/BAM/CRAM files using Picard
+    validate                Validate BAM or CRAM files using Picard
+    bqsr                    Apply BQSR to BAM or CRAM files using GATK
 
 Options:
     -h, --help              Print help and exit
@@ -41,6 +45,7 @@ Options:
     --use-bwa-mem2          Use Bwa-mem2 for read alignment
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --summary               Set SUMMARY to the mode of output
+    --known-vcf=<path>      Specify VCF paths of known polymorphic sites
 
 Args:
     <fa_path>               Path to an reference FASTA file
@@ -52,7 +57,6 @@ Args:
 import logging
 import os
 from math import floor
-from pathlib import Path
 
 from docopt import docopt
 from psutil import cpu_count, virtual_memory
@@ -61,6 +65,7 @@ from .. import __version__
 from ..task.controller import CollectMultipleSamMetrics
 from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
+from ..task.gatk import ApplyBQSR
 from ..task.picard import ValidateSamFile
 from .builder import build_luigi_tasks, run_processing_pipeline
 from .util import (fetch_executable, load_default_dict, print_log,
@@ -93,11 +98,10 @@ def main():
             console_log_level=log_level, use_bwa_mem2=args['--use-bwa-mem2']
         )
     else:
-        dest_dir = Path(args['--dest-dir'])
         n_cpu = int(args['--cpus'] or cpu_count())
         memory_mb = virtual_memory().total / 1024 / 1024 / 2
         gatk_or_picard = (
-            fetch_executable('gatk', ignore_errors=True)
+            fetch_executable('gatk', ignore_errors=(not args['bqsr']))
             or fetch_executable('picard')
         )
         remove_if_failed = (not args['--skip-cleaning'])
@@ -107,7 +111,7 @@ def main():
                     f'{k}_url': v
                     for k, v in load_default_dict(stem='urls').items()
                 },
-                'dest_dir_path': str(dest_dir),
+                'dest_dir_path': args['--dest-dir'],
                 **{
                     c: fetch_executable(c) for c
                     in ['wget', 'pbzip2', 'bgzip', 'pigz', 'samtools', 'tabix']
@@ -123,27 +127,30 @@ def main():
                 tasks=[DownloadAndProcessResourceFiles(**kwargs)],
                 log_level=log_level
             )
-        elif args['validate']:
-            kwargs = {
-                'fa_path': args['<fa_path>'], 'picard': gatk_or_picard,
-                'mode_of_output':
-                ('SUMMARY' if args['--summary'] else 'VERBOSE'),
-                'n_cpu': n_cpu, 'memory_mb': memory_mb
-            }
+        elif args['fastqc']:
             build_luigi_tasks(
                 tasks=[
-                    ValidateSamFile(input_sam_path=p, **kwargs)
-                    for p in args['<sam_path>']
+                    CollectFqMetricsWithFastqc(
+                        input_fq_paths=args['<fq_path>'],
+                        dest_dir_path=args['--dest-dir'],
+                        fastqc=fetch_executable('fastqc'), n_cpu=n_cpu,
+                        memory_mb=memory_mb, remove_if_failed=remove_if_failed
+                    )
                 ],
                 log_level=log_level
             )
         elif args['samqc']:
-            n_sam = len(args['<sam_path>'])
-            n_worker = min(n_sam, n_cpu)
+            n_worker = min(
+                int(args['--workers']), n_cpu, (len(args['<sam_path>']) * 11)
+            )
             kwargs = {
-                'fa_path': args['<fa_path>'], 'dest_dir_path': str(dest_dir),
+                'fa_path': args['<fa_path>'],
+                'dest_dir_path': args['--dest-dir'],
                 **{c: fetch_executable(c) for c in ['samtools', 'pigz']},
                 'picard': gatk_or_picard,
+                **_calculate_cpus_n_memory_per_worker(
+                    n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
+                ),
                 'n_cpu': max(floor(n_cpu / n_worker), 1),
                 'memory_mb': (memory_mb / n_worker),
                 'remove_if_failed': remove_if_failed
@@ -155,15 +162,51 @@ def main():
                 ],
                 workers=n_worker, log_level=log_level
             )
-        elif args['fastqc']:
+        elif args['validate']:
+            n_worker = min(
+                int(args['--workers']), n_cpu, len(args['<sam_path>'])
+            )
+            kwargs = {
+                'fa_path': args['<fa_path>'], 'picard': gatk_or_picard,
+                'mode_of_output':
+                ('SUMMARY' if args['--summary'] else 'VERBOSE'),
+                **_calculate_cpus_n_memory_per_worker(
+                    n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
+                )
+            }
             build_luigi_tasks(
                 tasks=[
-                    CollectFqMetricsWithFastqc(
-                        input_fq_paths=args['<fq_path>'],
-                        dest_dir_path=str(dest_dir),
-                        fastqc=fetch_executable('fastqc'), n_cpu=n_cpu,
-                        memory_mb=memory_mb, remove_if_failed=remove_if_failed
-                    )
+                    ValidateSamFile(input_sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
                 ],
-                log_level=log_level
+                workers=n_worker, log_level=log_level
             )
+        elif args['bqsr']:
+            n_worker = min(
+                int(args['--workers']), n_cpu, len(args['<sam_path>'])
+            )
+            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
+                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
+            )
+            kwargs = {
+                'fa_path': args['<fa_path>'],
+                'known_sites_vcf_paths': args['--known-vcf'],
+                'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
+                'samtools': fetch_executable('samtools'),
+                'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
+                **worker_cpus_n_memory
+            }
+            build_luigi_tasks(
+                tasks=[
+                    ApplyBQSR(input_sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
+                ],
+                workers=n_worker, log_level=log_level
+            )
+
+
+def _calculate_cpus_n_memory_per_worker(n_cpu, memory_mb, n_worker=1):
+    return {
+        'n_cpu': max(floor(n_cpu / n_worker), 1),
+        'memory_mb': (memory_mb / n_worker)
+    }

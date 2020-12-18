@@ -93,7 +93,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         'reference_name': config.get('reference_name'),
         'use_bwa_mem2': use_bwa_mem2, 'adapter_removal': adapter_removal,
         'metrics_collectors': metrics_collectors,
-        'save_memory': (memory_mb_per_worker < 8 * 1024),
+        'save_memory': (memory_mb_per_worker < 8192),
         'remove_if_failed': (not skip_cleaning),
         'quiet': (not print_subprocesses),
         **{
