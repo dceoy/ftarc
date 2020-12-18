@@ -10,17 +10,16 @@ from luigi.util import requires
 from .core import FtarcTask
 from .fastqc import CollectFqMetricsWithFastqc
 from .gatk import RecalibrateBaseQualityScores
-from .picard import CollectSamMetricsWithPicard
+from .picard import CollectSamMetricsWithPicard, ValidateSamFile
 from .resource import FetchReferenceFasta
 from .samtools import CollectSamMetricsWithSamtools, SamtoolsView
 from .trimgalore import PrepareFastqs
 
 
 class PrintEnvVersions(FtarcTask):
-    log_dir_path = luigi.Parameter()
     command_paths = luigi.ListParameter(default=list())
     run_id = luigi.Parameter(default='env')
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     __is_completed = False
 
     def complete(self):
@@ -37,8 +36,8 @@ class PrintEnvVersions(FtarcTask):
             ]
         ]
         self.setup_shell(
-            run_id=self.run_id, log_dir_path=self.log_dir_path,
-            commands=[python, *self.command_paths], quiet=self.quiet
+            run_id=self.run_id, commands=[python, *self.command_paths],
+            **self.sh_config
         )
         self.run_shell(
             args=[
@@ -70,6 +69,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
     samtools_qc_commands = luigi.ListParameter(
         default=['coverage', 'flagstat', 'idxstats', 'stats']
     )
+    sh_config = luigi.DictParameter(default=dict())
     priority = luigi.IntParameter(default=sys.maxsize)
 
     def output(self):
@@ -117,15 +117,17 @@ class PrepareAnalysisReadyCram(luigi.Task):
     def run(self):
         input_sam_path = self.input()[0][0].path
         fa_path = self.input()[1][0].path
+        yield ValidateSamFile(
+            input_sam_path=input_sam_path, fa_path=fa_path,
+            picard=self.cf['gatk'], n_cpu=self.cf['n_cpu_per_worker'],
+            memory_mb=self.cf['memory_mb_per_worker'], sh_config=self.sh_config
+        )
         yield SamtoolsView(
             input_sam_path=input_sam_path,
             output_sam_path=self.output()[0].path, fa_path=fa_path,
             samtools=self.cf['samtools'], n_cpu=self.cf['n_cpu_per_worker'],
             add_args='-F 1024', message='Remove duplicates',
-            remove_input=False, index_sam=True,
-            log_dir_path=self.cf['log_dir_path'],
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
+            remove_input=False, index_sam=True, sh_config=self.sh_config
         )
         qc_dir = Path(self.cf['qc_dir_path'])
         if 'fastqc' in self.cf['metrics_collectors']:
@@ -136,9 +138,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
                 ),
                 fastqc=self.cf['fastqc'], n_cpu=self.cf['n_cpu_per_worker'],
                 memory_mb=self.cf['memory_mb_per_worker'],
-                log_dir_path=self.cf['log_dir_path'],
-                remove_if_failed=self.cf['remove_if_failed'],
-                quiet=self.cf['quiet']
+                sh_config=self.sh_config
             )
         if {'picard', 'samtools'} & set(self.cf['metrics_collectors']):
             yield [
@@ -154,9 +154,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
                     pigz=self.cf['pigz'], picard=self.cf['gatk'],
                     n_cpu=self.cf['n_cpu_per_worker'],
                     memory_mb=self.cf['memory_mb_per_worker'],
-                    log_dir_path=self.cf['log_dir_path'],
-                    remove_if_failed=self.cf['remove_if_failed'],
-                    quiet=self.cf['quiet']
+                    sh_config=self.sh_config
                 ) for m in self.cf['metrics_collectors']
             ]
 
@@ -182,9 +180,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     picard = luigi.Parameter(default='picard')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    log_dir_path = luigi.Parameter(default='')
-    remove_if_failed = luigi.BoolParameter(default=True)
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 10
 
     def requires(self):
@@ -194,8 +190,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
                     input_sam_path=self.input_sam_path, fa_path=self.fa_path,
                     dest_dir_path=self.dest_dir_path, picard_commands=[c],
                     picard=self.picard, n_cpu=self.n_cpu,
-                    memory_mb=self.memory_mb, log_dir_path=self.log_dir_path,
-                    remove_if_failed=self.remove_if_failed, quiet=self.quiet
+                    memory_mb=self.memory_mb, sh_config=self.sh_config
                 ) for c in (
                     self.picard_qc_commands
                     if 'picard' in self.metrics_collectors else list()
@@ -205,8 +200,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
                     input_sam_path=self.input_sam_path, fa_path=self.fa_path,
                     dest_dir_path=self.dest_dir_path, samtools_commands=[c],
                     samtools=self.samtools, pigz=self.pigz, n_cpu=self.n_cpu,
-                    log_dir_path=self.log_dir_path,
-                    remove_if_failed=self.remove_if_failed, quiet=self.quiet
+                    sh_config=self.sh_config
                 ) for c in (
                     self.samtools_qc_commands
                     if 'samtools' in self.metrics_collectors else list()

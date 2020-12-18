@@ -18,9 +18,7 @@ class SamtoolsView(FtarcTask):
     message = luigi.Parameter(default='')
     remove_input = luigi.BoolParameter(default=True)
     index_sam = luigi.BoolParameter(default=False)
-    log_dir_path = luigi.Parameter(default='')
-    remove_if_failed = luigi.BoolParameter(default=True)
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 100
 
     def output(self):
@@ -52,10 +50,8 @@ class SamtoolsView(FtarcTask):
         if message:
             self.print_log(f'{message}:\t{run_id}')
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.log_dir_path,
-            commands=self.samtools, cwd=output_sam.parent,
-            remove_if_failed=self.remove_if_failed, quiet=self.quiet,
-            env={'REF_CACHE': '.ref_cache'}
+            run_id=run_id, commands=self.samtools, cwd=output_sam.parent,
+            **self.sh_config, env={'REF_CACHE': '.ref_cache'}
         )
         self.samtools_view(
             input_sam_path=input_sam, fa_path=fa, output_sam_path=output_sam,
@@ -76,9 +72,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     samtools = luigi.Parameter(default='samtools')
     pigz = luigi.Parameter(default='pigz')
     n_cpu = luigi.IntParameter(default=1)
-    log_dir_path = luigi.Parameter(default='')
-    remove_if_failed = luigi.BoolParameter(default=True)
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 10
 
     def output(self):
@@ -102,10 +96,8 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         dest_dir = Path(self.dest_dir_path).resolve()
         for c, o in zip(self.samtools_commands, self.output()):
             self.setup_shell(
-                run_id=f'{run_id}.{c}', log_dir_path=self.log_dir_path,
-                commands=[self.samtools, self.pigz], cwd=dest_dir,
-                remove_if_failed=self.remove_if_failed, quiet=self.quiet,
-                env={'REF_CACHE': '.ref_cache'}
+                run_id=f'{run_id}.{c}', commands=[self.samtools, self.pigz],
+                cwd=dest_dir, **self.sh_config, env={'REF_CACHE': '.ref_cache'}
             )
             p = o.path
             self.run_shell(

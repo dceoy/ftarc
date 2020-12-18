@@ -85,7 +85,6 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     memory_mb = virtual_memory().total / 1024 / 1024 / 2
     memory_mb_per_worker = int(memory_mb / n_worker)
     cf_dict = {
-        'log_dir_path': str(log_dir),
         'ref_dir_path':
         (str(Path(ref_dir_path).resolve()) if ref_dir_path else None),
         'n_worker': n_worker, 'memory_mb_per_worker': memory_mb_per_worker,
@@ -94,8 +93,6 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         'use_bwa_mem2': use_bwa_mem2, 'adapter_removal': adapter_removal,
         'metrics_collectors': metrics_collectors,
         'save_memory': (memory_mb_per_worker < 8192),
-        'remove_if_failed': (not skip_cleaning),
-        'quiet': (not print_subprocesses),
         **{
             (k.replace('/', '_') + '_dir_path'): str(dest_dir.joinpath(k))
             for k in {'trim', 'align', 'qc'}
@@ -103,6 +100,13 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         **command_dict
     }
     logger.debug('cf_dict:' + os.linesep + pformat(cf_dict))
+
+    sh_config = {
+        'log_dir_path': str(log_dir), 'remove_if_failed': (not skip_cleaning),
+        'quiet': (not print_subprocesses),
+        'executable': fetch_executable('bash')
+    }
+    logger.debug('sh_config:' + os.linesep + pformat(sh_config))
 
     resource_keys = {
         'ref_fa', 'dbsnp_vcf', 'mills_indel_vcf', 'known_indel_vcf'
@@ -159,8 +163,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     build_luigi_tasks(
         tasks=[
             PrintEnvVersions(
-                log_dir_path=str(log_dir),
-                command_paths=list(command_dict.values())
+                command_paths=list(command_dict.values()), sh_config=sh_config
             )
         ],
         workers=1, log_level=console_log_level, logging_conf_file=log_cfg_path,
@@ -168,8 +171,9 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     )
     build_luigi_tasks(
         tasks=[
-            PrepareAnalysisReadyCram(**d, **resource_path_dict, cf=cf_dict)
-            for d in sample_dict_list
+            PrepareAnalysisReadyCram(
+                **d, **resource_path_dict, sh_config=sh_config, cf=cf_dict
+            ) for d in sample_dict_list
         ],
         workers=n_worker, log_level=console_log_level,
         logging_conf_file=log_cfg_path

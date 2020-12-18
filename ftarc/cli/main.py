@@ -104,7 +104,11 @@ def main():
             fetch_executable('gatk', ignore_errors=(not args['bqsr']))
             or fetch_executable('picard')
         )
-        remove_if_failed = (not args['--skip-cleaning'])
+        sh_config = {
+            'log_dir_path': None,
+            'remove_if_failed': (not args['--skip-cleaning']), 'quiet': False,
+            'executable': fetch_executable('bash')
+        }
         if args['download']:
             kwargs = {
                 **{
@@ -121,7 +125,7 @@ def main():
                 ),
                 'gatk': gatk_or_picard, 'n_cpu': n_cpu,
                 'memory_mb': memory_mb, 'use_bwa_mem2': args['--use-bwa-mem2'],
-                'remove_if_failed': remove_if_failed
+                'sh_config': sh_config
             }
             build_luigi_tasks(
                 tasks=[DownloadAndProcessResourceFiles(**kwargs)],
@@ -134,7 +138,7 @@ def main():
                         input_fq_paths=args['<fq_path>'],
                         dest_dir_path=args['--dest-dir'],
                         fastqc=fetch_executable('fastqc'), n_cpu=n_cpu,
-                        memory_mb=memory_mb, remove_if_failed=remove_if_failed
+                        memory_mb=memory_mb, sh_config=sh_config
                     )
                 ],
                 log_level=log_level
@@ -152,8 +156,7 @@ def main():
                     n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
                 ),
                 'n_cpu': max(floor(n_cpu / n_worker), 1),
-                'memory_mb': (memory_mb / n_worker),
-                'remove_if_failed': remove_if_failed
+                'memory_mb': (memory_mb / n_worker), 'sh_config': sh_config
             }
             build_luigi_tasks(
                 tasks=[
@@ -172,7 +175,8 @@ def main():
                 ('SUMMARY' if args['--summary'] else 'VERBOSE'),
                 **_calculate_cpus_n_memory_per_worker(
                     n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-                )
+                ),
+                'sh_config': sh_config
             }
             build_luigi_tasks(
                 tasks=[
@@ -194,7 +198,7 @@ def main():
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
                 'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
-                **worker_cpus_n_memory
+                'sh_config': sh_config, **worker_cpus_n_memory
             }
             build_luigi_tasks(
                 tasks=[

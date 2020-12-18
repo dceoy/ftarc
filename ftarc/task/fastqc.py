@@ -15,9 +15,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
     fastqc = luigi.Parameter(default='fastqc')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    log_dir_path = luigi.Parameter(default='')
-    remove_if_failed = luigi.BoolParameter(default=True)
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 10
 
     def output(self):
@@ -39,9 +37,8 @@ class CollectFqMetricsWithFastqc(FtarcTask):
         self.print_log(f'Collect FASTQ metrics using FastQC:\t{run_id}')
         dest_dir = Path(self.dest_dir_path).resolve()
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.log_dir_path,
-            commands=self.fastqc, cwd=dest_dir,
-            remove_if_failed=self.remove_if_failed, quiet=self.quiet,
+            run_id=run_id, commands=self.fastqc, cwd=dest_dir,
+            **self.sh_config,
             env={'JAVA_TOOL_OPTIONS': '-Xmx{}m'.format(int(self.memory_mb))}
         )
         self.run_shell(

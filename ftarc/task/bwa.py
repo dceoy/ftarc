@@ -13,6 +13,7 @@ from .trimgalore import PrepareFastqs
 @requires(FetchReferenceFasta)
 class CreateBwaIndices(FtarcTask):
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 100
 
     def output(self):
@@ -31,10 +32,7 @@ class CreateBwaIndices(FtarcTask):
         self.print_log(f'Create BWA indices:\t{run_id}')
         bwa = self.cf['bwa']
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=bwa, cwd=fa.parent,
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
+            run_id=run_id, commands=bwa, cwd=fa.parent, **self.sh_config
         )
         self.run_shell(
             args=f'set -e && {bwa} index {fa}', input_files_or_dirs=fa,
@@ -47,6 +45,7 @@ class AlignReads(FtarcTask):
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -87,10 +86,8 @@ class AlignReads(FtarcTask):
         fa_path = self.input()[1][0].path
         index_paths = [o.path for o in self.input()[2]]
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=[bwa, samtools], cwd=output_cram.parent,
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet'], env={'REF_CACHE': '.ref_cache'}
+            run_id=run_id, commands=[bwa, samtools], cwd=output_cram.parent,
+            **self.sh_config, env={'REF_CACHE': '.ref_cache'}
         )
         self.run_shell(
             args=(

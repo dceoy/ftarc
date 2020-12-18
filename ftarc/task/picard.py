@@ -13,6 +13,7 @@ from .resource import FetchReferenceFasta
 @requires(FetchReferenceFasta)
 class CreateSequenceDictionary(FtarcTask):
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -26,9 +27,7 @@ class CreateSequenceDictionary(FtarcTask):
         gatk = self.cf.get('gatk') or self.cf['picard']
         seq_dict_path = self.output().path
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'], commands=gatk,
-            cwd=fa.parent, remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet'],
+            run_id=run_id, commands=gatk, cwd=fa.parent, **self.sh_config,
             env={
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.cf['n_cpu_per_worker'],
@@ -49,6 +48,7 @@ class CreateSequenceDictionary(FtarcTask):
 class MarkDuplicates(FtarcTask):
     cf = luigi.DictParameter()
     set_nm_md_uq = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -76,10 +76,8 @@ class MarkDuplicates(FtarcTask):
             for s in ['.unsorted', '']
         ]
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=[gatk, samtools], cwd=input_cram.parent,
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet'],
+            run_id=run_id, commands=[gatk, samtools], cwd=input_cram.parent,
+            **self.sh_config,
             env={
                 'REF_CACHE': '.ref_cache',
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
@@ -152,9 +150,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
     picard = luigi.Parameter(default='picard')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    log_dir_path = luigi.Parameter(default='')
-    remove_if_failed = luigi.BoolParameter(default=True)
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 100
 
     def output(self):
@@ -177,9 +173,8 @@ class CollectSamMetricsWithPicard(FtarcTask):
         dest_dir = Path(self.dest_dir_path).resolve()
         for c in self.picard_commands:
             self.setup_shell(
-                run_id=f'{run_id}.{c}', log_dir_path=self.log_dir_path,
-                commands=f'{self.picard} {c}', cwd=dest_dir,
-                remove_if_failed=self.remove_if_failed, quiet=self.quiet,
+                run_id=f'{run_id}.{c}', commands=f'{self.picard} {c}',
+                cwd=dest_dir, **self.sh_config,
                 env={
                     'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                         n_cpu=self.n_cpu, memory_mb=self.memory_mb
@@ -223,8 +218,7 @@ class ValidateSamFile(FtarcTask):
     mode_of_output = luigi.Parameter(default='VERBOSE')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    log_dir_path = luigi.Parameter(default='')
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = luigi.IntParameter(default=10)
     __is_completed = False
 
@@ -238,8 +232,7 @@ class ValidateSamFile(FtarcTask):
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.log_dir_path,
-            commands=self.picard, quiet=self.quiet,
+            run_id=run_id, commands=self.picard, **self.sh_config,
             env={
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb

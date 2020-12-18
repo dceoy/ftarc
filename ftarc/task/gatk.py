@@ -15,6 +15,7 @@ from .resource import (FetchDbsnpVcf, FetchKnownIndelVcf, FetchMillsIndelVcf,
           FetchDbsnpVcf, FetchMillsIndelVcf, FetchKnownIndelVcf)
 class RecalibrateBaseQualityScores(luigi.WrapperTask):
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -34,10 +35,7 @@ class RecalibrateBaseQualityScores(luigi.WrapperTask):
             gatk=self.cf['gatk'], samtools=self.cf['samtools'],
             save_memory=self.cf['save_memory'],
             n_cpu=self.cf['n_cpu_per_worker'],
-            memory_mb=self.cf['memory_mb_per_worker'],
-            log_dir_path=self.cf['log_dir_path'],
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
+            memory_mb=self.cf['memory_mb_per_worker'], sh_config=self.sh_config
         )
 
 
@@ -51,9 +49,7 @@ class ApplyBQSR(FtarcTask):
     save_memory = luigi.BoolParameter(default=False)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    log_dir_path = luigi.Parameter(default='')
-    remove_if_failed = luigi.BoolParameter(default=True)
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -80,9 +76,8 @@ class ApplyBQSR(FtarcTask):
         ]
         tmp_bam = output_cram.parent.joinpath(f'{output_cram.stem}.bam')
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.log_dir_path,
-            commands=[self.gatk, self.samtools], cwd=output_cram.parent,
-            remove_if_failed=self.remove_if_failed, quiet=self.quiet,
+            run_id=run_id, commands=[self.gatk, self.samtools],
+            cwd=output_cram.parent, **self.sh_config,
             env={
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb

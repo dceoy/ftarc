@@ -12,6 +12,7 @@ class PrepareFastqs(luigi.WrapperTask):
     fq_paths = luigi.ListParameter()
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 50
 
     def requires(self):
@@ -26,12 +27,12 @@ class PrepareFastqs(luigi.WrapperTask):
                 cutadapt=self.cf['cutadapt'], fastqc=self.cf['fastqc'],
                 n_cpu=self.cf['n_cpu_per_worker'],
                 memory_mb=self.cf['memory_mb_per_worker'],
-                log_dir_path=self.cf['log_dir_path'],
-                remove_if_failed=self.cf['remove_if_failed'],
-                quiet=self.cf['quiet']
+                sh_config=self.sh_config
             )
         else:
-            return LocateFastqs(fq_paths=self.fq_paths, cf=self.cf)
+            return LocateFastqs(
+                fq_paths=self.fq_paths, cf=self.cf, sh_config=self.sh_config
+            )
 
     def output(self):
         return self.input()
@@ -48,9 +49,7 @@ class TrimAdapters(FtarcTask):
     fastqc = luigi.Parameter(default='fastqc')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    log_dir_path = luigi.Parameter(default='')
-    remove_if_failed = luigi.BoolParameter(default=True)
-    quiet = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
     priority = 50
 
     def output(self):
@@ -78,14 +77,12 @@ class TrimAdapters(FtarcTask):
             ) for p in self.fq_paths
         ]
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.log_dir_path,
+            run_id=run_id,
             commands=[
                 self.pigz, self.pbzip2, self.trim_galore, self.cutadapt,
                 self.fastqc
             ],
-            cwd=run_dir,
-            remove_if_failed=self.remove_if_failed,
-            quiet=self.quiet,
+            cwd=run_dir, **self.sh_config,
             env={'JAVA_TOOL_OPTIONS': '-Xmx{}m'.format(int(self.memory_mb))}
         )
         for i, o in zip(self.fq_paths, work_fq_paths):
@@ -111,6 +108,7 @@ class TrimAdapters(FtarcTask):
 class LocateFastqs(FtarcTask):
     fq_paths = luigi.Parameter()
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 50
 
     def output(self):
@@ -128,10 +126,8 @@ class LocateFastqs(FtarcTask):
         pbzip2 = self.cf['pbzip2']
         n_cpu = self.cf['n_cpu_per_worker']
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=[pigz, pbzip2], cwd=self.cf['align_dir_path'],
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
+            run_id=run_id, commands=[pigz, pbzip2],
+            cwd=self.cf['align_dir_path'], **self.sh_config
         )
         for p, o in zip(self.fq_paths, self.output()):
             if p != o.path:

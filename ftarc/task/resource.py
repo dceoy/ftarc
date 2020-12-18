@@ -12,10 +12,13 @@ from .core import FtarcTask
 class FetchReferenceFasta(luigi.WrapperTask):
     ref_fa_path = luigi.Parameter()
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 100
 
     def requires(self):
-        return FetchResourceFasta(src_path=self.ref_fa_path, cf=self.cf)
+        return FetchResourceFasta(
+            src_path=self.ref_fa_path, cf=self.cf, sh_config=self.sh_config
+        )
 
     def output(self):
         return self.input()
@@ -24,6 +27,7 @@ class FetchReferenceFasta(luigi.WrapperTask):
 class FetchResourceFile(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -42,10 +46,8 @@ class FetchResourceFile(FtarcTask):
         pbzip2 = self.cf['pbzip2']
         n_cpu = self.cf['n_cpu_per_worker']
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=[pigz, pbzip2], cwd=dest_file.parent,
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
+            run_id=run_id, commands=[pigz, pbzip2], cwd=dest_file.parent,
+            **self.sh_config
         )
         if self.src_path.endswith('.gz'):
             a = f'{pigz} -p {n_cpu} -dc {self.src_path} > {dest_file}'
@@ -62,6 +64,7 @@ class FetchResourceFile(FtarcTask):
 @requires(FetchResourceFile)
 class FetchResourceFasta(FtarcTask):
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -74,10 +77,7 @@ class FetchResourceFasta(FtarcTask):
         self.print_log(f'Index FASTA:\t{run_id}')
         samtools = self.cf['samtools']
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=samtools, cwd=fa.parent,
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
+            run_id=run_id,  commands=samtools, cwd=fa.parent, **self.sh_config
         )
         self.run_shell(
             args=f'set -e && {samtools} faidx {fa}',
@@ -88,6 +88,7 @@ class FetchResourceFasta(FtarcTask):
 class FetchResourceVcf(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()
+    sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
@@ -105,10 +106,8 @@ class FetchResourceVcf(FtarcTask):
         tabix = self.cf['tabix']
         n_cpu = self.cf['n_cpu_per_worker']
         self.setup_shell(
-            run_id=run_id, log_dir_path=self.cf['log_dir_path'],
-            commands=[bgzip, tabix], cwd=dest_vcf.parent,
-            remove_if_failed=self.cf['remove_if_failed'],
-            quiet=self.cf['quiet']
+            run_id=run_id, commands=[bgzip, tabix], cwd=dest_vcf.parent,
+            **self.sh_config
         )
         self.run_shell(
             args=(
@@ -129,11 +128,14 @@ class FetchResourceVcf(FtarcTask):
 
 class FetchDbsnpVcf(luigi.WrapperTask):
     dbsnp_vcf_path = luigi.Parameter()
+    sh_config = luigi.DictParameter(default=dict())
     cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
-        return FetchResourceVcf(src_path=self.dbsnp_vcf_path, cf=self.cf)
+        return FetchResourceVcf(
+            src_path=self.dbsnp_vcf_path, cf=self.cf, sh_config=self.sh_config
+        )
 
     def output(self):
         return self.input()
@@ -141,11 +143,15 @@ class FetchDbsnpVcf(luigi.WrapperTask):
 
 class FetchMillsIndelVcf(luigi.WrapperTask):
     mills_indel_vcf_path = luigi.Parameter()
+    sh_config = luigi.DictParameter(default=dict())
     cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
-        return FetchResourceVcf(src_path=self.mills_indel_vcf_path, cf=self.cf)
+        return FetchResourceVcf(
+            src_path=self.mills_indel_vcf_path, cf=self.cf,
+            sh_config=self.sh_config
+        )
 
     def output(self):
         return self.input()
@@ -153,11 +159,15 @@ class FetchMillsIndelVcf(luigi.WrapperTask):
 
 class FetchKnownIndelVcf(luigi.WrapperTask):
     known_indel_vcf_path = luigi.Parameter()
+    sh_config = luigi.DictParameter(default=dict())
     cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
-        return FetchResourceVcf(src_path=self.known_indel_vcf_path, cf=self.cf)
+        return FetchResourceVcf(
+            src_path=self.known_indel_vcf_path, cf=self.cf,
+            sh_config=self.sh_config
+        )
 
     def output(self):
         return self.input()
