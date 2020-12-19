@@ -47,7 +47,7 @@ class CreateSequenceDictionary(FtarcTask):
 @requires(AlignReads, FetchReferenceFasta, CreateSequenceDictionary)
 class MarkDuplicates(FtarcTask):
     cf = luigi.DictParameter()
-    set_nm_md_uq = luigi.BoolParameter(default=False)
+    set_nm_md_uq = luigi.BoolParameter(default=True)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -212,10 +212,11 @@ class CollectSamMetricsWithPicard(FtarcTask):
 
 
 class ValidateSamFile(FtarcTask):
-    input_sam_paths = luigi.ListParameter()
+    input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     picard = luigi.Parameter(default='picard')
     mode_of_output = luigi.Parameter(default='VERBOSE')
+    ignored_warnings = luigi.ListParameter(default=['MISSING_TAG_NM'])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -244,6 +245,7 @@ class ValidateSamFile(FtarcTask):
                 f'set -e && {self.picard} ValidateSamFile'
                 + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
                 + f' --MODE {self.mode_of_output}'
+                + ''.join([f' --IGNORE {w}' for w in self.ignored_warnings])
             ),
             input_files_or_dirs=[input_sam, fa, fa_dict]
         )

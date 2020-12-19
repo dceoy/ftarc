@@ -85,6 +85,18 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
             with open(cls.__log_txt_path, 'a') as f:
                 f.write(f'### {message}{os.linesep}')
 
+    @classmethod
+    def remove_files_and_dirs(cls, *paths):
+        targets = [Path(str(p)) for p in paths if Path(str(p)).exists()]
+        if targets:
+            cls.run_shell(
+                args=' '.join([
+                    'rm',
+                    ('-rf' if [t for t in targets if t.is_dir()] else '-f'),
+                    *[str(t) for t in targets]
+                ])
+            )
+
     @staticmethod
     @abstractmethod
     def generate_version_commands(commands):
@@ -121,17 +133,6 @@ class FtarcTask(ShellTask):
                 + f' | {pigz} -p {n_cpu} -c - > {dest_gz_path}'
             ),
             input_files_or_dirs=src_bz2_path, output_files_or_dirs=dest_gz_path
-        )
-
-    @classmethod
-    def remove_files_and_dirs(cls, *paths):
-        cls.run_shell(
-            args=''.join([
-                'rm -{}f'.format(
-                    'r' if any([Path(str(p)).is_dir() for p in paths]) else ''
-                ),
-                *[f' {p}' for p in paths]
-            ])
         )
 
     @staticmethod

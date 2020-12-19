@@ -71,7 +71,7 @@ class DownloadAndProcessResourceFiles(luigi.Task):
             'gatk': self.gatk, 'n_cpu_per_worker': self.n_cpu,
             'memory_mb_per_worker': self.memory_mb,
             'use_bwa_mem2': self.use_bwa_mem2,
-            'ref_dir_path': Path(self.dest_dir_path).resolve(),
+            'ref_dir_path': str(Path(self.dest_dir_path).resolve()),
             'sh_config': self.sh_config
         }
         yield [
@@ -113,17 +113,14 @@ class DownloadResourceFiles(FtarcTask):
             t = dest_dir.joinpath(
                 (Path(u).stem + '.gz') if u.endswith('.bgz') else Path(u).name
             )
-            p = o.path
             self.run_shell(
                 args=f'set -e && {self.wget} -qSL {u} -O {t}',
                 output_files_or_dirs=t
             )
-            if t == p:
-                pass
-            elif p.endswith('.gz'):
+            if t.suffix != '.gz' and o.path.endswith('.gz'):
                 self.run_shell(
                     args=f'set -e && {self.bgzip} -@ {self.n_cpu} {t}',
-                    input_files_or_dirs=t, output_files_or_dirs=p
+                    input_files_or_dirs=t, output_files_or_dirs=o.path
                 )
 
 
