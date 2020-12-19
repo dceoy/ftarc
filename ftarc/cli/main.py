@@ -14,7 +14,7 @@ Usage:
     ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--dest-dir=<path>] [--skip-cleaning] <fa_path> <sam_path>...
     ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--summary] <fa_path> <sam_path>...
+        [--dest-dir=<path>] [--summary] <fa_path> <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--dest-dir=<path>] [--skip-cleaning] (--known-vcf=<path>)... <fa_path>
         <sam_path>...
@@ -170,7 +170,8 @@ def main():
                 int(args['--workers']), n_cpu, len(args['<sam_path>'])
             )
             kwargs = {
-                'fa_path': args['<fa_path>'], 'picard': gatk_or_picard,
+                'fa_path': args['<fa_path>'],
+                'dest_dir_path': args['--dest-dir'], 'picard': gatk_or_picard,
                 'mode_of_output':
                 ('SUMMARY' if args['--summary'] else 'VERBOSE'),
                 **_calculate_cpus_n_memory_per_worker(

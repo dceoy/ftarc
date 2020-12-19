@@ -85,9 +85,9 @@ class DownloadResourceFiles(FtarcTask):
     src_urls = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
     run_id = luigi.Parameter(default='data')
-    n_cpu = luigi.IntParameter(default=1)
     wget = luigi.Parameter(default='wget')
     bgzip = luigi.Parameter(default='bgzip')
+    n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 10
 

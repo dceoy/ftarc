@@ -214,17 +214,21 @@ class CollectSamMetricsWithPicard(FtarcTask):
 class ValidateSamFile(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
     picard = luigi.Parameter(default='picard')
     mode_of_output = luigi.Parameter(default='VERBOSE')
     ignored_warnings = luigi.ListParameter(default=['MISSING_TAG_NM'])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
-    priority = luigi.IntParameter(default=10)
-    __is_completed = False
+    priority = luigi.IntParameter(default=100)
 
-    def complete(self):
-        return self.__is_completed
+    def output(self):
+        return luigi.LocalTarget(
+            Path(self.dest_dir_path).resolve().joinpath(
+                Path(self.input_sam_path).stem + '.ValidateSamFile.txt'
+            )
+        )
 
     def run(self):
         input_sam = Path(self.input_sam_path).resolve()
@@ -232,8 +236,11 @@ class ValidateSamFile(FtarcTask):
         self.print_log(f'Validate a SAM file:\t{run_id}')
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
+        dest_dir = Path(self.dest_dir_path).resolve()
+        output_txt = Path(self.output().path)
         self.setup_shell(
-            run_id=run_id, commands=self.picard, **self.sh_config,
+            run_id=run_id, commands=self.picard, cwd=dest_dir,
+            **self.sh_config,
             env={
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb
@@ -244,12 +251,12 @@ class ValidateSamFile(FtarcTask):
             args=(
                 f'set -e && {self.picard} ValidateSamFile'
                 + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
-                + f' --MODE {self.mode_of_output}'
+                + f' --OUTPUT {output_txt} --MODE {self.mode_of_output}'
                 + ''.join([f' --IGNORE {w}' for w in self.ignored_warnings])
             ),
-            input_files_or_dirs=[input_sam, fa, fa_dict]
+            input_files_or_dirs=[input_sam, fa, fa_dict],
+            output_files_or_dirs=output_txt
         )
-        self.__is_completed = True
 
 
 if __name__ == '__main__':

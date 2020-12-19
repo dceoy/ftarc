@@ -19,7 +19,7 @@ class SamtoolsView(FtarcTask):
     remove_input = luigi.BoolParameter(default=True)
     index_sam = luigi.BoolParameter(default=False)
     sh_config = luigi.DictParameter(default=dict())
-    priority = 100
+    priority = 90
 
     def output(self):
         output_sam = Path(self.output_sam_path).resolve()

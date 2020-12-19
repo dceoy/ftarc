@@ -119,6 +119,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
         fa_path = self.input()[1][0].path
         yield ValidateSamFile(
             input_sam_path=input_sam_path, fa_path=fa_path,
+            dest_dir_path=str(Path(input_sam_path).parent),
             picard=self.cf['gatk'], n_cpu=self.cf['n_cpu_per_worker'],
             memory_mb=self.cf['memory_mb_per_worker'], sh_config=self.sh_config
         )
