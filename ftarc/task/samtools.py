@@ -12,7 +12,7 @@ class SamtoolsView(FtarcTask):
     input_sam_path = luigi.Parameter()
     output_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
-    samtools = luigi.Parameter()
+    samtools = luigi.Parameter(default='samtools')
     n_cpu = luigi.IntParameter(default=1)
     add_args = luigi.Parameter(default='')
     message = luigi.Parameter(default='')
@@ -39,8 +39,13 @@ class SamtoolsView(FtarcTask):
         fa = Path(self.fa_path).resolve()
         output_sam = Path(self.output_sam_path).resolve()
         run_id = input_sam.stem
+        only_index = (
+            self.input_sam_path == self.output_sam_path and self.index_sam
+        )
         if self.message:
             message = self.message
+        elif only_index:
+            message = 'Index {}'.format(input_sam.suffix.upper())
         elif input_sam.suffix == output_sam.suffix:
             message = None
         else:
@@ -53,13 +58,17 @@ class SamtoolsView(FtarcTask):
             run_id=run_id, commands=self.samtools, cwd=output_sam.parent,
             **self.sh_config, env={'REF_CACHE': '.ref_cache'}
         )
-        self.samtools_view(
-            input_sam_path=input_sam, fa_path=fa, output_sam_path=output_sam,
-            samtools=self.samtools, n_cpu=self.n_cpu, add_args=self.add_args,
-            index_sam=self.index_sam
-        )
-        if self.remove_input:
-            self.remove_files_and_dirs(input_sam)
+        if only_index:
+            self.samtools_index(
+                sam_path=input_sam, samtools=self.samtools, n_cpu=self.n_cpu
+            )
+        else:
+            self.samtools_view(
+                input_sam_path=input_sam, fa_path=fa,
+                output_sam_path=output_sam, samtools=self.samtools,
+                n_cpu=self.n_cpu, add_args=self.add_args,
+                index_sam=self.index_sam, remove_input=self.remove_input
+            )
 
 
 class CollectSamMetricsWithSamtools(FtarcTask):

@@ -112,10 +112,11 @@ class MarkDuplicates(FtarcTask):
                 input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
                 output_files_or_dirs=tmp_bams[1]
             )
+            self.remove_files_and_dirs(tmp_bams[0])
             self.samtools_view(
                 input_sam_path=tmp_bams[1], fa_path=fa,
                 output_sam_path=output_cram, samtools=samtools,
-                n_cpu=n_cpu, index_sam=True
+                n_cpu=n_cpu, index_sam=True, remove_input=True
             )
         else:
             self.run_shell(
@@ -129,10 +130,10 @@ class MarkDuplicates(FtarcTask):
                 input_files_or_dirs=[tmp_bams[0], fa],
                 output_files_or_dirs=output_cram
             )
+            self.remove_files_and_dirs(tmp_bams[0])
             self.samtools_index(
                 sam_path=output_cram, samtools=samtools, n_cpu=n_cpu
             )
-        self.remove_files_and_dirs(*tmp_bams[0:(1 + int(self.set_nm_md_uq))])
 
 
 class CollectSamMetricsWithPicard(FtarcTask):

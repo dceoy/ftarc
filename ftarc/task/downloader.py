@@ -114,7 +114,7 @@ class DownloadResourceFiles(FtarcTask):
                 (Path(u).stem + '.gz') if u.endswith('.bgz') else Path(u).name
             )
             self.run_shell(
-                args=f'set -e && {self.wget} -qSL {u} -O {t}',
+                args=f'set -e && {self.wget} -qSL -O {t} {u}',
                 output_files_or_dirs=t
             )
             if t.suffix != '.gz' and o.path.endswith('.gz'):

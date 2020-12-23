@@ -162,7 +162,7 @@ class FtarcTask(ShellTask):
     @classmethod
     def samtools_view(cls, input_sam_path, fa_path, output_sam_path,
                       samtools='samtools', n_cpu=1, add_args=None,
-                      index_sam=False):
+                      index_sam=False, remove_input=False):
         cls.run_shell(
             args=(
                 f'set -e && {samtools} quickcheck -v {input_sam_path}'
@@ -182,3 +182,5 @@ class FtarcTask(ShellTask):
             cls.samtools_index(
                 sam_path=output_sam_path, samtools=samtools, n_cpu=n_cpu
             )
+        if remove_input:
+            cls.remove_files_and_dirs(input_sam_path)
