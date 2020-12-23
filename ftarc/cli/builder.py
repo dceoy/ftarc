@@ -36,9 +36,8 @@ def build_luigi_tasks(*args, **kwargs):
 
 
 def run_processing_pipeline(config_yml_path, dest_dir_path=None,
-                            ref_dir_path=None, max_n_cpu=None,
-                            max_n_worker=None, skip_cleaning=False,
-                            print_subprocesses=False,
+                            max_n_cpu=None, max_n_worker=None,
+                            skip_cleaning=False, print_subprocesses=False,
                             console_log_level='WARNING',
                             file_log_level='DEBUG', use_bwa_mem2=True):
     logger = logging.getLogger(__name__)
@@ -85,8 +84,6 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     memory_mb = virtual_memory().total / 1024 / 1024 / 2
     memory_mb_per_worker = int(memory_mb / n_worker)
     cf_dict = {
-        'ref_dir_path':
-        (str(Path(ref_dir_path).resolve()) if ref_dir_path else None),
         'n_worker': n_worker, 'memory_mb_per_worker': memory_mb_per_worker,
         'n_cpu_per_worker': n_cpu_per_worker,
         'reference_name': config.get('reference_name'),

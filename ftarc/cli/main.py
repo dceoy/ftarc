@@ -110,25 +110,25 @@ def main():
             'executable': fetch_executable('bash')
         }
         if args['download']:
-            kwargs = {
-                **{
-                    f'{k}_url': v
-                    for k, v in load_default_dict(stem='urls').items()
-                },
-                'dest_dir_path': args['--dest-dir'],
-                **{
-                    c: fetch_executable(c) for c
-                    in ['wget', 'pbzip2', 'bgzip', 'pigz', 'samtools', 'tabix']
-                },
-                'bwa': fetch_executable(
-                    'bwa-mem2' if args['--use-bwa-mem2'] else 'bwa'
-                ),
-                'gatk': gatk_or_picard, 'n_cpu': n_cpu,
-                'memory_mb': memory_mb, 'use_bwa_mem2': args['--use-bwa-mem2'],
-                'sh_config': sh_config
-            }
             build_luigi_tasks(
-                tasks=[DownloadAndProcessResourceFiles(**kwargs)],
+                tasks=[
+                    DownloadAndProcessResourceFiles(
+                        src_urls=list(load_default_dict(stem='urls').values()),
+                        dest_dir_path=args['--dest-dir'],
+                        **{
+                            c: fetch_executable(c) for c in [
+                                'wget', 'pbzip2', 'bgzip', 'pigz', 'samtools',
+                                'tabix'
+                            ]
+                        },
+                        bwa=fetch_executable(
+                            'bwa-mem2' if args['--use-bwa-mem2'] else 'bwa'
+                        ),
+                        gatk=gatk_or_picard, n_cpu=n_cpu, memory_mb=memory_mb,
+                        use_bwa_mem2=args['--use-bwa-mem2'],
+                        sh_config=sh_config
+                    )
+                ],
                 log_level=log_level
             )
         elif args['fastqc']:

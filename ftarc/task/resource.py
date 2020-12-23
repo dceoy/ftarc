@@ -32,10 +32,9 @@ class FetchResourceFile(FtarcTask):
 
     def output(self):
         return luigi.LocalTarget(
-            (
-                Path(self.cf['ref_dir_path']) if self.cf.get('ref_dir_path')
-                else Path(self.src_path).parent
-            ).joinpath(re.sub(r'\.(gz|bz2)$', '', Path(self.src_path).name))
+            Path(self.src_path).parent.joinpath(
+                re.sub(r'\.(gz|bz2)$', '', Path(self.src_path).name)
+            )
         )
 
     def run(self):
@@ -92,10 +91,9 @@ class FetchResourceVcf(FtarcTask):
     priority = 70
 
     def output(self):
-        dest_vcf = (
-            Path(self.cf['ref_dir_path']) if self.cf.get('ref_dir_path')
-            else Path(self.src_path).parent
-        ).joinpath(re.sub(r'\.(gz|bgz)$', '.gz', Path(self.src_path).name))
+        dest_vcf = Path(self.src_path).parent.joinpath(
+            re.sub(r'\.(gz|bgz)$', '.gz', Path(self.src_path).name)
+        )
         return [luigi.LocalTarget(f'{dest_vcf}{s}') for s in ['', '.tbi']]
 
     def run(self):
