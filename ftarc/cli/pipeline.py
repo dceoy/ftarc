@@ -8,31 +8,12 @@ from math import floor
 from pathlib import Path
 from pprint import pformat
 
-import luigi
 import yaml
 from psutil import cpu_count, virtual_memory
 
-from ..cli.util import (fetch_executable, load_default_dict, parse_fq_id,
+from ..cli.util import (build_luigi_tasks, fetch_executable, load_default_dict,
                         print_log, read_yml, render_template)
 from ..task.controller import PrepareAnalysisReadyCram, PrintEnvVersions
-
-
-def build_luigi_tasks(*args, **kwargs):
-    r = luigi.build(
-        *args,
-        **{
-            k: v for k, v in kwargs.items() if (
-                k not in {'logging_conf_file', 'hide_summary'}
-                or (k == 'logging_conf_file' and v)
-            )
-        },
-        local_scheduler=True, detailed_summary=True
-    )
-    if not kwargs.get('hide_summary'):
-        print(
-            os.linesep
-            + os.linesep.join(['Execution summary:', r.summary_text, str(r)])
-        )
 
 
 def run_processing_pipeline(config_yml_path, dest_dir_path=None,
@@ -65,17 +46,17 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     )
 
     command_dict = {
-        c: fetch_executable(c) for c in {
-            'bgzip', 'gatk', 'java', 'pbzip2', 'pigz', 'samtools', 'tabix',
-            *(
-                {'cutadapt', 'fastqc', 'trim_galore'}
-                if adapter_removal else set()
-            )
+        'bwa': fetch_executable('bwa-mem2' if use_bwa_mem2 else 'bwa'),
+        **{
+            c: fetch_executable(c) for c in {
+                'bgzip', 'gatk', 'java', 'pbzip2', 'pigz', 'samtools', 'tabix',
+                *(
+                    {'cutadapt', 'fastqc', 'trim_galore'}
+                    if adapter_removal else set()
+                )
+            }
         }
     }
-    command_dict['bwa'] = fetch_executable(
-        'bwa-mem2' if use_bwa_mem2 else 'bwa'
-    )
     logger.debug('command_dict:' + os.linesep + pformat(command_dict))
 
     n_cpu = cpu_count()
@@ -233,9 +214,18 @@ def _resolve_input_file_paths(path_list=None, path_dict=None):
 
 
 def _determine_input_samples(run_dict):
-    rg = run_dict.get('read_group') or dict()
+    g = run_dict.get('read_group') or dict()
     return {
         'fq_paths': _resolve_input_file_paths(path_list=run_dict['fq']),
-        'read_group': rg,
-        'sample_name': (rg.get('SM') or parse_fq_id(fq_path=run_dict['fq'][0]))
+        'read_group': g,
+        'sample_name': (g.get('SM') or _parse_fq_id(fq_path=run_dict['fq'][0]))
     }
+
+
+def _parse_fq_id(fq_path):
+    return (
+        re.sub(
+            r'([\._]read[12][\._]|[\._]r[12][\._]|\.fq\.|\.fastq\.).+$', '',
+            Path(fq_path).name, flags=re.IGNORECASE
+        ) or Path(Path(fq_path).stem).stem
+    )

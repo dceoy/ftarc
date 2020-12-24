@@ -67,9 +67,9 @@ from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
 from ..task.gatk import ApplyBQSR
 from ..task.picard import ValidateSamFile
-from .builder import build_luigi_tasks, run_processing_pipeline
-from .util import (fetch_executable, load_default_dict, print_log,
-                   write_config_yml)
+from .pipeline import run_processing_pipeline
+from .util import (build_luigi_tasks, fetch_executable, load_default_dict,
+                   print_log, write_config_yml)
 
 
 def main():

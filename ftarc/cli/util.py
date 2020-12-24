@@ -2,11 +2,11 @@
 
 import logging
 import os
-import re
 import shutil
 from pathlib import Path
 from pprint import pformat
 
+import luigi
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
@@ -26,15 +26,6 @@ def print_log(message):
     logger = logging.getLogger(__name__)
     logger.debug(message)
     print(f'>>\t{message}', flush=True)
-
-
-def parse_fq_id(fq_path):
-    return (
-        re.sub(
-            r'([\._]read[12][\._]|[\._]r[12][\._]|\.fq\.|\.fastq\.).+$', '',
-            Path(fq_path).name, flags=re.IGNORECASE
-        ) or Path(Path(fq_path).stem).stem
-    )
 
 
 def fetch_executable(cmd, ignore_errors=False):
@@ -78,3 +69,21 @@ def load_default_dict(stem):
     return read_yml(
         path=Path(__file__).parent.parent.joinpath(f'static/{stem}.yml')
     )
+
+
+def build_luigi_tasks(*args, **kwargs):
+    r = luigi.build(
+        *args,
+        **{
+            k: v for k, v in kwargs.items() if (
+                k not in {'logging_conf_file', 'hide_summary'}
+                or (k == 'logging_conf_file' and v)
+            )
+        },
+        local_scheduler=True, detailed_summary=True
+    )
+    if not kwargs.get('hide_summary'):
+        print(
+            os.linesep
+            + os.linesep.join(['Execution summary:', r.summary_text, str(r)])
+        )
