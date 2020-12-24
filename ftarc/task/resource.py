@@ -27,6 +27,7 @@ class FetchReferenceFasta(luigi.WrapperTask):
 class FetchResourceFile(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()
+    n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -43,15 +44,14 @@ class FetchResourceFile(FtarcTask):
         self.print_log(f'Create a resource:\t{run_id}')
         pigz = self.cf['pigz']
         pbzip2 = self.cf['pbzip2']
-        n_cpu = self.cf['n_cpu_per_worker']
         self.setup_shell(
             run_id=run_id, commands=[pigz, pbzip2], cwd=dest_file.parent,
             **self.sh_config
         )
         if self.src_path.endswith('.gz'):
-            a = f'{pigz} -p {n_cpu} -dc {self.src_path} > {dest_file}'
+            a = f'{pigz} -p {self.n_cpu} -dc {self.src_path} > {dest_file}'
         elif self.src_path.endswith('.bz2'):
-            a = f'{pbzip2} -p{n_cpu} -dc {self.src_path} > {dest_file}'
+            a = f'{pbzip2} -p{self.n_cpu} -dc {self.src_path} > {dest_file}'
         else:
             a = f'cp {self.src_path} {dest_file}'
         self.run_shell(
@@ -87,6 +87,7 @@ class FetchResourceFasta(FtarcTask):
 class FetchResourceVcf(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()
+    n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -102,7 +103,6 @@ class FetchResourceVcf(FtarcTask):
         self.print_log(f'Create a VCF:\t{run_id}')
         bgzip = self.cf['bgzip']
         tabix = self.cf['tabix']
-        n_cpu = self.cf['n_cpu_per_worker']
         self.setup_shell(
             run_id=run_id, commands=[bgzip, tabix], cwd=dest_vcf.parent,
             **self.sh_config
@@ -112,7 +112,7 @@ class FetchResourceVcf(FtarcTask):
                 'set -e && ' + (
                     f'cp {self.src_path} {dest_vcf}'
                     if self.src_path.endswith(('.gz', '.bgz')) else
-                    f'{bgzip} -@ {n_cpu} -c {self.src_path} > {dest_vcf}'
+                    f'{bgzip} -@ {self.n_cpu} -c {self.src_path} > {dest_vcf}'
                 )
             ),
             input_files_or_dirs=self.src_path, output_files_or_dirs=dest_vcf

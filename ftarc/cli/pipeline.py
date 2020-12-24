@@ -65,8 +65,6 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     memory_mb = virtual_memory().total / 1024 / 1024 / 2
     memory_mb_per_worker = int(memory_mb / n_worker)
     cf_dict = {
-        'n_worker': n_worker, 'memory_mb_per_worker': memory_mb_per_worker,
-        'n_cpu_per_worker': n_cpu_per_worker,
         'reference_name': config.get('reference_name'),
         'use_bwa_mem2': use_bwa_mem2, 'adapter_removal': adapter_removal,
         'metrics_collectors': metrics_collectors,
@@ -150,7 +148,8 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     build_luigi_tasks(
         tasks=[
             PrepareAnalysisReadyCram(
-                **d, **resource_path_dict, sh_config=sh_config, cf=cf_dict
+                **d, **resource_path_dict, n_cpu=n_cpu_per_worker,
+                memory_mb=memory_mb_per_worker, sh_config=sh_config, cf=cf_dict
             ) for d in sample_dict_list
         ],
         workers=n_worker, log_level=console_log_level,

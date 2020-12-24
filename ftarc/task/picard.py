@@ -13,6 +13,8 @@ from .resource import FetchReferenceFasta
 @requires(FetchReferenceFasta)
 class CreateSequenceDictionary(FtarcTask):
     cf = luigi.DictParameter()
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -30,8 +32,7 @@ class CreateSequenceDictionary(FtarcTask):
             run_id=run_id, commands=gatk, cwd=fa.parent, **self.sh_config,
             env={
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
-                    n_cpu=self.cf['n_cpu_per_worker'],
-                    memory_mb=self.cf['memory_mb_per_worker']
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
                 )
             }
         )
@@ -48,6 +49,8 @@ class CreateSequenceDictionary(FtarcTask):
 class MarkDuplicates(FtarcTask):
     cf = luigi.DictParameter()
     set_nm_md_uq = luigi.BoolParameter(default=True)
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -65,8 +68,7 @@ class MarkDuplicates(FtarcTask):
         self.print_log(f'Mark duplicates:\t{run_id}')
         gatk = self.cf.get('gatk') or self.cf['picard']
         samtools = self.cf['samtools']
-        n_cpu = self.cf['n_cpu_per_worker']
-        memory_mb_per_thread = int(self.cf['memory_mb_per_worker'] / n_cpu / 8)
+        memory_mb_per_thread = int(self.memory_mb / self.n_cpu / 8)
         fa = Path(self.input()[1][0].path)
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         output_cram = Path(self.output()[0].path)
@@ -81,8 +83,7 @@ class MarkDuplicates(FtarcTask):
             env={
                 'REF_CACHE': '.ref_cache',
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
-                    n_cpu=self.cf['n_cpu_per_worker'],
-                    memory_mb=self.cf['memory_mb_per_worker']
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
                 )
             }
         )
@@ -101,9 +102,9 @@ class MarkDuplicates(FtarcTask):
         if self.set_nm_md_uq:
             self.run_shell(
                 args=(
-                    f'set -eo pipefail && {samtools} sort -@ {n_cpu}'
-                    + f' -m {memory_mb_per_thread}M -O BAM -l 0'
-                    + f' -T {output_cram}.sort {tmp_bams[0]}'
+                    f'set -eo pipefail && {samtools} sort'
+                    + f' -@ {self.n_cpu} -m {memory_mb_per_thread}M'
+                    + f' -O BAM -l 0 -T {output_cram}.sort {tmp_bams[0]}'
                     + f' | {gatk} SetNmMdAndUqTags'
                     + ' --INPUT /dev/stdin'
                     + f' --OUTPUT {tmp_bams[1]}'
@@ -116,15 +117,15 @@ class MarkDuplicates(FtarcTask):
             self.samtools_view(
                 input_sam_path=tmp_bams[1], fa_path=fa,
                 output_sam_path=output_cram, samtools=samtools,
-                n_cpu=n_cpu, index_sam=True, remove_input=True
+                n_cpu=self.n_cpu, index_sam=True, remove_input=True
             )
         else:
             self.run_shell(
                 args=(
-                    f'set -eo pipefail && {samtools} sort -@ {n_cpu}'
-                    + f' -m {memory_mb_per_thread}M -O BAM -l 0'
-                    + f' -T {output_cram}.sort {tmp_bams[0]}'
-                    + f' | {samtools} view -@ {n_cpu} -T {fa} -CS'
+                    f'set -eo pipefail && {samtools} sort'
+                    + f' -@ {self.n_cpu} -m {memory_mb_per_thread}M'
+                    + f' -O BAM -l 0 -T {output_cram}.sort {tmp_bams[0]}'
+                    + f' | {samtools} view -@ {self.n_cpu} -T {fa} -CS'
                     + f' -o {output_cram} -'
                 ),
                 input_files_or_dirs=[tmp_bams[0], fa],
@@ -132,7 +133,7 @@ class MarkDuplicates(FtarcTask):
             )
             self.remove_files_and_dirs(tmp_bams[0])
             self.samtools_index(
-                sam_path=output_cram, samtools=samtools, n_cpu=n_cpu
+                sam_path=output_cram, samtools=samtools, n_cpu=self.n_cpu
             )
 
 

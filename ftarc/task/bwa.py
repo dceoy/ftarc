@@ -67,8 +67,7 @@ class AlignReads(FtarcTask):
         self.print_log(f'Align reads:\t{run_id}')
         bwa = self.cf['bwa']
         samtools = self.cf['samtools']
-        n_cpu = self.cf['n_cpu_per_worker']
-        memory_mb_per_thread = int(self.cf['memory_mb_per_worker'] / n_cpu / 8)
+        memory_mb_per_thread = int(self.memory_mb / self.n_cpu / 8)
         fq_paths = [i.path for i in self.input()[0]]
         rg = '\\t'.join(
             [
@@ -91,19 +90,20 @@ class AlignReads(FtarcTask):
         )
         self.run_shell(
             args=(
-                'set -eo pipefail && '
-                + f'{bwa} mem -t {n_cpu} -R \'{rg}\' -T 0 -P {fa_path}'
+                f'set -eo pipefail && {bwa} mem'
+                + f' -t {self.n_cpu} -R \'{rg}\' -T 0 -P {fa_path}'
                 + ''.join([f' {a}' for a in fq_paths])
-                + f' | {samtools} sort -@ {n_cpu} -m {memory_mb_per_thread}M'
-                + f' -O BAM -l 0 -T {output_cram}.sort -'
-                + f' | {samtools} view -@ {n_cpu} -T {fa_path} -CS'
+                + f' | {samtools} sort -@ {self.n_cpu}'
+                + f' -m {memory_mb_per_thread}M -O BAM -l 0'
+                + f' -T {output_cram}.sort -'
+                + f' | {samtools} view -@ {self.n_cpu} -T {fa_path} -CS'
                 + f' -o {output_cram} -'
             ),
             input_files_or_dirs=[fa_path, *index_paths, *fq_paths],
             output_files_or_dirs=[output_cram, output_cram.parent]
         )
         self.samtools_index(
-            sam_path=output_cram, samtools=samtools, n_cpu=n_cpu
+            sam_path=output_cram, samtools=samtools, n_cpu=self.n_cpu
         )
 
 

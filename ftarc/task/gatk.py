@@ -15,6 +15,8 @@ from .resource import (FetchDbsnpVcf, FetchKnownIndelVcf, FetchMillsIndelVcf,
           FetchDbsnpVcf, FetchMillsIndelVcf, FetchKnownIndelVcf)
 class RecalibrateBaseQualityScores(luigi.WrapperTask):
     cf = luigi.DictParameter()
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -33,9 +35,8 @@ class RecalibrateBaseQualityScores(luigi.WrapperTask):
             known_sites_vcf_paths=[i[0].path for i in self.input()[3:6]],
             dest_dir_path=str(Path(self.output()[0].path).parent),
             gatk=self.cf['gatk'], samtools=self.cf['samtools'],
-            save_memory=self.cf['save_memory'],
-            n_cpu=self.cf['n_cpu_per_worker'],
-            memory_mb=self.cf['memory_mb_per_worker'], sh_config=self.sh_config
+            save_memory=self.cf['save_memory'], n_cpu=self.n_cpu,
+            memory_mb=self.memory_mb, sh_config=self.sh_config
         )
 
 

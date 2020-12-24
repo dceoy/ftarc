@@ -69,6 +69,8 @@ class PrepareAnalysisReadyCram(luigi.Task):
     samtools_qc_commands = luigi.ListParameter(
         default=['coverage', 'flagstat', 'idxstats', 'stats']
     )
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
     priority = luigi.IntParameter(default=sys.maxsize)
 
@@ -120,15 +122,15 @@ class PrepareAnalysisReadyCram(luigi.Task):
         yield ValidateSamFile(
             input_sam_path=input_sam_path, fa_path=fa_path,
             dest_dir_path=str(Path(input_sam_path).parent),
-            picard=self.cf['gatk'], n_cpu=self.cf['n_cpu_per_worker'],
-            memory_mb=self.cf['memory_mb_per_worker'], sh_config=self.sh_config
+            picard=self.cf['gatk'], n_cpu=self.n_cpu, memory_mb=self.memory_mb,
+            sh_config=self.sh_config
         )
         yield SamtoolsView(
             input_sam_path=input_sam_path,
             output_sam_path=self.output()[0].path, fa_path=fa_path,
-            samtools=self.cf['samtools'], n_cpu=self.cf['n_cpu_per_worker'],
-            add_args='-F 1024', message='Remove duplicates',
-            remove_input=False, index_sam=True, sh_config=self.sh_config
+            samtools=self.cf['samtools'], n_cpu=self.n_cpu, add_args='-F 1024',
+            message='Remove duplicates', remove_input=False, index_sam=True,
+            sh_config=self.sh_config
         )
         qc_dir = Path(self.cf['qc_dir_path'])
         if 'fastqc' in self.cf['metrics_collectors']:
@@ -137,9 +139,8 @@ class PrepareAnalysisReadyCram(luigi.Task):
                 dest_dir_path=str(
                     qc_dir.joinpath('fastqc').joinpath(self.sample_name)
                 ),
-                fastqc=self.cf['fastqc'], n_cpu=self.cf['n_cpu_per_worker'],
-                memory_mb=self.cf['memory_mb_per_worker'],
-                sh_config=self.sh_config
+                fastqc=self.cf['fastqc'], n_cpu=self.n_cpu,
+                memory_mb=self.memory_mb, sh_config=self.sh_config
             )
         if {'picard', 'samtools'} & set(self.cf['metrics_collectors']):
             yield [
@@ -153,8 +154,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
                     samtools_qc_commands=self.samtools_qc_commands,
                     samtools=self.cf['samtools'],
                     pigz=self.cf['pigz'], picard=self.cf['gatk'],
-                    n_cpu=self.cf['n_cpu_per_worker'],
-                    memory_mb=self.cf['memory_mb_per_worker'],
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb,
                     sh_config=self.sh_config
                 ) for m in self.cf['metrics_collectors']
             ]

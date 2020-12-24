@@ -95,8 +95,6 @@ class DownloadAndProcessResourceFiles(luigi.Task):
                 'pigz': self.pigz, 'pbzip2': self.pbzip2, 'bgzip': self.bgzip,
                 'bwa': self.bwa, 'samtools': self.samtools,
                 'tabix': self.tabix, 'gatk': self.gatk,
-                'n_cpu_per_worker': self.n_cpu,
-                'memory_mb_per_worker': self.memory_mb,
                 'use_bwa_mem2': self.use_bwa_mem2, 'sh_config': self.sh_config
             },
             'sh_config': self.sh_config
@@ -105,11 +103,16 @@ class DownloadAndProcessResourceFiles(luigi.Task):
             p = i.path
             if p.endswith(('.fa', '.fasta')):
                 yield [
-                    CreateSequenceDictionary(ref_fa_path=p, **common_kwargs),
+                    CreateSequenceDictionary(
+                        ref_fa_path=p, n_cpu=self.n_cpu,
+                        memory_mb=self.memory_mb, **common_kwargs
+                    ),
                     CreateBwaIndices(ref_fa_path=p, **common_kwargs)
                 ]
             elif p.endswith('.vcf.gz'):
-                yield FetchResourceVcf(src_path=p, **common_kwargs)
+                yield FetchResourceVcf(
+                    src_path=p, n_cpu=self.n_cpu, **common_kwargs
+                )
 
 
 if __name__ == '__main__':

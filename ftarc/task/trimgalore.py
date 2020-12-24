@@ -12,6 +12,8 @@ class PrepareFastqs(luigi.WrapperTask):
     fq_paths = luigi.ListParameter()
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
     priority = 50
 
@@ -25,13 +27,13 @@ class PrepareFastqs(luigi.WrapperTask):
                 sample_name=self.sample_name, pigz=self.cf['pigz'],
                 pbzip2=self.cf['pbzip2'], trim_galore=self.cf['trim_galore'],
                 cutadapt=self.cf['cutadapt'], fastqc=self.cf['fastqc'],
-                n_cpu=self.cf['n_cpu_per_worker'],
-                memory_mb=self.cf['memory_mb_per_worker'],
+                n_cpu=self.n_cpu, memory_mb=self.memory_mb,
                 sh_config=self.sh_config
             )
         else:
             return LocateFastqs(
-                fq_paths=self.fq_paths, cf=self.cf, sh_config=self.sh_config
+                fq_paths=self.fq_paths, cf=self.cf, n_cpu=self.n_cpu,
+                sh_config=self.sh_config
             )
 
     def output(self):
@@ -108,6 +110,7 @@ class TrimAdapters(FtarcTask):
 class LocateFastqs(FtarcTask):
     fq_paths = luigi.Parameter()
     cf = luigi.DictParameter()
+    n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 50
 
@@ -124,7 +127,6 @@ class LocateFastqs(FtarcTask):
         self.print_log(f'Bunzip2 and Gzip a file:\t{run_id}')
         pigz = self.cf['pigz']
         pbzip2 = self.cf['pbzip2']
-        n_cpu = self.cf['n_cpu_per_worker']
         self.setup_shell(
             run_id=run_id, commands=[pigz, pbzip2],
             cwd=self.cf['align_dir_path'], **self.sh_config
@@ -133,7 +135,7 @@ class LocateFastqs(FtarcTask):
             if p != o.path:
                 self.bzip2_to_gzip(
                     src_bz2_path=p, dest_gz_path=o.path, pbzip2=pbzip2,
-                    pigz=pigz, n_cpu=n_cpu
+                    pigz=pigz, n_cpu=self.n_cpu
                 )
 
 
