@@ -20,10 +20,12 @@ RUN set -e \
       && apt-get -y dist-upgrade \
       && apt-get -y install --no-install-recommends --no-install-suggests \
         apt-transport-https apt-utils ca-certificates curl g++ gcc gfortran \
-        gnupg libbz2-dev libc-dev libcurl4-gnutls-dev libfontconfig1-dev \
-        libfreetype6-dev libgeos-dev libgsl-dev liblzma-dev libncurses5-dev \
-        libperl-dev libpng-dev libssl-dev libudunits2-dev libxml2-dev \
-        libz-dev make pkg-config python r-base \
+        gnupg gtk-doc-tools libblas-dev libbz2-dev libc-dev libcairo2-dev \
+        libcurl4-gnutls-dev libfontconfig1-dev libfreetype6-dev libgdal-dev \
+        libgeos-dev libgit2-dev libgsl-dev libjpeg-turbo8-dev liblapack-dev \
+        liblzma-dev libmariadbclient-dev libncurses5-dev libperl-dev \
+        libpng-dev libpq-dev libssl-dev libudunits2-dev libxml2-dev libz-dev \
+        make pkg-config python r-base \
       && apt-get -y autoremove \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*

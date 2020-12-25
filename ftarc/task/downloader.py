@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import re
+from itertools import product
 from pathlib import Path
 
 import luigi
@@ -18,6 +19,8 @@ class DownloadResourceFiles(FtarcTask):
     run_id = luigi.Parameter(default='data')
     wget = luigi.Parameter(default='wget')
     bgzip = luigi.Parameter(default='bgzip')
+    pbzip2 = luigi.Parameter(default='pbzip2')
+    pigz = luigi.Parameter(default='pigz')
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 10
@@ -26,7 +29,9 @@ class DownloadResourceFiles(FtarcTask):
         dest_dir = Path(self.dest_dir_path).resolve()
         for u in self.src_urls:
             p = str(dest_dir.joinpath(Path(u).name))
-            if u.endswith('.bgz'):
+            if u.endswith(tuple(product(('.fa', '.fasta'), ('.gz', '.bz2')))):
+                yield luigi.LocalTarget(re.sub(r'\.(gz|bz2)$', '', p))
+            elif u.endswith('.bgz'):
                 yield luigi.LocalTarget(re.sub(r'\.bgz$', '.gz', p))
             elif u.endswith(('.vcf', '.bed')):
                 yield luigi.LocalTarget(f'{p}.gz')
@@ -48,9 +53,20 @@ class DownloadResourceFiles(FtarcTask):
                 args=f'set -e && {self.wget} -qSL -O {t} {u}',
                 output_files_or_dirs=t
             )
-            if t.suffix != '.gz' and o.path.endswith('.gz'):
+            if str(t) == o.path:
+                pass
+            elif t.suffix != '.gz' and o.path.endswith('.gz'):
                 self.run_shell(
                     args=f'set -e && {self.bgzip} -@ {self.n_cpu} {t}',
+                    input_files_or_dirs=t, output_files_or_dirs=o.path
+                )
+            elif o.path.endswith(('.fa', '.fasta')):
+                self.run_shell(
+                    args=(
+                        f'set -e && {self.pbzip2} -p{self.n_cpu} -d {t}'
+                        if t.suffix == '.bz2' else
+                        f'set -e && {self.pigz} -p {self.n_cpu} -d {t}'
+                    ),
                     input_files_or_dirs=t, output_files_or_dirs=o.path
                 )
 
@@ -58,8 +74,8 @@ class DownloadResourceFiles(FtarcTask):
 @requires(DownloadResourceFiles)
 class DownloadAndProcessResourceFiles(luigi.Task):
     dest_dir_path = luigi.Parameter(default='.')
-    pbzip2 = luigi.Parameter(default='pbzip2')
     bgzip = luigi.Parameter(default='bgzip')
+    pbzip2 = luigi.Parameter(default='pbzip2')
     pigz = luigi.Parameter(default='pigz')
     bwa = luigi.Parameter(default='bwa')
     samtools = luigi.Parameter(default='samtools')
@@ -95,7 +111,7 @@ class DownloadAndProcessResourceFiles(luigi.Task):
                 'pigz': self.pigz, 'pbzip2': self.pbzip2, 'bgzip': self.bgzip,
                 'bwa': self.bwa, 'samtools': self.samtools,
                 'tabix': self.tabix, 'gatk': self.gatk,
-                'use_bwa_mem2': self.use_bwa_mem2, 'sh_config': self.sh_config
+                'use_bwa_mem2': self.use_bwa_mem2
             },
             'sh_config': self.sh_config
         }
