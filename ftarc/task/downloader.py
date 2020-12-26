@@ -29,7 +29,8 @@ class DownloadResourceFiles(FtarcTask):
         dest_dir = Path(self.dest_dir_path).resolve()
         for u in self.src_urls:
             p = str(dest_dir.joinpath(Path(u).name))
-            if u.endswith(tuple(product(('.fa', '.fasta'), ('.gz', '.bz2')))):
+            if u.endswith(tuple([f'.{a}.{b}' for a, b
+                                 in product(('fa', 'fasta'), ('gz', 'bz2'))])):
                 yield luigi.LocalTarget(re.sub(r'\.(gz|bz2)$', '', p))
             elif u.endswith('.bgz'):
                 yield luigi.LocalTarget(re.sub(r'\.bgz$', '.gz', p))
