@@ -10,6 +10,7 @@ COPY --from=dceoy/trim_galore:latest /usr/local/src/TrimGalore /usr/local/src/Tr
 COPY --from=dceoy/gatk:latest /opt/gatk /opt/gatk
 ADD https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh /tmp/miniconda.sh
 ADD https://raw.githubusercontent.com/dceoy/print-github-tags/master/print-github-tags /usr/local/bin/print-github-tags
+ADD https://raw.githubusercontent.com/dceoy/clir/master/install_clir.sh /tmp/install_clir.sh
 ADD . /tmp/ftarc
 
 RUN set -e \
@@ -53,14 +54,6 @@ RUN set -eo pipefail \
       && rm -rf /root/.cache/pip
 
 RUN set -e \
-      && R -e "\
-pkgs <- c('getopt', 'optparse', 'data.table', 'gsalib', 'ggplot2', 'dplyr', 'HMM'); \
-options(repos = 'https://cran.rstudio.com/'); \
-update.packages(ask = FALSE, dependencies = TRUE); \
-install.packages(pkgs = pkgs, dependencies = TRUE, clean = TRUE); \
-sapply(pkgs, library, character.only = TRUE);"
-
-RUN set -e \
       && cd /usr/local/src/bwa \
       && make clean \
       && make \
@@ -78,6 +71,15 @@ RUN set -e \
         /usr/local/src/bwa /usr/local/src/bwa-mem2 /usr/local/src/FastQC \
         /usr/local/src/TrimGalore \
         -type f -executable -exec ln -s {} /usr/local/bin \;
+
+RUN set -e \
+      && bash /tmp/install_clir.sh --root \
+      && rm -f /tmp/install_clir.sh
+
+RUN set -e \
+      && clir update \
+      && clir install --devt=cran getopt optparse data.table gsalib ggplot2 dplyr HMM \
+      && clir validate getopt optparse data.table gsalib ggplot2 dplyr HMM
 
 FROM ubuntu:20.04
 
