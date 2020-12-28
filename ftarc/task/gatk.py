@@ -13,7 +13,7 @@ from .resource import (FetchDbsnpVcf, FetchKnownIndelVcf, FetchMillsIndelVcf,
 
 @requires(MarkDuplicates, FetchReferenceFasta, CreateSequenceDictionary,
           FetchDbsnpVcf, FetchMillsIndelVcf, FetchKnownIndelVcf)
-class RecalibrateBaseQualityScores(luigi.WrapperTask):
+class RecalibrateBaseQualityScores(luigi.Task):
     cf = luigi.DictParameter()
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
