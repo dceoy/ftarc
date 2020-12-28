@@ -20,7 +20,7 @@ class CreateBwaIndices(FtarcTask):
         fa_path = self.input()[0].path
         return [
             luigi.LocalTarget(f'{fa_path}.{s}') for s in (
-                ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64', 'bwt.8bit.32']
+                ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64']
                 if self.cf['use_bwa_mem2'] else
                 ['pac', 'bwt', 'ann', 'amb', 'sa']
             )

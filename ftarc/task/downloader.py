@@ -90,7 +90,7 @@ class DownloadAndProcessResourceFiles(luigi.Task):
 
     def output(self):
         bwa_suffixes = (
-            ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64', 'bwt.8bit.32']
+            ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64']
             if self.use_bwa_mem2 else ['pac', 'bwt', 'ann', 'amb', 'sa']
         )
         for i in self.input():
