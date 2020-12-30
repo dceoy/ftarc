@@ -10,7 +10,6 @@ COPY --from=dceoy/trim_galore:latest /usr/local/src/TrimGalore /usr/local/src/Tr
 COPY --from=dceoy/gatk:latest /opt/gatk /opt/gatk
 ADD https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh /tmp/miniconda.sh
 ADD https://raw.githubusercontent.com/dceoy/print-github-tags/master/print-github-tags /usr/local/bin/print-github-tags
-ADD https://raw.githubusercontent.com/dceoy/clir/master/install_clir.sh /tmp/install_clir.sh
 ADD . /tmp/ftarc
 
 RUN set -e \
@@ -20,13 +19,13 @@ RUN set -e \
       && apt-get -y update \
       && apt-get -y dist-upgrade \
       && apt-get -y install --no-install-recommends --no-install-suggests \
-        apt-transport-https apt-utils ca-certificates curl g++ gcc gfortran \
-        gnupg gtk-doc-tools libblas-dev libbz2-dev libc-dev libcairo2-dev \
+        apt-transport-https apt-utils ca-certificates curl file g++ gcc \
+        gfortran gnupg gtk-doc-tools libbz2-dev libc-dev libcairo2-dev \
         libcurl4-gnutls-dev libfontconfig1-dev libfreetype6-dev libgdal-dev \
-        libgeos-dev libgit2-dev libgsl-dev libjpeg-turbo8-dev liblapack-dev \
-        liblzma-dev libmariadbclient-dev libncurses5-dev libperl-dev \
-        libpng-dev libpq-dev libssl-dev libudunits2-dev libxml2-dev libz-dev \
-        make pkg-config python r-base \
+        libgeos-dev libgit2-dev libgsl-dev libjpeg-turbo8-dev liblzma-dev \
+        libmysqlclient-dev libncurses5-dev libperl-dev libpng-dev libpq-dev \
+        libssl-dev libudunits2-dev libxml2-dev libz-dev make pkg-config \
+        python r-base \
       && apt-get -y autoremove \
       && apt-get clean \
       && rm -rf /var/lib/apt/lists/*
@@ -73,13 +72,12 @@ RUN set -e \
         -type f -executable -exec ln -s {} /usr/local/bin \;
 
 RUN set -e \
-      && bash /tmp/install_clir.sh --root \
-      && rm -f /tmp/install_clir.sh
-
-RUN set -e \
-      && clir update \
-      && clir install --devt=cran getopt optparse data.table gsalib ggplot2 dplyr HMM \
-      && clir validate getopt optparse data.table gsalib ggplot2 dplyr HMM
+      && R -e "\
+pkgs <- c('getopt', 'optparse', 'data.table', 'gsalib', 'ggplot2', 'dplyr', 'HMM'); \
+options(repos = 'https://cran.rstudio.com/'); \
+update.packages(ask = FALSE, dependencies = TRUE); \
+install.packages(pkgs = pkgs, dependencies = TRUE, clean = TRUE); \
+sapply(pkgs, library, character.only = TRUE);"
 
 FROM ubuntu:20.04
 

@@ -24,18 +24,17 @@ $ pip install -U https://github.com/dceoy/ftarc/archive/main.tar.gz
 
 Dependent commands:
 
-- pigz
-- pbzip2
-- bgzip
-- tabix
-- samtools
-- java
-- gatk
-- cutadapt
-- fastqc
-- trim_galore
-- bwa
-- bwa-mem2 (optional)
+- `pigz`
+- `pbzip2`
+- `bgzip`
+- `tabix`
+- `samtools`
+- `java`
+- `gatk`
+- `cutadapt`
+- `fastqc`
+- `trim_galore`
+- `bwa` or `bwa-mem2`
 
 Docker image
 ------------
