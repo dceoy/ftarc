@@ -3,6 +3,7 @@
 import re
 from itertools import product
 from pathlib import Path
+from socket import gethostname
 
 import luigi
 from luigi.util import requires
@@ -16,7 +17,7 @@ from .resource import FetchResourceVcf
 class DownloadResourceFiles(FtarcTask):
     src_urls = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
-    run_id = luigi.Parameter(default='data')
+    run_id = luigi.Parameter(default=gethostname())
     wget = luigi.Parameter(default='wget')
     bgzip = luigi.Parameter(default='bgzip')
     pbzip2 = luigi.Parameter(default='pbzip2')

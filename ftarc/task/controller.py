@@ -3,6 +3,7 @@
 import re
 import sys
 from pathlib import Path
+from socket import gethostname
 
 import luigi
 from luigi.util import requires
@@ -18,7 +19,7 @@ from .trimgalore import PrepareFastqs
 
 class PrintEnvVersions(FtarcTask):
     command_paths = luigi.ListParameter(default=list())
-    run_id = luigi.Parameter(default='env')
+    run_id = luigi.Parameter(default=gethostname())
     sh_config = luigi.DictParameter(default=dict())
     __is_completed = False
 
