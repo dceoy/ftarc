@@ -73,9 +73,10 @@ Usage
       samtools: true
     resources:  # These files can be downloaded with `ftarc download`.
       ref_fa: /path/to/GRCh38_full_analysis_set_plus_decoy_hla.fa
-      dbsnp_vcf: /path/to/Homo_sapiens_assembly38.dbsnp138.vcf.gz
-      mills_indel_vcf: /path/to/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
-      known_indel_vcf: /path/to/Homo_sapiens_assembly38.known_indels.vcf.gz
+      known_sites_vcf:
+        - /path/to/Homo_sapiens_assembly38.dbsnp138.vcf.gz
+        - /path/to/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz
+        - /path/to/Homo_sapiens_assembly38.known_indels.vcf.gz
     runs:
       - fq:
           - /path/to/sample01.WGS.R1.fq.gz

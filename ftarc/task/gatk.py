@@ -7,12 +7,11 @@ from luigi.util import requires
 
 from .core import FtarcTask
 from .picard import CreateSequenceDictionary, MarkDuplicates
-from .resource import (FetchDbsnpVcf, FetchKnownIndelVcf, FetchMillsIndelVcf,
-                       FetchReferenceFasta)
+from .resource import FetchKnownSitesVcfs, FetchReferenceFasta
 
 
 @requires(MarkDuplicates, FetchReferenceFasta, CreateSequenceDictionary,
-          FetchDbsnpVcf, FetchMillsIndelVcf, FetchKnownIndelVcf)
+          FetchKnownSitesVcfs)
 class RecalibrateBaseQualityScores(luigi.Task):
     cf = luigi.DictParameter()
     n_cpu = luigi.IntParameter(default=1)
@@ -32,7 +31,7 @@ class RecalibrateBaseQualityScores(luigi.Task):
         yield ApplyBQSR(
             input_sam_path=self.input()[0][0].path,
             fa_path=self.input()[1][0].path,
-            known_sites_vcf_paths=[i[0].path for i in self.input()[3:6]],
+            known_sites_vcf_paths=[i[0].path for i in self.input()[3]],
             dest_dir_path=str(Path(self.output()[0].path).parent),
             gatk=self.cf['gatk'], samtools=self.cf['samtools'],
             save_memory=self.cf['save_memory'], n_cpu=self.n_cpu,

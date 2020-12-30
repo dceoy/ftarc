@@ -84,9 +84,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     }
     logger.debug('sh_config:' + os.linesep + pformat(sh_config))
 
-    resource_keys = {
-        'ref_fa', 'dbsnp_vcf', 'mills_indel_vcf', 'known_indel_vcf'
-    }
+    resource_keys = {'ref_fa', 'known_sites_vcf'}
     resource_path_dict = _resolve_input_file_paths(
         path_dict={
             k: v for k, v in config['resources'].items() if k in resource_keys
@@ -161,13 +159,15 @@ def _read_config_yml(path):
     config = read_yml(path=Path(path).resolve())
     assert (isinstance(config, dict) and config.get('resources')), config
     assert isinstance(config['resources'], dict), config['resources']
-    for k in ['ref_fa', 'dbsnp_vcf', 'mills_indel_vcf', 'known_indel_vcf']:
+    for k in ['ref_fa', 'known_sites_vcf']:
         v = config['resources'].get(k)
-        if k == 'ref_fa' and isinstance(v, list) and v:
+        if k == 'known_sites_vcf':
+            assert isinstance(v, list), k
+            assert len(v) > 0, k
             assert _has_unique_elements(v), k
             for s in v:
                 assert isinstance(s, str), k
-        elif v:
+        else:
             assert isinstance(v, str), k
     assert config.get('runs'), config
     assert isinstance(config['runs'], list), config['runs']

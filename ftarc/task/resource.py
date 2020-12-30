@@ -124,48 +124,17 @@ class FetchResourceVcf(FtarcTask):
         )
 
 
-class FetchDbsnpVcf(luigi.WrapperTask):
-    dbsnp_vcf_path = luigi.Parameter()
+class FetchKnownSitesVcfs(luigi.WrapperTask):
+    known_sites_vcf_paths = luigi.ListParameter()
     sh_config = luigi.DictParameter(default=dict())
     cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
-        return FetchResourceVcf(
-            src_path=self.dbsnp_vcf_path, cf=self.cf, sh_config=self.sh_config
-        )
-
-    def output(self):
-        return self.input()
-
-
-class FetchMillsIndelVcf(luigi.WrapperTask):
-    mills_indel_vcf_path = luigi.Parameter()
-    sh_config = luigi.DictParameter(default=dict())
-    cf = luigi.DictParameter()
-    priority = 70
-
-    def requires(self):
-        return FetchResourceVcf(
-            src_path=self.mills_indel_vcf_path, cf=self.cf,
-            sh_config=self.sh_config
-        )
-
-    def output(self):
-        return self.input()
-
-
-class FetchKnownIndelVcf(luigi.WrapperTask):
-    known_indel_vcf_path = luigi.Parameter()
-    sh_config = luigi.DictParameter(default=dict())
-    cf = luigi.DictParameter()
-    priority = 70
-
-    def requires(self):
-        return FetchResourceVcf(
-            src_path=self.known_indel_vcf_path, cf=self.cf,
-            sh_config=self.sh_config
-        )
+        return [
+            FetchResourceVcf(src_path=p, cf=self.cf, sh_config=self.sh_config)
+            for p in self.known_sites_vcf_paths
+        ]
 
     def output(self):
         return self.input()
