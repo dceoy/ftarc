@@ -16,7 +16,7 @@ Usage:
     ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--dest-dir=<path>] [--summary] <fa_path> <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--dest-dir=<path>] [--skip-cleaning] (--known-sites-vcf=<path>)...
+        [--dest-dir=<path>] [--skip-cleaning] (--known-sites=<vcf_path>)...
         <fa_path> <sam_path>...
     ftarc -h|--help
     ftarc --version
@@ -45,7 +45,7 @@ Options:
     --use-bwa-mem2          Use Bwa-mem2 for read alignment
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --summary               Set SUMMARY to the mode of output
-    --known-sites-vcf=<path>
+    --known-sites=<vcf_path>
                             Specify paths of known polymorphic sites VCF files
 
 Args:
@@ -196,7 +196,7 @@ def main():
             )
             kwargs = {
                 'fa_path': args['<fa_path>'],
-                'known_sites_vcf_paths': args['--known-sites-vcf'],
+                'known_sites_vcf_paths': args['--known-sites'],
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
                 'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
