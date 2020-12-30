@@ -12,7 +12,7 @@ import yaml
 from psutil import cpu_count, virtual_memory
 
 from ..cli.util import (build_luigi_tasks, fetch_executable, load_default_dict,
-                        print_log, read_yml, render_template)
+                        parse_fq_id, print_log, read_yml, render_template)
 from ..task.controller import PrepareAnalysisReadyCram, PrintEnvVersions
 
 
@@ -217,21 +217,5 @@ def _determine_input_samples(run_dict):
     return {
         'fq_paths': _resolve_input_file_paths(path_list=run_dict['fq']),
         'read_group': g,
-        'sample_name': (g.get('SM') or _parse_fq_id(fq_path=run_dict['fq'][0]))
+        'sample_name': (g.get('SM') or parse_fq_id(fq_path=run_dict['fq'][0]))
     }
-
-
-def _parse_fq_id(fq_path):
-    fq_stem = Path(fq_path).name
-    for _ in range(3):
-        if fq_stem.endswith(('fq', 'fastq')):
-            fq_stem = Path(fq_stem).stem
-            break
-        else:
-            fq_stem = Path(fq_stem).stem
-    return (
-        re.sub(
-            r'[\._](read[12]|r[12]|[12]|[a-z0-9]+_val_[12]|r[12]_[0-9]+)$', '',
-            fq_stem, flags=re.IGNORECASE
-        ) or fq_stem
-    )

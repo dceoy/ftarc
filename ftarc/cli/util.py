@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 import shutil
 from pathlib import Path
 from pprint import pformat
@@ -87,3 +88,19 @@ def build_luigi_tasks(*args, **kwargs):
             os.linesep
             + os.linesep.join(['Execution summary:', r.summary_text, str(r)])
         )
+
+
+def parse_fq_id(fq_path):
+    fq_stem = Path(fq_path).name
+    for _ in range(3):
+        if fq_stem.endswith(('fq', 'fastq')):
+            fq_stem = Path(fq_stem).stem
+            break
+        else:
+            fq_stem = Path(fq_stem).stem
+    return (
+        re.sub(
+            r'[\._](read[12]|r[12]|[12]|[a-z0-9]+_val_[12]|r[12]_[0-9]+)$', '',
+            fq_stem, flags=re.IGNORECASE
+        ) or fq_stem
+    )
