@@ -19,7 +19,7 @@ Installation
 ------------
 
 ```sh
-$ pip install -U https://github.com/dceoy/ftarc/archive/main.tar.gz
+$ pip install -U ftarc
 ```
 
 Dependent commands:
