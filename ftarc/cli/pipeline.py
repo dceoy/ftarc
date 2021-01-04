@@ -146,8 +146,8 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     build_luigi_tasks(
         tasks=[
             PrepareAnalysisReadyCram(
-                **d, **resource_path_dict, n_cpu=n_cpu_per_worker,
-                memory_mb=memory_mb_per_worker, sh_config=sh_config, cf=cf_dict
+                **d, **resource_path_dict, cf=cf_dict, n_cpu=n_cpu_per_worker,
+                memory_mb=memory_mb_per_worker, sh_config=sh_config
             ) for d in sample_dict_list
         ],
         workers=n_worker, log_level=console_log_level,

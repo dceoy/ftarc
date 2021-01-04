@@ -72,11 +72,11 @@ class AlignReads(FtarcTask):
         rg = '\\t'.join(
             [
                 '@RG',
-                'ID:{}'.format(self.read_group.get('ID') or 1),
-                'PU:{}'.format(self.read_group.get('PU') or 'UNIT-1'),
+                'ID:{}'.format(self.read_group.get('ID') or 0),
+                'PU:{}'.format(self.read_group.get('PU') or 'UNIT-0'),
                 'SM:{}'.format(self.read_group.get('SM') or self.sample_name),
                 'PL:{}'.format(self.read_group.get('PL') or 'ILLUMINA'),
-                'LB:{}'.format(self.read_group.get('LB') or 'LIBRARY-1')
+                'LB:{}'.format(self.read_group.get('LB') or 'LIBRARY-0')
             ] + [
                 f'{k}:{v}' for k, v in self.read_group.items()
                 if k not in ['ID', 'PU', 'SM', 'PL', 'LB']
