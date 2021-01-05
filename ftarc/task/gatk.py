@@ -44,6 +44,7 @@ class ApplyBQSR(FtarcTask):
     fa_path = luigi.Parameter()
     known_sites_vcf_paths = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
+    static_quantized_quals = luigi.ListParameter(default=[10, 20, 30])
     gatk = luigi.Parameter(default='gatk')
     samtools = luigi.Parameter(default='samtools')
     save_memory = luigi.BoolParameter(default=False)
@@ -103,10 +104,10 @@ class ApplyBQSR(FtarcTask):
                 + f' --reference {fa}'
                 + f' --bqsr-recal-file {bqsr_csv}'
                 + f' --output {tmp_bam}'
-                + ' --static-quantized-quals 10'
-                + ' --static-quantized-quals 20'
-                + ' --static-quantized-quals 30'
-                + ' --add-output-sam-program-record'
+                + ''.join(
+                    f' --static-quantized-quals {i}'
+                    for i in self.static_quantized_quals
+                ) + ' --add-output-sam-program-record'
                 + ' --use-original-qualities'
                 + ' --create-output-bam-index false'
                 + ' --disable-bam-index-caching '
