@@ -71,8 +71,8 @@ RUN set -e \
       && apt-get -y dist-upgrade \
       && apt-get -y install --no-install-recommends --no-install-suggests \
         apt-transport-https apt-utils ca-certificates curl gnupg \
-        libcurl3-gnutls libgsl23 libncurses5 openjdk-8-jre pbzip2 perl pigz \
-        python r-base wget
+        libcurl3-gnutls libgsl23 libgkl-jni libncurses5 openjdk-8-jre pbzip2 \
+        perl pigz python r-base wget
 
 RUN set -ea pipefail \
       && echo "deb http://packages.cloud.google.com/apt cloud-sdk-bionic main" \
