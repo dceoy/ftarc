@@ -92,7 +92,7 @@ class ApplyBQSR(FtarcTask):
                 + f' --reference {fa}'
                 + f' --output {bqsr_csv}'
                 + ' --use-original-qualities'
-                + ''.join([f' --known-sites {p}' for p in known_sites_vcfs])
+                + ''.join(f' --known-sites {p}' for p in known_sites_vcfs)
             ),
             input_files_or_dirs=[input_sam, fa, fa_dict, *known_sites_vcfs],
             output_files_or_dirs=bqsr_csv

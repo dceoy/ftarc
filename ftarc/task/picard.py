@@ -203,7 +203,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
                 args=(
                     f'set -e && {self.picard} {c}'
                     + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
-                    + ''.join([f' --{k} {v}' for k, v in output_args.items()])
+                    + ''.join(f' --{k} {v}' for k, v in output_args.items())
                 ),
                 input_files_or_dirs=[input_sam, fa, fa_dict],
                 output_files_or_dirs=[
@@ -254,7 +254,7 @@ class ValidateSamFile(FtarcTask):
                 f'set -e && {self.picard} ValidateSamFile'
                 + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
                 + f' --OUTPUT {output_txt} --MODE {self.mode_of_output}'
-                + ''.join([f' --IGNORE {w}' for w in self.ignored_warnings])
+                + ''.join(f' --IGNORE {w}' for w in self.ignored_warnings)
             ),
             input_files_or_dirs=[input_sam, fa, fa_dict],
             output_files_or_dirs=output_txt

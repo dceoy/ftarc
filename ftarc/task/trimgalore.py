@@ -100,7 +100,7 @@ class TrimAdapters(FtarcTask):
                 + f' --cores {self.n_cpu}'
                 + f' --output_dir {run_dir}'
                 + (' --paired' if len(work_fq_paths) > 1 else '')
-                + ''.join([f' {p}' for p in work_fq_paths])
+                + ''.join(f' {p}' for p in work_fq_paths)
             ),
             input_files_or_dirs=work_fq_paths,
             output_files_or_dirs=[*output_fq_paths, run_dir]

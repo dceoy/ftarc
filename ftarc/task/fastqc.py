@@ -45,7 +45,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
             args=(
                 f'set -e && {self.fastqc} --nogroup'
                 + f' --threads {self.n_cpu} --outdir {dest_dir}'
-                + ''.join([f' {f}' for f in input_fqs])
+                + ''.join(f' {f}' for f in input_fqs)
             ),
             input_files_or_dirs=input_fqs,
             output_files_or_dirs=[o.path for o in self.output()]

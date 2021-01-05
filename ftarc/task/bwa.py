@@ -92,7 +92,7 @@ class AlignReads(FtarcTask):
             args=(
                 f'set -eo pipefail && {bwa} mem'
                 + f' -t {self.n_cpu} -R \'{rg}\' -T 0 -P {fa_path}'
-                + ''.join([f' {a}' for a in fq_paths])
+                + ''.join(f' {a}' for a in fq_paths)
                 + f' | {samtools} sort -@ {self.n_cpu}'
                 + f' -m {memory_mb_per_thread}M -O BAM -l 0'
                 + f' -T {output_cram}.sort -'
