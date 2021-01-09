@@ -3,6 +3,7 @@
 import logging
 import os
 import re
+import sys
 from abc import ABCMeta, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -96,6 +97,26 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
                     *[str(t) for t in targets]
                 ])
             )
+
+    @classmethod
+    def print_env_versions(cls):
+        python = sys.executable
+        version_files = [
+            Path('/proc/version'),
+            *[
+                o for o in Path('/etc').iterdir()
+                if o.name.endswith(('-release', '_version'))
+            ]
+        ]
+        cls.run_shell(
+            args=[
+                f'{python} --version',
+                f'{python} -m pip --version',
+                f'{python} -m pip freeze --no-cache-dir',
+                'uname -a',
+                *[f'cat {o}' for o in version_files if o.is_file()]
+            ]
+        )
 
     @staticmethod
     @abstractmethod
