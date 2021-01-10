@@ -31,7 +31,8 @@ class DownloadResourceFiles(FtarcTask):
         for u in self.src_urls:
             p = str(dest_dir.joinpath(Path(u).name))
             if u.endswith(tuple([f'.{a}.{b}' for a, b
-                                 in product(('fa', 'fasta'), ('gz', 'bz2'))])):
+                                 in product(('fa', 'fna', 'fasta'),
+                                            ('gz', 'bz2'))])):
                 yield luigi.LocalTarget(re.sub(r'\.(gz|bz2)$', '', p))
             elif u.endswith('.bgz'):
                 yield luigi.LocalTarget(re.sub(r'\.bgz$', '.gz', p))
@@ -62,7 +63,7 @@ class DownloadResourceFiles(FtarcTask):
                     args=f'set -e && {self.bgzip} -@ {self.n_cpu} {t}',
                     input_files_or_dirs=t, output_files_or_dirs=o.path
                 )
-            elif o.path.endswith(('.fa', '.fasta')):
+            elif o.path.endswith(('.fa', '.fna', '.fasta')):
                 self.run_shell(
                     args=(
                         f'set -e && {self.pbzip2} -p{self.n_cpu} -d {t}'
@@ -96,7 +97,7 @@ class DownloadAndProcessResourceFiles(luigi.Task):
         )
         for i in self.input():
             file = Path(i.path)
-            if file.name.endswith(('.fa', '.fasta')):
+            if file.name.endswith(('.fa', '.fna', '.fasta')):
                 for p in [file, f'{file}.fai',
                           file.parent.joinpath(f'{file.stem}.dict'),
                           *[f'{file}.{s}' for s in bwa_suffixes]]:
@@ -119,7 +120,7 @@ class DownloadAndProcessResourceFiles(luigi.Task):
         }
         for i in self.input():
             p = i.path
-            if p.endswith(('.fa', '.fasta')):
+            if p.endswith(('.fa', '.fna', '.fasta')):
                 yield [
                     CreateSequenceDictionary(
                         ref_fa_path=p, n_cpu=self.n_cpu,
