@@ -167,9 +167,10 @@ class CollectSamMetricsWithPicard(FtarcTask):
         ]
 
     def run(self):
-        input_sam = Path(self.input_sam_path).resolve()
-        run_id = input_sam.stem
+        target_sam = Path(self.input_sam_path)
+        run_id = target_sam.stem
         self.print_log(f'Collect SAM metrics using Picard:\t{run_id}')
+        input_sam = target_sam.resolve()
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         dest_dir = Path(self.dest_dir_path).resolve()
@@ -233,9 +234,10 @@ class ValidateSamFile(FtarcTask):
         )
 
     def run(self):
-        input_sam = Path(self.input_sam_path).resolve()
-        run_id = input_sam.stem
+        target_sam = Path(self.input_sam_path)
+        run_id = target_sam.stem
         self.print_log(f'Validate a SAM file:\t{run_id}')
+        input_sam = target_sam.resolve()
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         dest_dir = Path(self.dest_dir_path).resolve()

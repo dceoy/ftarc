@@ -65,9 +65,10 @@ class ApplyBQSR(FtarcTask):
         ]
 
     def run(self):
-        input_sam = Path(self.input_sam_path).resolve()
-        run_id = input_sam.stem
+        target_sam = Path(self.input_sam_path)
+        run_id = target_sam.stem
         self.print_log(f'Apply base quality score recalibration:\t{run_id}')
+        input_sam = target_sam.resolve()
         output_cram = Path(self.output()[0].path)
         bqsr_csv = Path(self.output()[2].path)
         fa = Path(self.fa_path).resolve()

@@ -35,10 +35,11 @@ class SamtoolsView(FtarcTask):
         ]
 
     def run(self):
-        input_sam = Path(self.input_sam_path).resolve()
+        target_sam = Path(self.input_sam_path)
+        run_id = target_sam.stem
+        input_sam = target_sam.resolve()
         fa = Path(self.fa_path).resolve()
         output_sam = Path(self.output_sam_path).resolve()
-        run_id = input_sam.stem
         only_index = (
             self.input_sam_path == self.output_sam_path and self.index_sam
         )
@@ -98,9 +99,10 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         ]
 
     def run(self):
-        input_sam = Path(self.input_sam_path).resolve()
-        run_id = input_sam.stem
+        target_sam = Path(self.input_sam_path)
+        run_id = target_sam.stem
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
+        input_sam = target_sam.resolve()
         fa = Path(self.fa_path).resolve()
         dest_dir = Path(self.dest_dir_path).resolve()
         for c, o in zip(self.samtools_commands, self.output()):

@@ -33,7 +33,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
 
     def run(self):
         input_fqs = [Path(p).resolve() for p in self.input_fq_paths]
-        run_id = Path(Path(input_fqs[0].stem).stem).stem
+        run_id = Path(Path(Path(self.input_fq_paths[0]).stem).stem).stem
         self.print_log(f'Collect FASTQ metrics using FastQC:\t{run_id}')
         dest_dir = Path(self.dest_dir_path).resolve()
         self.setup_shell(
