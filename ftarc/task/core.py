@@ -43,7 +43,7 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
     def setup_shell(cls, run_id=None, log_dir_path=None, commands=None,
                     cwd=None, remove_if_failed=True, clear_log_txt=False,
                     print_command=True, quiet=True, executable='/bin/bash',
-                    **kwargs):
+                    env=None, **kwargs):
         cls.__log_txt_path = (
             str(
                 Path(log_dir_path).joinpath(
@@ -58,7 +58,14 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
             print_command=print_command, executable=executable
         )
         cls.__run_kwargs = {
-            'cwd': cwd, 'remove_if_failed': remove_if_failed, **kwargs
+            'cwd': cwd, 'remove_if_failed': remove_if_failed,
+            'env': (
+                {
+                    **env,
+                    **{k: v for k, v in os.environ.items() if k not in env}
+                } if env else dict(os.environ)
+            ),
+            **kwargs
         }
         for p in [log_dir_path, cwd]:
             if p:
