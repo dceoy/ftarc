@@ -64,7 +64,10 @@ COPY --from=builder /usr/local /usr/local
 COPY --from=builder /opt /opt
 
 RUN set -e \
-      && ln -sf bash /bin/sh
+      && ln -sf bash /bin/sh \
+      && echo '. /opt/conda/etc/profile.d/conda.sh' >> /etc/profile \
+      && echo 'conda activate base' >> /etc/profile \
+      && echo 'source /opt/gatk/gatkenv.rc' >> /etc/profile
 
 RUN set -e \
       && apt-get -y update \
