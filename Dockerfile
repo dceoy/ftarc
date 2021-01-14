@@ -31,7 +31,7 @@ RUN set -e \
       && source /opt/gatk/gatkenv.rc \
       && /opt/conda/bin/conda update -n base -c defaults conda \
       && /opt/conda/bin/python3 -m pip install -U --no-cache-dir \
-          cutadapt pip /tmp/ftarc \
+        cutadapt /tmp/ftarc \
       && /opt/conda/bin/conda clean -yaf \
       && find /opt/conda -follow -type f -name '*.a' -delete \
       && find /opt/conda -follow -type f -name '*.pyc' -delete \
@@ -75,7 +75,7 @@ RUN set -e \
       && apt-get -y install --no-install-recommends --no-install-suggests \
         apt-transport-https apt-utils ca-certificates curl gnupg \
         libcurl3-gnutls libgsl23 libgkl-jni libncurses5 openjdk-8-jre pbzip2 \
-        perl pigz python r-base wget
+        perl pigz python wget
 
 RUN set -ea pipefail \
       && echo "deb http://packages.cloud.google.com/apt cloud-sdk-bionic main" \
