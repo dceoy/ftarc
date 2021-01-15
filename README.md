@@ -72,7 +72,7 @@ Usage
       fastqc: true
       picard: true
       samtools: true
-    resources:  # These files can be downloaded with `ftarc download`.
+    resources:
       ref_fa: /path/to/GRCh38_full_analysis_set_plus_decoy_hla.fa
       known_sites_vcf:
         - /path/to/Homo_sapiens_assembly38.dbsnp138.vcf.gz

@@ -5,20 +5,24 @@ FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 Usage:
     ftarc init [--debug|--info] [--yml=<path>]
     ftarc download [--debug|--info] [--cpus=<int>] [--use-bwa-mem2]
-        [--skip-cleaning] [--dest-dir=<path>]
+        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
         [--dest-dir=<path>]
-    ftarc fastqc [--debug|--info] [--cpus=<int>] [--skip-cleaning]
-        [--dest-dir=<path>] <fq_path>...
-    ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--dest-dir=<path>] <fa_path> <sam_path>...
     ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--summary] [--dest-dir=<path>] <fa_path>
+        [--skip-cleaning] [--print-subprocesses] [--summary]
+        [--dest-dir=<path>] <fa_path> <sam_path>...
+    ftarc fastqc [--debug|--info] [--cpus=<int>] [--skip-cleaning]
+        [--print-subprocesses] [--dest-dir=<path>] <fq_path>...
+    ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
         <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--dedup] [--dest-dir=<path>]
+        [--skip-cleaning] [--print-subprocesses] [--dedup] [--dest-dir=<path>]
         (--known-sites=<vcf_path>)... <fa_path> <sam_path>...
+    ftarc dedup [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
+        <sam_path>...
     ftarc -h|--help
     ftarc --version
 
@@ -33,6 +37,8 @@ Commands:
                             and Samtools
     validate                Validate BAM or CRAM files using Picard
     bqsr                    Apply BQSR to BAM or CRAM files using GATK
+    dedup                   Remove duplicates in marked and sorted BAM or CRAM
+                            files
 
 Options:
     -h, --help              Print help and exit
@@ -46,7 +52,7 @@ Options:
     --use-bwa-mem2          Use Bwa-mem2 for read alignment
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --summary               Set SUMMARY to the mode of output
-    --dedup                 Create a CRAM file after deduplication
+    --dedup                 Create a deduplicated CRAM file
     --known-sites=<vcf_path>
                             Specify paths of known polymorphic sites VCF files
 
@@ -65,11 +71,12 @@ from docopt import docopt
 from psutil import cpu_count, virtual_memory
 
 from .. import __version__
-from ..task.controller import CollectMultipleSamMetrics, RemoveDuplicates
+from ..task.controller import CollectMultipleSamMetrics, DeduplicateReads
 from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
 from ..task.gatk import ApplyBQSR
 from ..task.picard import ValidateSamFile
+from ..task.samtools import RemoveDuplicates
 from .pipeline import run_processing_pipeline
 from .util import (build_luigi_tasks, fetch_executable, load_default_dict,
                    print_log, write_config_yml)
@@ -108,8 +115,9 @@ def main():
             or fetch_executable('picard')
         )
         sh_config = {
-            'log_dir_path': None,
-            'remove_if_failed': (not args['--skip-cleaning']), 'quiet': False,
+            'log_dir_path': args['--dest-dir'],
+            'remove_if_failed': (not args['--skip-cleaning']),
+            'quiet': (not args['--print-subprocesses']),
             'executable': fetch_executable('bash')
         }
         if args['download']:
@@ -207,7 +215,7 @@ def main():
             if args['--debug']:
                 build_luigi_tasks(
                     tasks=[
-                        RemoveDuplicates(input_sam_path=p, **kwargs)
+                        DeduplicateReads(input_sam_path=p, **kwargs)
                         for p in args['<sam_path>']
                     ],
                     workers=n_worker, log_level=log_level
@@ -220,6 +228,26 @@ def main():
                     ],
                     workers=n_worker, log_level=log_level
                 )
+        elif args['dedup']:
+            n_worker = min(
+                int(args['--workers']), n_cpu, len(args['<sam_path>'])
+            )
+            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
+                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
+            )
+            kwargs = {
+                'fa_path': args['<fa_path>'],
+                'dest_dir_path': args['--dest-dir'],
+                'samtools': fetch_executable('samtools'),
+                'n_cpu': worker_cpus_n_memory['n_cpu'], 'sh_config': sh_config
+            }
+            build_luigi_tasks(
+                tasks=[
+                    RemoveDuplicates(input_sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
+                ],
+                workers=n_worker, log_level=log_level
+            )
 
 
 def _calculate_cpus_n_memory_per_worker(n_cpu, memory_mb, n_worker=1):

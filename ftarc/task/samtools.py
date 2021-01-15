@@ -10,8 +10,8 @@ from .core import FtarcTask
 
 class SamtoolsView(FtarcTask):
     input_sam_path = luigi.Parameter()
-    output_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
+    output_sam_path = luigi.Parameter()
     samtools = luigi.Parameter(default='samtools')
     n_cpu = luigi.IntParameter(default=1)
     add_args = luigi.Parameter(default='')
@@ -70,6 +70,35 @@ class SamtoolsView(FtarcTask):
                 n_cpu=self.n_cpu, add_args=self.add_args,
                 index_sam=self.index_sam, remove_input=self.remove_input
             )
+
+
+class RemoveDuplicates(luigi.WrapperTask):
+    input_sam_path = luigi.Parameter()
+    fa_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
+    samtools = luigi.Parameter(default='samtools')
+    n_cpu = luigi.IntParameter(default=1)
+    remove_input = luigi.BoolParameter(default=False)
+    index_sam = luigi.BoolParameter(default=True)
+    sh_config = luigi.DictParameter(default=dict())
+    priority = 90
+
+    def requires(self):
+        return SamtoolsView(
+            input_sam_path=str(Path(self.input_sam_path).resolve()),
+            fa_path=str(Path(self.fa_path).resolve()),
+            output_sam_path=str(
+                Path(self.dest_dir_path).resolve().parent.joinpath(
+                    Path(self.input_sam_path).stem + '.dedup.cram'
+                )
+            ),
+            samtools=self.samtools, n_cpu=self.n_cpu, add_args='-F 1024',
+            message='Remove duplicates', remove_input=self.remove_input,
+            index_sam=self.index_sam, sh_config=self.sh_config
+        )
+
+    def output(self):
+        return self.input()
 
 
 class CollectSamMetricsWithSamtools(FtarcTask):
