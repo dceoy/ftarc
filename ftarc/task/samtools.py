@@ -88,7 +88,7 @@ class RemoveDuplicates(luigi.WrapperTask):
             input_sam_path=str(Path(self.input_sam_path).resolve()),
             fa_path=str(Path(self.fa_path).resolve()),
             output_sam_path=str(
-                Path(self.dest_dir_path).resolve().parent.joinpath(
+                Path(self.dest_dir_path).resolve().joinpath(
                     Path(self.input_sam_path).stem + '.dedup.cram'
                 )
             ),
