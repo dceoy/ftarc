@@ -49,6 +49,8 @@ $ docker image pull dceoy/ftarc
 Usage
 -----
 
+#### Create analysis-ready CRAM files from FASTQ files
+
 1.  Download hg38 resource data.
 
     ```sh
@@ -101,5 +103,41 @@ Usage
     ```sh
     $ ftarc run --yml=ftarc.yml --workers=2
     ```
+
+#### Preprocessing and QC-check
+
+- Validate BAM or CRAM files using Picard
+
+  ```sh
+  $ ftarc validate /path/to/genome.fa /path/to/aligned.cram
+  ```
+
+- Collect metrics from FASTQ files using FastQC
+
+  ```sh
+  $ ftarc fastqc read1.fq.gz read2.fq.gz
+  ```
+
+- Collect metrics from FASTQ files using FastQC
+
+  ```sh
+  $ ftarc samqc /path/to/genome.fa /path/to/aligned.cram
+  ```
+
+- Apply BQSR to BAM or CRAM files using GATK
+
+  ```sh
+  $ ftarc bqsr \
+      --known-sites=/path/to/Homo_sapiens_assembly38.dbsnp138.vcf.gz \
+      --known-sites=/path/to/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz \
+      --known-sites=/path/to/Homo_sapiens_assembly38.known_indels.vcf.gz \
+      /path/to/genome.fa /path/to/markdup.cram
+  ```
+
+- Remove duplicates in marked BAM or CRAM files
+
+  ```sh
+  $ ftarc dedup /path/to/genome.fa /path/to/markdup.cram
+  ```
 
 Run `ftarc --help` for more information.

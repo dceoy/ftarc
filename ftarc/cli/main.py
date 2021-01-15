@@ -32,13 +32,12 @@ Commands:
     run                     Create analysis-ready CRAM files from FASTQ files
                             (Trim adapters, align reads, mark duplicates, and
                              apply BQSR)
+    validate                Validate BAM or CRAM files using Picard
     fastqc                  Collect metrics from FASTQ files using FastQC
     samqc                   Collect metrics from CRAM or BAM files using Picard
                             and Samtools
-    validate                Validate BAM or CRAM files using Picard
     bqsr                    Apply BQSR to BAM or CRAM files using GATK
-    dedup                   Remove duplicates in marked and sorted BAM or CRAM
-                            files
+    dedup                   Remove duplicates in marked BAM or CRAM files
 
 Options:
     -h, --help              Print help and exit
@@ -59,7 +58,7 @@ Options:
 Args:
     <fa_path>               Path to an reference FASTA file
                             (The index and sequence dictionary are required.)
-    <sam_path>              Path to a CRAM or BAM file
+    <sam_path>              Path to a sorted CRAM or BAM file
     <fq_path>               Path to a FASTQ file
 """
 
@@ -71,10 +70,10 @@ from docopt import docopt
 from psutil import cpu_count, virtual_memory
 
 from .. import __version__
-from ..task.controller import CollectMultipleSamMetrics, DeduplicateReads
+from ..task.controller import CollectMultipleSamMetrics
 from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
-from ..task.gatk import ApplyBQSR
+from ..task.gatk import ApplyBQSR, DeduplicateReads
 from ..task.picard import ValidateSamFile
 from ..task.samtools import RemoveDuplicates
 from .pipeline import run_processing_pipeline
