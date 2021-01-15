@@ -9,15 +9,16 @@ Usage:
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
         [--dest-dir=<path>]
-    ftarc fastqc [--debug|--info] [--cpus=<int>] [--dest-dir=<path>]
-        [--skip-cleaning] <fq_path>...
+    ftarc fastqc [--debug|--info] [--cpus=<int>] [--skip-cleaning]
+        [--dest-dir=<path>] <fq_path>...
     ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--dest-dir=<path>] [--skip-cleaning] <fa_path> <sam_path>...
+        [--skip-cleaning] [--dest-dir=<path>] <fa_path> <sam_path>...
     ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--dest-dir=<path>] [--summary] <fa_path> <sam_path>...
+        [--skip-cleaning] [--summary] [--dest-dir=<path>] <fa_path>
+        <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--dest-dir=<path>] [--skip-cleaning] (--known-sites=<vcf_path>)...
-        <fa_path> <sam_path>...
+        [--skip-cleaning] [--dedup] [--dest-dir=<path>]
+        (--known-sites=<vcf_path>)... <fa_path> <sam_path>...
     ftarc -h|--help
     ftarc --version
 
@@ -45,6 +46,7 @@ Options:
     --use-bwa-mem2          Use Bwa-mem2 for read alignment
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --summary               Set SUMMARY to the mode of output
+    --dedup                 Create a CRAM file after deduplication
     --known-sites=<vcf_path>
                             Specify paths of known polymorphic sites VCF files
 
@@ -63,7 +65,7 @@ from docopt import docopt
 from psutil import cpu_count, virtual_memory
 
 from .. import __version__
-from ..task.controller import CollectMultipleSamMetrics
+from ..task.controller import CollectMultipleSamMetrics, RemoveDuplicates
 from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
 from ..task.gatk import ApplyBQSR
@@ -202,13 +204,22 @@ def main():
                 'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
                 'sh_config': sh_config, **worker_cpus_n_memory
             }
-            build_luigi_tasks(
-                tasks=[
-                    ApplyBQSR(input_sam_path=p, **kwargs)
-                    for p in args['<sam_path>']
-                ],
-                workers=n_worker, log_level=log_level
-            )
+            if args['--debug']:
+                build_luigi_tasks(
+                    tasks=[
+                        RemoveDuplicates(input_sam_path=p, **kwargs)
+                        for p in args['<sam_path>']
+                    ],
+                    workers=n_worker, log_level=log_level
+                )
+            else:
+                build_luigi_tasks(
+                    tasks=[
+                        ApplyBQSR(input_sam_path=p, **kwargs)
+                        for p in args['<sam_path>']
+                    ],
+                    workers=n_worker, log_level=log_level
+                )
 
 
 def _calculate_cpus_n_memory_per_worker(n_cpu, memory_mb, n_worker=1):

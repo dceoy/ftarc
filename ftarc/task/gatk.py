@@ -8,11 +8,12 @@ from luigi.util import requires
 from .core import FtarcTask
 from .picard import CreateSequenceDictionary, MarkDuplicates
 from .resource import FetchKnownSitesVcfs, FetchReferenceFasta
+from .samtools import SamtoolsView
 
 
 @requires(MarkDuplicates, FetchReferenceFasta, CreateSequenceDictionary,
           FetchKnownSitesVcfs)
-class RecalibrateBaseQualityScores(luigi.Task):
+class RecalibrateBaseQualityScoresAndRemoveDuplicates(luigi.Task):
     cf = luigi.DictParameter()
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
@@ -24,11 +25,14 @@ class RecalibrateBaseQualityScores(luigi.Task):
         return [
             luigi.LocalTarget(
                 input_cram.parent.joinpath(f'{input_cram.stem}.bqsr.{s}')
-            ) for s in ['cram', 'cram.crai', 'data.csv']
+            ) for s in [
+                'cram', 'cram.crai', 'data.csv', 'dedup.cram',
+                'dedup.cram.crai'
+            ]
         ]
 
     def run(self):
-        yield ApplyBQSR(
+        yield RemoveDuplicates(
             input_sam_path=self.input()[0][0].path,
             fa_path=self.input()[1][0].path,
             known_sites_vcf_paths=[i[0].path for i in self.input()[3]],
@@ -121,6 +125,35 @@ class ApplyBQSR(FtarcTask):
             input_sam_path=tmp_bam, fa_path=fa, output_sam_path=output_cram,
             samtools=self.samtools, n_cpu=self.n_cpu, index_sam=True,
             remove_input=True
+        )
+
+
+@requires(ApplyBQSR)
+class RemoveDuplicates(FtarcTask):
+    input_sam_path = luigi.Parameter()
+    fa_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
+    samtools = luigi.Parameter(default='samtools')
+    n_cpu = luigi.IntParameter(default=1)
+    sh_config = luigi.DictParameter(default=dict())
+    priority = 70
+
+    def output(self):
+        output_cram = Path(self.dest_dir_path).resolve().joinpath(
+            Path(self.input()[0].path).stem + '.dedup.cram'
+        )
+        return [
+            luigi.LocalTarget(output_cram.parent.joinpath(f'{output_cram}{s}'))
+            for s in ['', '.crai']
+        ]
+
+    def run(self):
+        yield SamtoolsView(
+            input_sam_path=self.input()[0].path,
+            output_sam_path=self.output()[0].path, fa_path=self.fa_path,
+            samtools=self.samtools, n_cpu=self.n_cpu, add_args='-F 1024',
+            message='Remove duplicates', remove_input=False, index_sam=True,
+            sh_config=self.sh_config
         )
 
 

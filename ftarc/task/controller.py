@@ -10,10 +10,10 @@ from luigi.util import requires
 
 from .core import FtarcTask
 from .fastqc import CollectFqMetricsWithFastqc
-from .gatk import RecalibrateBaseQualityScores
+from .gatk import RecalibrateBaseQualityScoresAndRemoveDuplicates
 from .picard import CollectSamMetricsWithPicard, ValidateSamFile
 from .resource import FetchReferenceFasta
-from .samtools import CollectSamMetricsWithSamtools, SamtoolsView
+from .samtools import CollectSamMetricsWithSamtools
 from .trimgalore import PrepareFastqs
 
 
@@ -35,7 +35,8 @@ class PrintEnvVersions(FtarcTask):
         self.__is_completed = True
 
 
-@requires(RecalibrateBaseQualityScores, FetchReferenceFasta, PrepareFastqs)
+@requires(RecalibrateBaseQualityScoresAndRemoveDuplicates, FetchReferenceFasta,
+          PrepareFastqs)
 class PrepareAnalysisReadyCram(luigi.Task):
     sample_name = luigi.Parameter()
     cf = luigi.DictParameter()
@@ -60,12 +61,6 @@ class PrepareAnalysisReadyCram(luigi.Task):
         qc_dir = Path(self.cf['qc_dir_path'])
         return (
             [
-                luigi.LocalTarget(
-                    input_cram.parent.joinpath(
-                        f'{input_cram.stem}.dedup.cram{s}'
-                    )
-                ) for s in ['', '.crai']
-            ] + [
                 luigi.LocalTarget(
                     qc_dir.joinpath('fastqc').joinpath(
                         self.sample_name
@@ -104,13 +99,6 @@ class PrepareAnalysisReadyCram(luigi.Task):
             input_sam_path=input_sam_path, fa_path=fa_path,
             dest_dir_path=str(Path(input_sam_path).parent),
             picard=self.cf['gatk'], n_cpu=self.n_cpu, memory_mb=self.memory_mb,
-            sh_config=self.sh_config
-        )
-        yield SamtoolsView(
-            input_sam_path=input_sam_path,
-            output_sam_path=self.output()[0].path, fa_path=fa_path,
-            samtools=self.cf['samtools'], n_cpu=self.n_cpu, add_args='-F 1024',
-            message='Remove duplicates', remove_input=False, index_sam=True,
             sh_config=self.sh_config
         )
         qc_dir = Path(self.cf['qc_dir_path'])
