@@ -45,8 +45,9 @@ class DownloadResourceFiles(FtarcTask):
         dest_dir = Path(self.dest_dir_path).resolve()
         self.print_log(f'Download resource files:\t{dest_dir}')
         self.setup_shell(
-            run_id=self.run_id, commands=[self.wget, self.bgzip], cwd=dest_dir,
-            **self.sh_config
+            run_id=self.run_id,
+            commands=[self.wget, self.bgzip, self.pigz, self.pbzip2],
+            cwd=dest_dir, **self.sh_config
         )
         for u, o in zip(self.src_urls, self.output()):
             t = dest_dir.joinpath(
