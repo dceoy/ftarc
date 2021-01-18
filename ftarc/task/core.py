@@ -67,14 +67,18 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
             ),
             **kwargs
         }
-        for p in [log_dir_path, cwd]:
+        cls.make_dirs(log_dir_path, cwd)
+        if commands:
+            cls.run_shell(args=list(cls.generate_version_commands(commands)))
+
+    @classmethod
+    def make_dirs(cls, *paths):
+        for p in paths:
             if p:
-                d = Path(p).resolve()
+                d = Path(str(p)).resolve()
                 if not d.is_dir():
                     cls.print_log(f'Make a directory:\t{d}', new_line=False)
                     d.mkdir(parents=True, exist_ok=True)
-        if commands:
-            cls.run_shell(args=list(cls.generate_version_commands(commands)))
 
     @classmethod
     def run_shell(cls, *args, **kwargs):
