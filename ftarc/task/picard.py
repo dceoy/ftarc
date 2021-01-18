@@ -68,7 +68,7 @@ class MarkDuplicates(FtarcTask):
         self.print_log(f'Mark duplicates:\t{run_id}')
         gatk = self.cf.get('gatk') or self.cf['picard']
         samtools = self.cf['samtools']
-        memory_mb_per_thread = int(self.memory_mb / self.n_cpu / 8)
+        memory_mb_per_thread = int(self.memory_mb / self.n_cpu / 16)
         fa = Path(self.input()[1][0].path)
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         output_cram = Path(self.output()[0].path)
