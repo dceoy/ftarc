@@ -61,7 +61,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
 
     n_cpu = cpu_count()
     n_worker = min(int(max_n_worker or max_n_cpu or n_cpu), (len(runs) or 1))
-    n_cpu_per_worker = max(1, floor((max_n_cpu or n_cpu) / n_worker))
+    n_cpu_per_worker = max(1, floor(int(max_n_cpu or n_cpu) / n_worker))
     memory_mb = virtual_memory().total / 1024 / 1024 / 2
     memory_mb_per_worker = int(memory_mb / n_worker)
     cf_dict = {
