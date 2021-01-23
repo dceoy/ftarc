@@ -102,9 +102,9 @@ class MarkDuplicates(FtarcTask):
         if self.set_nm_md_uq:
             self.run_shell(
                 args=(
-                    f'set -eo pipefail && {samtools} sort'
-                    + f' -@ {self.n_cpu} -m {memory_mb_per_thread}M'
-                    + f' -O BAM -l 0 -T {output_cram}.sort {tmp_bams[0]}'
+                    f'set -eo pipefail && {samtools} sort -@ {self.n_cpu}'
+                    + f' -m {memory_mb_per_thread}M -O BAM -l 0'
+                    + f' -T {output_cram}.sort {tmp_bams[0]}'
                     + f' | {gatk} SetNmMdAndUqTags'
                     + ' --INPUT /dev/stdin'
                     + f' --OUTPUT {tmp_bams[1]}'
@@ -122,11 +122,11 @@ class MarkDuplicates(FtarcTask):
         else:
             self.run_shell(
                 args=(
-                    f'set -eo pipefail && {samtools} sort'
-                    + f' -@ {self.n_cpu} -m {memory_mb_per_thread}M'
-                    + f' -O BAM -l 0 -T {output_cram}.sort {tmp_bams[0]}'
-                    + f' | {samtools} view -@ {self.n_cpu} -T {fa} -CS'
-                    + f' -o {output_cram} -'
+                    f'set -eo pipefail && {samtools} view -@ {self.n_cpu}'
+                    + f' -T {fa} -CS -o - {tmp_bams[0]}'
+                    + f' | {samtools} sort -@ {self.n_cpu}'
+                    + f' -m {memory_mb_per_thread}M -O CRAM'
+                    + f' -T {output_cram}.sort -o {output_cram} -'
                 ),
                 input_files_or_dirs=[tmp_bams[0], fa],
                 output_files_or_dirs=output_cram
