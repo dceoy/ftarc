@@ -103,7 +103,7 @@ class RemoveDuplicates(luigi.WrapperTask):
 
 class CollectSamMetricsWithSamtools(FtarcTask):
     input_sam_path = luigi.Parameter()
-    fa_path = luigi.Parameter()
+    fa_path = luigi.Parameter(default='')
     dest_dir_path = luigi.Parameter(default='.')
     samtools_commands = luigi.ListParameter(
         default=['coverage', 'flagstat', 'idxstats', 'stats', 'depth']
@@ -132,7 +132,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         run_id = target_sam.stem
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
         input_sam = target_sam.resolve()
-        fa = Path(self.fa_path).resolve()
+        fa = Path(self.fa_path).resolve() if self.fa_path else None
         dest_dir = Path(self.dest_dir_path).resolve()
         for c, o in zip(self.samtools_commands, self.output()):
             self.setup_shell(
@@ -144,8 +144,10 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                 args=(
                     f'set -eo pipefail && {self.samtools} {c}'
                     + (
-                        f' --reference {fa}'
-                        if c in {'coverage', 'depth', 'stats'} else ''
+                        f' --reference {fa}' if (
+                            fa is not None
+                            and c in {'coverage', 'depth', 'stats'}
+                        ) else ''
                     ) + (
                         ' -a' if c == 'depth' else ''
                     ) + (
