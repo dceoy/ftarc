@@ -67,7 +67,7 @@ def render_luigi_log_cfg(log_cfg_path, log_dir_path=None,
             file_log_level, datetime.now().strftime('%Y%m%d_%H%M%S')
         )
     )
-    for d in set(cfg_dir, log_dir):
+    for d in {cfg_dir, log_dir}:
         if not d.is_dir():
             print_log(f'Make a directory:\t{d}')
             d.mkdir(parents=True, exist_ok=True)

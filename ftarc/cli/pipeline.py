@@ -108,9 +108,9 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         {'metrics_collectors': metrics_collectors},
         {'samples': [d['sample_name'] for d in sample_dict_list]}
     ])
-    log_cfg = log_dir.joinpath('luigi.log.cfg')
+    log_cfg_path = str(log_dir.joinpath('luigi.log.cfg'))
     render_luigi_log_cfg(
-        log_cfg_path=str(log_cfg), console_log_level=console_log_level,
+        log_cfg_path=log_cfg_path, console_log_level=console_log_level,
         file_log_level=file_log_level
     )
 
@@ -120,7 +120,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
                 command_paths=list(command_dict.values()), sh_config=sh_config
             )
         ],
-        workers=1, log_level=console_log_level, logging_conf_file=str(log_cfg),
+        workers=1, log_level=console_log_level, logging_conf_file=log_cfg_path,
         hide_summary=True
     )
     build_luigi_tasks(
@@ -131,7 +131,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
             ) for d in sample_dict_list
         ],
         workers=n_worker, log_level=console_log_level,
-        logging_conf_file=str(log_cfg)
+        logging_conf_file=log_cfg_path
     )
 
 
