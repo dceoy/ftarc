@@ -7,11 +7,11 @@ from math import floor
 from pathlib import Path
 from pprint import pformat
 
-import yaml
 from psutil import cpu_count, virtual_memory
 
 from ..cli.util import (build_luigi_tasks, fetch_executable, load_default_dict,
-                        parse_fq_id, print_log, read_yml, render_luigi_log_cfg)
+                        parse_fq_id, print_log, print_yml, read_yml,
+                        render_luigi_log_cfg)
 from ..task.controller import PrepareAnalysisReadyCram, PrintEnvVersions
 
 
@@ -102,14 +102,12 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     logger.debug('sample_dict_list:' + os.linesep + pformat(sample_dict_list))
 
     print_log(f'Prepare analysis-ready CRAM files:\t{dest_dir}')
-    print(
-        yaml.dump([
-            {'workers': n_worker}, {'runs': len(runs)},
-            {'adapter_removal': adapter_removal},
-            {'metrics_collectors': metrics_collectors},
-            {'samples': [d['sample_name'] for d in sample_dict_list]}
-        ])
-    )
+    print_yml([
+        {'workers': n_worker}, {'runs': len(runs)},
+        {'adapter_removal': adapter_removal},
+        {'metrics_collectors': metrics_collectors},
+        {'samples': [d['sample_name'] for d in sample_dict_list]}
+    ])
     log_cfg = log_dir.joinpath('luigi.log.cfg')
     render_luigi_log_cfg(
         log_cfg_path=str(log_cfg), console_log_level=console_log_level,

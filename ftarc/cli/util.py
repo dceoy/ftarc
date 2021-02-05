@@ -53,6 +53,10 @@ def read_yml(path):
     return d
 
 
+def print_yml(data):
+    print(yaml.dump(data))
+
+
 def render_luigi_log_cfg(log_cfg_path, log_dir_path=None,
                          console_log_level='WARNING', file_log_level='DEBUG'):
     log_cfg = Path(str(log_cfg_path)).resolve()
