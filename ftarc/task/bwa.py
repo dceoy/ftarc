@@ -67,7 +67,7 @@ class AlignReads(FtarcTask):
         self.print_log(f'Align reads:\t{run_id}')
         bwa = self.cf['bwa']
         samtools = self.cf['samtools']
-        memory_mb_per_thread = int(self.memory_mb / self.n_cpu / 16)
+        memory_mb_per_thread = int(self.memory_mb / self.n_cpu / 8)
         fq_paths = [i.path for i in self.input()[0]]
         rg = '\\t'.join(
             [
