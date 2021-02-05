@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import shutil
+from datetime import datetime
 from pathlib import Path
 from pprint import pformat
 
@@ -52,17 +53,37 @@ def read_yml(path):
     return d
 
 
-def render_template(template, data, output_path):
-    po = (Path(output_path) if isinstance(output_path, str) else output_path)
-    print_log(('Overwrite' if po.exists() else 'Render') + f' a file:\t{po}')
-    with po.open(mode='w') as f:
+def render_luigi_log_cfg(log_cfg_path, log_dir_path=None,
+                         console_log_level='WARNING', file_log_level='DEBUG'):
+    log_cfg = Path(str(log_cfg_path)).resolve()
+    cfg_dir = log_cfg.parent
+    log_dir = (Path(str(log_dir_path)).resolve() if log_dir_path else cfg_dir)
+    log_txt = log_dir.joinpath(
+        'luigi.{0}.{1}.log.txt'.format(
+            file_log_level, datetime.now().strftime('%Y%m%d_%H%M%S')
+        )
+    )
+    for d in set(cfg_dir, log_dir):
+        if not d.is_dir():
+            print_log(f'Make a directory:\t{d}')
+            d.mkdir(parents=True, exist_ok=True)
+    print_log(
+        '{0} a file:\t{1}'.format(
+            ('Overwrite' if log_cfg.exists() else 'Render'), log_cfg
+        )
+    )
+    with log_cfg.open(mode='w') as f:
         f.write(
             Environment(
                 loader=FileSystemLoader(
                     str(Path(__file__).parent.joinpath('../template')),
                     encoding='utf8'
                 )
-            ).get_template(template).render(data) + os.linesep
+            ).get_template('luigi.log.cfg.j2').render({
+                'console_log_level': console_log_level,
+                'file_log_level': file_log_level, 'log_txt_path': str(log_txt)
+            })
+            + os.linesep
         )
 
 

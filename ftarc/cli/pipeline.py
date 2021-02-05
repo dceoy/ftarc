@@ -3,7 +3,6 @@
 import logging
 import os
 import re
-from datetime import datetime
 from math import floor
 from pathlib import Path
 from pprint import pformat
@@ -12,7 +11,7 @@ import yaml
 from psutil import cpu_count, virtual_memory
 
 from ..cli.util import (build_luigi_tasks, fetch_executable, load_default_dict,
-                        parse_fq_id, print_log, read_yml, render_template)
+                        parse_fq_id, print_log, read_yml, render_luigi_log_cfg)
 from ..task.controller import PrepareAnalysisReadyCram, PrintEnvVersions
 
 
@@ -111,27 +110,10 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
             {'samples': [d['sample_name'] for d in sample_dict_list]}
         ])
     )
-
-    for d in [dest_dir, log_dir]:
-        if not d.is_dir():
-            print_log(f'Make a directory:\t{d}')
-            d.mkdir()
-    log_cfg_path = str(log_dir.joinpath('luigi.log.cfg'))
-    render_template(
-        template=(Path(log_cfg_path).name + '.j2'),
-        data={
-            'console_log_level': console_log_level,
-            'file_log_level': file_log_level,
-            'log_txt_path': str(
-                log_dir.joinpath(
-                    'luigi.{0}.{1}.log.txt'.format(
-                        file_log_level,
-                        datetime.now().strftime('%Y%m%d_%H%M%S')
-                    )
-                )
-            )
-        },
-        output_path=log_cfg_path
+    log_cfg = log_dir.joinpath('luigi.log.cfg')
+    render_luigi_log_cfg(
+        log_cfg_path=str(log_cfg), console_log_level=console_log_level,
+        file_log_level=file_log_level
     )
 
     build_luigi_tasks(
@@ -140,7 +122,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
                 command_paths=list(command_dict.values()), sh_config=sh_config
             )
         ],
-        workers=1, log_level=console_log_level, logging_conf_file=log_cfg_path,
+        workers=1, log_level=console_log_level, logging_conf_file=str(log_cfg),
         hide_summary=True
     )
     build_luigi_tasks(
@@ -151,7 +133,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
             ) for d in sample_dict_list
         ],
         workers=n_worker, log_level=console_log_level,
-        logging_conf_file=log_cfg_path
+        logging_conf_file=str(log_cfg)
     )
 
 
