@@ -73,7 +73,7 @@ RUN set -e \
       && apt-get -y update \
       && apt-get -y dist-upgrade \
       && apt-get -y install --no-install-recommends --no-install-suggests \
-        apt-transport-https apt-utils ca-certificates curl gnupg \
+        apt-transport-https apt-utils ca-certificates curl gnupg gnuplot \
         libcurl3-gnutls libgsl23 libgkl-jni libncurses5 openjdk-8-jre pbzip2 \
         perl pigz python wget
 

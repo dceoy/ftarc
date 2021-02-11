@@ -49,6 +49,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         **{
             c: fetch_executable(c) for c in {
                 'bgzip', 'gatk', 'java', 'pbzip2', 'pigz', 'samtools', 'tabix',
+                'gnuplot',
                 *(
                     {'cutadapt', 'fastqc', 'trim_galore'}
                     if adapter_removal else set()
@@ -66,6 +67,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     cf_dict = {
         'reference_name': config.get('reference_name'),
         'use_bwa_mem2': use_bwa_mem2, 'adapter_removal': adapter_removal,
+        'plot_bamstats': fetch_executable('plot-bamstats'),
         'metrics_collectors': metrics_collectors,
         'save_memory': (memory_mb_per_worker < 8192),
         **{

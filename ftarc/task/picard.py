@@ -158,7 +158,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
     def output(self):
         output_path_prefix = str(
             Path(self.dest_dir_path).resolve().joinpath(
-                Path(self.input_sam_path).stem
+                Path(self.input_sam_path).name
             )
         )
         return [
@@ -229,7 +229,7 @@ class ValidateSamFile(FtarcTask):
     def output(self):
         return luigi.LocalTarget(
             Path(self.dest_dir_path).resolve().joinpath(
-                Path(self.input_sam_path).stem + '.ValidateSamFile.txt'
+                Path(self.input_sam_path).name + '.ValidateSamFile.txt'
             )
         )
 

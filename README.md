@@ -29,7 +29,8 @@ Dependent commands:
 - `pbzip2`
 - `bgzip`
 - `tabix`
-- `samtools`
+- `samtools` (and `plot-bamstats`)
+- `gnuplot`
 - `java`
 - `gatk`
 - `cutadapt`

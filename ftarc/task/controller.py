@@ -121,10 +121,10 @@ class PrepareAnalysisReadyCram(luigi.Task):
                     metrics_collectors=[m],
                     picard_qc_commands=self.picard_qc_commands,
                     samtools_qc_commands=self.samtools_qc_commands,
-                    samtools=self.cf['samtools'],
-                    pigz=self.cf['pigz'], picard=self.cf['gatk'],
-                    n_cpu=self.n_cpu, memory_mb=self.memory_mb,
-                    sh_config=self.sh_config
+                    picard=self.cf['gatk'], samtools=self.cf['samtools'],
+                    plot_bamstats=self.cf['plot_bamstats'],
+                    gnuplot=self.cf['gnuplot'], n_cpu=self.n_cpu,
+                    memory_mb=self.memory_mb, sh_config=self.sh_config
                 ) for m in self.cf['metrics_collectors']
             ]
 
@@ -145,9 +145,10 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     samtools_qc_commands = luigi.ListParameter(
         default=['coverage', 'flagstat', 'idxstats', 'stats']
     )
-    samtools = luigi.Parameter(default='samtools')
-    pigz = luigi.Parameter(default='pigz')
     picard = luigi.Parameter(default='picard')
+    samtools = luigi.Parameter(default='samtools')
+    plot_bamstats = luigi.Parameter(default='plot-bamstats')
+    gnuplot = luigi.Parameter(default='gnuplot')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -169,7 +170,8 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
                 CollectSamMetricsWithSamtools(
                     input_sam_path=self.input_sam_path, fa_path=self.fa_path,
                     dest_dir_path=self.dest_dir_path, samtools_commands=[c],
-                    samtools=self.samtools, pigz=self.pigz, n_cpu=self.n_cpu,
+                    samtools=self.samtools, plot_bamstats=self.plot_bamstats,
+                    gnuplot=self.gnuplot, n_cpu=self.n_cpu,
                     sh_config=self.sh_config
                 ) for c in (
                     self.samtools_qc_commands

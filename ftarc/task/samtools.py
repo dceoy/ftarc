@@ -106,10 +106,11 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     fa_path = luigi.Parameter(default='')
     dest_dir_path = luigi.Parameter(default='.')
     samtools_commands = luigi.ListParameter(
-        default=['coverage', 'flagstat', 'idxstats', 'stats', 'depth']
+        default=['coverage', 'flagstat', 'idxstats', 'stats']
     )
     samtools = luigi.Parameter(default='samtools')
-    pigz = luigi.Parameter(default='pigz')
+    plot_bamstats = luigi.Parameter(default='plot-bamstats')
+    gnuplot = luigi.Parameter(default='gnuplot')
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 10
@@ -117,26 +118,33 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     def output(self):
         output_path_prefix = str(
             Path(self.dest_dir_path).resolve().joinpath(
-                Path(self.input_sam_path).stem
+                Path(self.input_sam_path).name
             )
         )
-        return [
-            luigi.LocalTarget(
-                f'{output_path_prefix}.{c}.txt'
-                + ('.gz' if c == 'depth' else '')
-            ) for c in self.samtools_commands
-        ]
+        return (
+            [
+                luigi.LocalTarget(f'{output_path_prefix}.{c}.txt')
+                for c in self.samtools_commands
+            ] + (
+                [luigi.LocalTarget(f'{output_path_prefix}.stats')]
+                if 'stats' in self.samtools_commands else list()
+            )
+        )
 
     def run(self):
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
         input_sam = target_sam.resolve()
-        fa = Path(self.fa_path).resolve() if self.fa_path else None
+        fa = (Path(self.fa_path).resolve() if self.fa_path else None)
         dest_dir = Path(self.dest_dir_path).resolve()
         for c, o in zip(self.samtools_commands, self.output()):
             self.setup_shell(
-                run_id=f'{run_id}.{c}', commands=[self.samtools, self.pigz],
+                run_id=f'{run_id}.{c}',
+                commands=(
+                    [self.samtools, self.gnuplot] if c == 'stats'
+                    else self.samtools
+                ),
                 cwd=dest_dir, **self.sh_config, env={'REF_CACHE': '.ref_cache'}
             )
             p = o.path
@@ -148,20 +156,25 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                             fa is not None
                             and c in {'coverage', 'depth', 'stats'}
                         ) else ''
-                    ) + (
-                        ' -a' if c == 'depth' else ''
-                    ) + (
+                    )
+                    + (' -a' if c == 'depth' else '')
+                    + (
                         f' -@ {self.n_cpu}'
                         if c in {'flagstat', 'idxstats', 'stats'} else ''
                     )
-                    + f' {input_sam}'
-                    + (
-                        f' | {self.pigz} -p {self.n_cpu} -c - > {p}'
-                        if p.endswith('.gz') else f' | tee {p}'
-                    )
+                    + f' {input_sam} | tee {p}'
                 ),
                 input_files_or_dirs=input_sam, output_files_or_dirs=p
             )
+            if c == 'stats':
+                plot_dir = dest_dir.joinpath(Path(p).stem)
+                self.run_shell(
+                    args=(
+                        f'set -e && {self.plot_bamstats}'
+                        + f' --prefix {plot_dir} {p}'
+                    ),
+                    input_files_or_dirs=p, output_files_or_dirs=plot_dir
+                )
 
 
 if __name__ == '__main__':

@@ -4,8 +4,8 @@ FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 
 Usage:
     ftarc init [--debug|--info] [--yml=<path>]
-    ftarc download [--debug|--info] [--cpus=<int>] [--use-bwa-mem2]
-        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
+    ftarc download [--debug|--info] [--cpus=<int>] [--skip-cleaning]
+        [--print-subprocesses] [--use-bwa-mem2] [--dest-dir=<path>]
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
         [--dest-dir=<path>]
@@ -155,12 +155,13 @@ def main():
             )
         elif args['samqc']:
             n_worker = min(
-                int(args['--workers']), n_cpu, (len(args['<sam_path>']) * 11)
+                int(args['--workers']), n_cpu, len(args['<sam_path>'])
             )
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'],
-                **{c: fetch_executable(c) for c in ['samtools', 'pigz']},
+                'samtools': fetch_executable('samtools'),
+                'plot_bamstats': fetch_executable('plot-bamstats'),
                 'picard': gatk_or_picard,
                 **_calculate_cpus_n_memory_per_worker(
                     n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
