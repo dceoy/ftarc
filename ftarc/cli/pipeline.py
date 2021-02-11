@@ -105,10 +105,20 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
 
     print_log(f'Prepare analysis-ready CRAM files:\t{dest_dir}')
     print_yml([
-        {'workers': n_worker}, {'runs': len(runs)},
-        {'adapter_removal': adapter_removal},
-        {'metrics_collectors': metrics_collectors},
-        {'samples': [d['sample_name'] for d in sample_dict_list]}
+        {
+            'config': [
+                {'adapter_removal': adapter_removal},
+                {'metrics_collectors': metrics_collectors},
+                {'n_worker': n_worker}, {'n_cpu': n_cpu},
+                {'memory_mb': memory_mb}
+            ]
+        },
+        {
+            'input': [
+                {'n_sample': len(runs)},
+                {'samples': [d['sample_name'] for d in sample_dict_list]}
+            ]
+        }
     ])
     log_cfg_path = str(log_dir.joinpath('luigi.log.cfg'))
     render_luigi_log_cfg(

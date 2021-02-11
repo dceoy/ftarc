@@ -116,64 +116,67 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     priority = 10
 
     def output(self):
-        output_path_prefix = str(
-            Path(self.dest_dir_path).resolve().joinpath(
-                Path(self.input_sam_path).name
-            )
-        )
+        sam_name = Path(self.input_sam_path).name
+        dest_dir = Path(self.dest_dir_path).resolve()
         return (
             [
-                luigi.LocalTarget(f'{output_path_prefix}.{c}.txt')
+                luigi.LocalTarget(dest_dir.joinpath(f'{sam_name}.{c}.txt'))
                 for c in self.samtools_commands
             ] + (
-                [luigi.LocalTarget(f'{output_path_prefix}.stats')]
+                [luigi.LocalTarget(dest_dir.joinpath(f'{sam_name}.stats'))]
                 if 'stats' in self.samtools_commands else list()
             )
         )
 
     def run(self):
         target_sam = Path(self.input_sam_path)
-        run_id = target_sam.stem
+        run_id = target_sam.name
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
         input_sam = target_sam.resolve()
         fa = (Path(self.fa_path).resolve() if self.fa_path else None)
         dest_dir = Path(self.dest_dir_path).resolve()
-        for c, o in zip(self.samtools_commands, self.output()):
+        output_txts = [
+            Path(o.path) for o in self.output() if o.path.endswith('.txt')
+        ]
+        for t in output_txts:
+            cmd = t.stem.split('.')[-1]
             self.setup_shell(
-                run_id=f'{run_id}.{c}',
+                run_id=f'{run_id}.{cmd}',
                 commands=(
-                    [self.samtools, self.gnuplot] if c == 'stats'
+                    [self.samtools, self.gnuplot] if cmd == 'stats'
                     else self.samtools
                 ),
                 cwd=dest_dir, **self.sh_config, env={'REF_CACHE': '.ref_cache'}
             )
-            p = o.path
             self.run_shell(
                 args=(
-                    f'set -eo pipefail && {self.samtools} {c}'
+                    f'set -eo pipefail && {self.samtools} {cmd}'
                     + (
                         f' --reference {fa}' if (
                             fa is not None
-                            and c in {'coverage', 'depth', 'stats'}
+                            and cmd in {'coverage', 'depth', 'stats'}
                         ) else ''
                     )
-                    + (' -a' if c == 'depth' else '')
+                    + (' -a' if cmd == 'depth' else '')
                     + (
                         f' -@ {self.n_cpu}'
-                        if c in {'flagstat', 'idxstats', 'stats'} else ''
+                        if cmd in {'flagstat', 'idxstats', 'stats'} else ''
                     )
-                    + f' {input_sam} | tee {p}'
+                    + f' {input_sam} | tee {t}'
                 ),
-                input_files_or_dirs=input_sam, output_files_or_dirs=p
+                input_files_or_dirs=input_sam, output_files_or_dirs=t
             )
-            if c == 'stats':
-                plot_dir = dest_dir.joinpath(Path(p).stem)
+            if cmd == 'stats':
+                plot_dir = t.parent.joinpath(t.stem)
                 self.run_shell(
                     args=(
                         f'set -e && {self.plot_bamstats}'
-                        + f' --prefix {plot_dir} {p}'
+                        + f' --prefix {plot_dir}/index {t}'
                     ),
-                    input_files_or_dirs=p, output_files_or_dirs=plot_dir
+                    input_files_or_dirs=t,
+                    output_files_or_dirs=[
+                        plot_dir, plot_dir.joinpath('index.html')
+                    ]
                 )
 
 

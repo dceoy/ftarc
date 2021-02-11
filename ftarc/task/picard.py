@@ -156,35 +156,32 @@ class CollectSamMetricsWithPicard(FtarcTask):
     priority = 100
 
     def output(self):
-        output_path_prefix = str(
-            Path(self.dest_dir_path).resolve().joinpath(
-                Path(self.input_sam_path).name
-            )
-        )
+        sam_name = Path(self.input_sam_path).name
+        dest_dir = Path(self.dest_dir_path).resolve()
         return [
-            luigi.LocalTarget(f'{output_path_prefix}.{c}.txt')
+            luigi.LocalTarget(dest_dir.joinpath(f'{sam_name}.{c}.txt'))
             for c in self.picard_commands
         ]
 
     def run(self):
         target_sam = Path(self.input_sam_path)
-        run_id = target_sam.stem
+        run_id = target_sam.name
         self.print_log(f'Collect SAM metrics using Picard:\t{run_id}')
         input_sam = target_sam.resolve()
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
-        dest_dir = Path(self.dest_dir_path).resolve()
-        for c in self.picard_commands:
+        for c, o in zip(self.picard_commands, self.output()):
+            output_txt = Path(o.path)
             self.setup_shell(
                 run_id=f'{run_id}.{c}', commands=f'{self.picard} {c}',
-                cwd=dest_dir, **self.sh_config,
+                cwd=output_txt.parent, **self.sh_config,
                 env={
                     'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                         n_cpu=self.n_cpu, memory_mb=self.memory_mb
                     )
                 }
             )
-            prefix = str(dest_dir.joinpath(f'{input_sam.stem}.{c}'))
+            prefix = str(output_txt.parent.joinpath(output_txt.stem))
             if c == 'CollectRawWgsMetrics':
                 add_args = {'INCLUDE_BQ_HISTOGRAM': 'true'}
             elif c in {'MeanQualityByCycle', 'QualityScoreDistribution',
