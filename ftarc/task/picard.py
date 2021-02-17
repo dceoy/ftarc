@@ -73,15 +73,16 @@ class MarkDuplicates(FtarcTask):
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         output_cram = Path(self.output()[0].path)
         markdup_metrics_txt = Path(self.output()[2].path)
+        dest_dir = output_cram.parent
         tmp_bams = [
-            output_cram.parent.joinpath(f'{output_cram.stem}{s}.bam')
+            dest_dir.joinpath(f'{output_cram.stem}{s}.bam')
             for s in ['.unsorted', '']
         ]
         self.setup_shell(
-            run_id=run_id, commands=[gatk, samtools], cwd=input_cram.parent,
+            run_id=run_id, commands=[gatk, samtools], cwd=dest_dir,
             **self.sh_config,
             env={
-                'REF_CACHE': self.cf['ref_cache'],
+                'REF_CACHE': str(dest_dir.joinpath('.ref_cache')),
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb
                 )

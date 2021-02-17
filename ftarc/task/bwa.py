@@ -84,9 +84,11 @@ class AlignReads(FtarcTask):
         )
         fa_path = self.input()[1][0].path
         index_paths = [o.path for o in self.input()[2]]
+        dest_dir = output_cram.parent
         self.setup_shell(
-            run_id=run_id, commands=[bwa, samtools], cwd=output_cram.parent,
-            **self.sh_config, env={'REF_CACHE': self.cf['ref_cache']}
+            run_id=run_id, commands=[bwa, samtools], cwd=dest_dir,
+            **self.sh_config,
+            env={'REF_CACHE': str(dest_dir.joinpath('.ref_cache'))}
         )
         self.run_shell(
             args=(
@@ -99,7 +101,7 @@ class AlignReads(FtarcTask):
                 + f' -T {output_cram}.sort -o {output_cram} -'
             ),
             input_files_or_dirs=[fa_path, *index_paths, *fq_paths],
-            output_files_or_dirs=[output_cram, output_cram.parent]
+            output_files_or_dirs=[output_cram, dest_dir]
         )
         self.samtools_index(
             sam_path=output_cram, samtools=samtools, n_cpu=self.n_cpu

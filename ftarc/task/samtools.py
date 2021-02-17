@@ -18,7 +18,6 @@ class SamtoolsView(FtarcTask):
     message = luigi.Parameter(default='')
     remove_input = luigi.BoolParameter(default=True)
     index_sam = luigi.BoolParameter(default=False)
-    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 90
 
@@ -56,9 +55,11 @@ class SamtoolsView(FtarcTask):
             )
         if message:
             self.print_log(f'{message}:\t{run_id}')
+        dest_dir = output_sam.parent
         self.setup_shell(
-            run_id=run_id, commands=self.samtools, cwd=output_sam.parent,
-            **self.sh_config, env={'REF_CACHE': self.ref_cache}
+            run_id=run_id, commands=self.samtools, cwd=dest_dir,
+            **self.sh_config,
+            env={'REF_CACHE': str(dest_dir.joinpath('.ref_cache'))}
         )
         if only_index:
             self.samtools_index(
@@ -81,7 +82,6 @@ class RemoveDuplicates(luigi.WrapperTask):
     n_cpu = luigi.IntParameter(default=1)
     remove_input = luigi.BoolParameter(default=False)
     index_sam = luigi.BoolParameter(default=True)
-    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 90
 
@@ -96,8 +96,7 @@ class RemoveDuplicates(luigi.WrapperTask):
             ),
             samtools=self.samtools, n_cpu=self.n_cpu, add_args='-F 1024',
             message='Remove duplicates', remove_input=self.remove_input,
-            index_sam=self.index_sam, ref_cache=self.ref_cache,
-            sh_config=self.sh_config
+            index_sam=self.index_sam, sh_config=self.sh_config
         )
 
     def output(self):
@@ -115,7 +114,6 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     plot_bamstats = luigi.Parameter(default='plot-bamstats')
     gnuplot = luigi.Parameter(default='gnuplot')
     n_cpu = luigi.IntParameter(default=1)
-    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 10
 
@@ -142,6 +140,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         output_txts = [
             Path(o.path) for o in self.output() if o.path.endswith('.txt')
         ]
+        ref_cache = str(input_sam.parent.joinpath('.ref_cache'))
         for t in output_txts:
             cmd = t.stem.split('.')[-1]
             self.setup_shell(
@@ -150,8 +149,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                     [self.samtools, self.gnuplot] if cmd == 'stats'
                     else self.samtools
                 ),
-                cwd=dest_dir, **self.sh_config,
-                env={'REF_CACHE': self.ref_cache}
+                cwd=dest_dir, **self.sh_config, env={'REF_CACHE': ref_cache}
             )
             self.run_shell(
                 args=(
