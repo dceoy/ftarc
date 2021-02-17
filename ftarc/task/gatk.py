@@ -17,7 +17,6 @@ class RecalibrateBaseQualityScoresAndDeduplicateReads(luigi.Task):
     cf = luigi.DictParameter()
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -40,7 +39,7 @@ class RecalibrateBaseQualityScoresAndDeduplicateReads(luigi.Task):
             dest_dir_path=str(Path(self.output()[0].path).parent),
             gatk=self.cf['gatk'], samtools=self.cf['samtools'],
             save_memory=self.cf['save_memory'], n_cpu=self.n_cpu,
-            memory_mb=self.memory_mb, ref_cache=self.ref_cache,
+            memory_mb=self.memory_mb, ref_cache=self.cf['ref_cache'],
             sh_config=self.sh_config
         )
 

@@ -129,3 +129,14 @@ def parse_fq_id(fq_path):
             fq_stem, flags=re.IGNORECASE
         ) or fq_stem
     )
+
+
+def remove_files_and_dirs(*paths):
+    for p in paths:
+        o = Path(p)
+        if o.is_dir():
+            print_log(f'Remove a directory:\t{p}')
+            os.remove(p)
+        elif o.exists():
+            print_log(f'Remove a file:\t{p}')
+            shutil.rmtree(p)

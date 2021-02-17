@@ -11,7 +11,7 @@ from psutil import cpu_count, virtual_memory
 
 from ..cli.util import (build_luigi_tasks, fetch_executable, load_default_dict,
                         parse_fq_id, print_log, print_yml, read_yml,
-                        render_luigi_log_cfg)
+                        remove_files_and_dirs, render_luigi_log_cfg)
 from ..task.controller import PrepareAnalysisReadyCram, PrintEnvVersions
 
 
@@ -73,6 +73,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         ),
         'metrics_collectors': metrics_collectors,
         'save_memory': (memory_mb_per_worker < 8192),
+        'ref_cache': str(dest_dir.joinpath('align/.ref_cache')),
         **{
             f'{k}_dir_path': str(dest_dir.joinpath(k))
             for k in {'trim', 'align', 'qc'}
@@ -148,6 +149,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         workers=n_worker, log_level=console_log_level,
         logging_conf_file=log_cfg_path
     )
+    remove_files_and_dirs(cf_dict['ref_cache'])
 
 
 def _read_config_yml(path):

@@ -124,7 +124,8 @@ class PrepareAnalysisReadyCram(luigi.Task):
                     picard=self.cf['gatk'], samtools=self.cf['samtools'],
                     plot_bamstats=self.cf['plot_bamstats'],
                     gnuplot=self.cf['gnuplot'], n_cpu=self.n_cpu,
-                    memory_mb=self.memory_mb, sh_config=self.sh_config
+                    memory_mb=self.memory_mb, ref_cache=self.cf['ref_cache'],
+                    sh_config=self.sh_config
                 ) for m in self.cf['metrics_collectors']
             ]
 
@@ -151,6 +152,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     gnuplot = luigi.Parameter(default='gnuplot')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
+    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 10
 
@@ -172,7 +174,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
                     dest_dir_path=self.dest_dir_path, samtools_commands=[c],
                     samtools=self.samtools, plot_bamstats=self.plot_bamstats,
                     gnuplot=self.gnuplot, n_cpu=self.n_cpu,
-                    sh_config=self.sh_config
+                    ref_cache=self.ref_cache, sh_config=self.sh_config
                 ) for c in (
                     self.samtools_qc_commands
                     if 'samtools' in self.metrics_collectors else list()
