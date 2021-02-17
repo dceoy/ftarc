@@ -74,7 +74,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         'metrics_collectors': metrics_collectors,
         'save_memory': (memory_mb_per_worker < 8192),
         **{
-            (k.replace('/', '_') + '_dir_path'): str(dest_dir.joinpath(k))
+            f'{k}_dir_path': str(dest_dir.joinpath(k))
             for k in {'trim', 'align', 'qc'}
         },
         **command_dict
