@@ -17,6 +17,7 @@ class RecalibrateBaseQualityScoresAndDeduplicateReads(luigi.Task):
     cf = luigi.DictParameter()
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
+    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -39,7 +40,8 @@ class RecalibrateBaseQualityScoresAndDeduplicateReads(luigi.Task):
             dest_dir_path=str(Path(self.output()[0].path).parent),
             gatk=self.cf['gatk'], samtools=self.cf['samtools'],
             save_memory=self.cf['save_memory'], n_cpu=self.n_cpu,
-            memory_mb=self.memory_mb, sh_config=self.sh_config
+            memory_mb=self.memory_mb, ref_cache=self.ref_cache,
+            sh_config=self.sh_config
         )
 
 
@@ -54,6 +56,7 @@ class ApplyBQSR(FtarcTask):
     save_memory = luigi.BoolParameter(default=False)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
+    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -85,6 +88,7 @@ class ApplyBQSR(FtarcTask):
             run_id=run_id, commands=[self.gatk, self.samtools],
             cwd=output_cram.parent, **self.sh_config,
             env={
+                'REF_CACHE': self.ref_cache,
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb
                 )
@@ -133,6 +137,7 @@ class DeduplicateReads(FtarcTask):
     fa_path = luigi.Parameter()
     samtools = luigi.Parameter(default='samtools')
     n_cpu = luigi.IntParameter(default=1)
+    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -150,7 +155,7 @@ class DeduplicateReads(FtarcTask):
             input_sam_path=str(input_cram), fa_path=self.fa_path,
             dest_dir_path=str(input_cram.parent), samtools=self.samtools,
             n_cpu=self.n_cpu, remove_input=False, index_sam=True,
-            sh_config=self.sh_config
+            ref_cache=self.ref_cache, sh_config=self.sh_config
         )
 
 

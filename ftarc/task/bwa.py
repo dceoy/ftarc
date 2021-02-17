@@ -45,6 +45,7 @@ class AlignReads(FtarcTask):
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()
     cf = luigi.DictParameter()
+    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -86,7 +87,7 @@ class AlignReads(FtarcTask):
         index_paths = [o.path for o in self.input()[2]]
         self.setup_shell(
             run_id=run_id, commands=[bwa, samtools], cwd=output_cram.parent,
-            **self.sh_config, env={'REF_CACHE': '.ref_cache'}
+            **self.sh_config, env={'REF_CACHE': self.ref_cache}
         )
         self.run_shell(
             args=(

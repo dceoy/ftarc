@@ -51,6 +51,7 @@ class MarkDuplicates(FtarcTask):
     set_nm_md_uq = luigi.BoolParameter(default=True)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
+    ref_cache = luigi.Parameter(default='.ref_cache')
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -81,7 +82,7 @@ class MarkDuplicates(FtarcTask):
             run_id=run_id, commands=[gatk, samtools], cwd=input_cram.parent,
             **self.sh_config,
             env={
-                'REF_CACHE': '.ref_cache',
+                'REF_CACHE': self.ref_cache,
                 'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
                     n_cpu=self.n_cpu, memory_mb=self.memory_mb
                 )
