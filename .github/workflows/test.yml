@@ -25,5 +25,4 @@ jobs:
           find . -name '*.py' | xargs flake8
       - name: Test a command
         run: |
-          set -x
           ftarc init

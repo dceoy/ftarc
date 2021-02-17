@@ -3,7 +3,6 @@ ftarc
 
 FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 
-[![wercker status](https://app.wercker.com/status/5009106bfe21f2c24d5084a3ba336463/s/main "wercker status")](https://app.wercker.com/project/byKey/5009106bfe21f2c24d5084a3ba336463)
 ![Test](https://github.com/dceoy/ftarc/workflows/Test/badge.svg)
 ![Upload Python Package](https://github.com/dceoy/ftarc/workflows/Upload%20Python%20Package/badge.svg)
 
