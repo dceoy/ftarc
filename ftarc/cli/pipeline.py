@@ -153,7 +153,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
         for a in Path(cf_dict['align_dir_path']).iterdir():
             c = a.joinpath('.ref_cache')
             if c.is_dir():
-                print_log(f'Remove a directory:\t{c}')
+                print_log(f'Remove a cache directory:\t{c}')
                 shutil.rmtree(str(c))
 
 
