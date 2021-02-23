@@ -46,12 +46,12 @@ class SamtoolsView(FtarcTask):
         if self.message:
             message = self.message
         elif only_index:
-            message = 'Index {}'.format(input_sam.suffix.upper())
+            message = 'Index {}'.format(input_sam.suffix[1:].upper())
         elif input_sam.suffix == output_sam.suffix:
             message = None
         else:
             message = 'Convert {0} to {1}'.format(
-                *[s.suffix.upper() for s in [input_sam, output_sam]]
+                *[s.suffix[1:].upper() for s in [input_sam, output_sam]]
             )
         if message:
             self.print_log(f'{message}:\t{run_id}')
