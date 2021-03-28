@@ -6,16 +6,6 @@ FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 ![Test](https://github.com/dceoy/ftarc/workflows/Test/badge.svg)
 ![Upload Python Package](https://github.com/dceoy/ftarc/workflows/Upload%20Python%20Package/badge.svg)
 
-- Input:
-  - read1/read2 FASTQ files from Illumina DNA sequencers
-- Workflow:
-  - Trim adapters
-  - Map reads to a human reference genome
-  - Mark duplicates
-  - Apply BQSR (Base Quality Score Recalibration)
-- Output:
-  - analysis-ready CRAM files
-
 Installation
 ------------
 
@@ -51,6 +41,10 @@ Usage
 -----
 
 #### Create analysis-ready CRAM files from FASTQ files
+
+| input files                   | output files        |
+|:-----------------------------:|:-------------------:|
+| read1/read2 FASTQ (Illumina)  | analysis-ready CRAM |
 
 1.  Download hg38 resource data.
 
@@ -104,6 +98,26 @@ Usage
     ```sh
     $ ftarc run --yml=ftarc.yml --workers=2
     ```
+
+    Standard workflow:
+    1.  Trim adapters
+        - `trim_galore`
+    2.  Map reads to a human reference genome
+        - `bwa mem` (or `bwa-mem2 mem`)
+    3.  Mark duplicates
+        - `gatk MarkDuplicates`
+        - `gatk SetNmMdAndUqTags`
+    4.  Apply BQSR (Base Quality Score Recalibration)
+        - `gatk BaseRecalibrator`
+        - `gatk ApplyBQSR`
+    5.  Remove duplicates
+        - `samtools view`
+    6.  Validate output CRAM files
+        - `gatk ValidateSamFile`
+    7.  Collect QC metrics
+        - `fastqc`
+        - `samtools`
+        - `gatk`
 
 #### Preprocessing and QC-check
 
