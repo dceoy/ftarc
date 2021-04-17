@@ -212,7 +212,7 @@ def main():
                 'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
                 'sh_config': sh_config, **worker_cpus_n_memory
             }
-            if args['--debug']:
+            if args['--dedup']:
                 build_luigi_tasks(
                     tasks=[
                         DeduplicateReads(input_sam_path=p, **kwargs)
