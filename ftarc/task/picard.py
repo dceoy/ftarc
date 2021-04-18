@@ -48,7 +48,6 @@ class CreateSequenceDictionary(FtarcTask):
 @requires(AlignReads, FetchReferenceFasta, CreateSequenceDictionary)
 class MarkDuplicates(FtarcTask):
     cf = luigi.DictParameter()
-    set_nm_md_uq = luigi.BoolParameter(default=True)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -76,7 +75,7 @@ class MarkDuplicates(FtarcTask):
         dest_dir = output_cram.parent
         tmp_bams = [
             dest_dir.joinpath(f'{output_cram.stem}{s}.bam')
-            for s in ['.unsorted', '']
+            for s in ['.unfixed', '']
         ]
         self.setup_shell(
             run_id=run_id, commands=[gatk, samtools], cwd=dest_dir,
@@ -88,19 +87,42 @@ class MarkDuplicates(FtarcTask):
                 )
             }
         )
-        self.run_shell(
-            args=(
-                f'set -e && {gatk} MarkDuplicates'
-                + f' --INPUT {input_cram}'
-                + f' --REFERENCE_SEQUENCE {fa}'
-                + f' --METRICS_FILE {markdup_metrics_txt}'
-                + f' --OUTPUT {tmp_bams[0]}'
-                + ' --ASSUME_SORT_ORDER coordinate'
-            ),
-            input_files_or_dirs=[input_cram, fa, fa_dict],
-            output_files_or_dirs=[tmp_bams[0], markdup_metrics_txt]
-        )
-        if self.set_nm_md_uq:
+        if self.cf.get('gatk') and self.cf['use_spark']:
+            self.run_shell(
+                args=(
+                    f'set -e && {gatk} MarkDuplicatesSpark'
+                    + f' --spark-master local[{self.n_cpu}]'
+                    + f' --input {input_cram}'
+                    + f' --reference {fa}'
+                    + f' --metrics-file {markdup_metrics_txt}'
+                    + f' --output {tmp_bams[0]}'
+                ),
+                input_files_or_dirs=[input_cram, fa, fa_dict],
+                output_files_or_dirs=[tmp_bams[0], markdup_metrics_txt]
+            )
+            self.run_shell(
+                args=(
+                    f'set -e && {gatk} SetNmMdAndUqTags'
+                    + ' --INPUT /dev/stdin'
+                    + f' --OUTPUT {tmp_bams[1]}'
+                    + f' --REFERENCE_SEQUENCE {fa}'
+                ),
+                input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
+                output_files_or_dirs=tmp_bams[1]
+            )
+        else:
+            self.run_shell(
+                args=(
+                    f'set -e && {gatk} MarkDuplicates'
+                    + f' --INPUT {input_cram}'
+                    + f' --REFERENCE_SEQUENCE {fa}'
+                    + f' --METRICS_FILE {markdup_metrics_txt}'
+                    + f' --OUTPUT {tmp_bams[0]}'
+                    + ' --ASSUME_SORT_ORDER coordinate'
+                ),
+                input_files_or_dirs=[input_cram, fa, fa_dict],
+                output_files_or_dirs=[tmp_bams[0], markdup_metrics_txt]
+            )
             self.run_shell(
                 args=(
                     f'set -eo pipefail && {samtools} sort -@ {self.n_cpu}'
@@ -114,28 +136,12 @@ class MarkDuplicates(FtarcTask):
                 input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
                 output_files_or_dirs=tmp_bams[1]
             )
-            self.remove_files_and_dirs(tmp_bams[0])
-            self.samtools_view(
-                input_sam_path=tmp_bams[1], fa_path=fa,
-                output_sam_path=output_cram, samtools=samtools,
-                n_cpu=self.n_cpu, index_sam=True, remove_input=True
-            )
-        else:
-            self.run_shell(
-                args=(
-                    f'set -eo pipefail && {samtools} view -@ {self.n_cpu}'
-                    + f' -T {fa} -CS -o - {tmp_bams[0]}'
-                    + f' | {samtools} sort -@ {self.n_cpu}'
-                    + f' -m {memory_mb_per_thread}M -O CRAM'
-                    + f' -T {output_cram}.sort -o {output_cram} -'
-                ),
-                input_files_or_dirs=[tmp_bams[0], fa],
-                output_files_or_dirs=output_cram
-            )
-            self.remove_files_and_dirs(tmp_bams[0])
-            self.samtools_index(
-                sam_path=output_cram, samtools=samtools, n_cpu=self.n_cpu
-            )
+        self.remove_files_and_dirs(tmp_bams[0])
+        self.samtools_view(
+            input_sam_path=tmp_bams[1], fa_path=fa,
+            output_sam_path=output_cram, samtools=samtools,
+            n_cpu=self.n_cpu, index_sam=True, remove_input=True
+        )
 
 
 class CollectSamMetricsWithPicard(FtarcTask):

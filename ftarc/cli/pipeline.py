@@ -20,7 +20,8 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
                             max_n_cpu=None, max_n_worker=None,
                             skip_cleaning=False, print_subprocesses=False,
                             console_log_level='WARNING',
-                            file_log_level='DEBUG', use_bwa_mem2=True):
+                            file_log_level='DEBUG', use_spark=False,
+                            use_bwa_mem2=True):
     logger = logging.getLogger(__name__)
     logger.info(f'config_yml_path:\t{config_yml_path}')
     config = _read_config_yml(path=config_yml_path)
@@ -67,7 +68,8 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     memory_mb_per_worker = int(memory_mb / n_worker)
     cf_dict = {
         'reference_name': config.get('reference_name'),
-        'use_bwa_mem2': use_bwa_mem2, 'adapter_removal': adapter_removal,
+        'use_bwa_mem2': use_bwa_mem2, 'use_spark': use_spark,
+        'adapter_removal': adapter_removal,
         'plot_bamstats': (
             fetch_executable('plot-bamstats')
             if 'samtools' in metrics_collectors else ''

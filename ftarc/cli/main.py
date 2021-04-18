@@ -7,7 +7,7 @@ Usage:
     ftarc download [--debug|--info] [--cpus=<int>] [--skip-cleaning]
         [--print-subprocesses] [--use-bwa-mem2] [--dest-dir=<path>]
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
+        [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2] [--use-spark]
         [--dest-dir=<path>]
     ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--summary]
@@ -18,8 +18,9 @@ Usage:
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
         <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--print-subprocesses] [--dedup] [--dest-dir=<path>]
-        (--known-sites=<vcf_path>)... <fa_path> <sam_path>...
+        [--skip-cleaning] [--print-subprocesses] [--use-spark] [--dedup]
+        [--dest-dir=<path>] (--known-sites=<vcf_path>)... <fa_path>
+        <sam_path>...
     ftarc dedup [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
         <sam_path>...
@@ -49,6 +50,7 @@ Options:
     --skip-cleaning         Skip incomlete file removal when a task fails
     --print-subprocesses    Print STDOUT/STDERR outputs from subprocesses
     --use-bwa-mem2          Use Bwa-mem2 for read alignment
+    --use-spark             Use Spark-enabled GATK tools
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --summary               Set SUMMARY to the mode of output
     --dedup                 Create a deduplicated CRAM file
@@ -104,7 +106,8 @@ def main():
             max_n_cpu=args['--cpus'], max_n_worker=args['--workers'],
             skip_cleaning=args['--skip-cleaning'],
             print_subprocesses=args['--print-subprocesses'],
-            console_log_level=log_level, use_bwa_mem2=args['--use-bwa-mem2']
+            console_log_level=log_level, use_spark=args['--use-spark'],
+            use_bwa_mem2=args['--use-bwa-mem2']
         )
     else:
         n_cpu = int(args['--cpus'] or cpu_count())
@@ -207,7 +210,8 @@ def main():
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'known_sites_vcf_paths': args['--known-sites'],
-                'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
+                'dest_dir_path': args['--dest-dir'],
+                'use_spark': args['--use-spark'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
                 'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
                 'sh_config': sh_config, **worker_cpus_n_memory
