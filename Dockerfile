@@ -106,7 +106,7 @@ RUN set -e \
       && echo -e 'CipherString = DEFAULT:@SECLEVEL=1' >> /usr/lib/ssl/openssl.cnf
 
 ENV JAVA_LIBRARY_PATH /usr/lib/jni
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
+ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64
 ENV CLASSPATH /opt/gatk/gatk.jar:${CLASSPATH}
 ENV PATH /opt/gatk/bin:/opt/conda/envs/gatk/bin:/opt/conda/bin:${PATH}
 

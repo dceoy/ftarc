@@ -96,6 +96,8 @@ class MarkDuplicates(FtarcTask):
                     + f' --reference {fa}'
                     + f' --metrics-file {markdup_metrics_txt}'
                     + f' --output {tmp_bams[0]}'
+                    + ' --create-output-bam-index false'
+                    + ' --create-output-bam-splitting-index false'
                 ),
                 input_files_or_dirs=[input_cram, fa, fa_dict],
                 output_files_or_dirs=[tmp_bams[0], markdup_metrics_txt]
@@ -103,7 +105,7 @@ class MarkDuplicates(FtarcTask):
             self.run_shell(
                 args=(
                     f'set -e && {gatk} SetNmMdAndUqTags'
-                    + ' --INPUT /dev/stdin'
+                    + f' --INPUT {tmp_bams[0]}'
                     + f' --OUTPUT {tmp_bams[1]}'
                     + f' --REFERENCE_SEQUENCE {fa}'
                 ),

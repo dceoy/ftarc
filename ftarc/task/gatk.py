@@ -25,10 +25,7 @@ class RecalibrateBaseQualityScoresAndDeduplicateReads(luigi.Task):
         return [
             luigi.LocalTarget(
                 input_cram.parent.joinpath(f'{input_cram.stem}.bqsr.{s}')
-            ) for s in [
-                'cram', 'cram.crai', 'data.csv', 'dedup.cram',
-                'dedup.cram.crai'
-            ]
+            ) for s in ['cram', 'cram.crai', 'dedup.cram', 'dedup.cram.crai']
         ]
 
     def run(self):
@@ -105,11 +102,9 @@ class ApplyBQSR(FtarcTask):
                     + ''.join(
                         f' --static-quantized-quals {i}'
                         for i in self.static_quantized_quals
-                    ) + ' --add-output-sam-program-record'
-                    + ' --use-original-qualities true'
+                    ) + ' --use-original-qualities true'
                     + ' --create-output-bam-index false'
-                    + ' --disable-bam-index-caching '
-                    + str(self.save_memory).lower()
+                    + ' --create-output-bam-splitting-index false'
                 ),
                 input_files_or_dirs=[
                     input_sam, fa, fa_dict, *known_sites_vcfs
@@ -126,7 +121,7 @@ class ApplyBQSR(FtarcTask):
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
                     + f' --output {bqsr_csv}'
-                    + ' --use-original-qualities'
+                    + ' --use-original-qualities true'
                     + ''.join(f' --known-sites {p}' for p in known_sites_vcfs)
                     + ' --disable-bam-index-caching '
                     + str(self.save_memory).lower()
