@@ -26,3 +26,11 @@ args=('{{ log_txt_path }}', 'a')
 [formatter_customFormatter]
 format=%(asctime)s %(name)-18s %(levelname)-9s %(message)s
 datefmt=%Y-%m-%d %H:%M:%S
+
+[retcode]
+already_running=10
+missing_data=20
+not_run=25
+task_failed=30
+scheduling_error=35
+unhandled_exception=40
