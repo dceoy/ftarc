@@ -97,22 +97,16 @@ def load_default_dict(stem):
     )
 
 
-def build_luigi_tasks(*args, **kwargs):
-    r = luigi.build(
-        *args,
-        **{
-            k: v for k, v in kwargs.items() if (
-                k not in {'logging_conf_file', 'hide_summary'}
-                or (k == 'logging_conf_file' and v)
-            )
-        },
-        local_scheduler=True, detailed_summary=True
-    )
-    if not kwargs.get('hide_summary'):
+def build_luigi_tasks(check_scheduling_succeeded=True, hide_summary=False,
+                      **kwargs):
+    r = luigi.build(local_scheduler=True, detailed_summary=True, **kwargs)
+    if not hide_summary:
         print(
             os.linesep
             + os.linesep.join(['Execution summary:', r.summary_text, str(r)])
         )
+    if check_scheduling_succeeded:
+        assert r.scheduling_succeeded, r.one_line_summary
 
 
 def parse_fq_id(fq_path):
