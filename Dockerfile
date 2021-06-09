@@ -10,6 +10,7 @@ COPY --from=dceoy/trim_galore:latest /usr/local/src/TrimGalore /usr/local/src/Tr
 COPY --from=dceoy/gatk:latest /opt/conda /opt/conda
 COPY --from=dceoy/gatk:latest /opt/gatk /opt/gatk
 ADD https://raw.githubusercontent.com/dceoy/print-github-tags/master/print-github-tags /usr/local/bin/print-github-tags
+ADD https://bootstrap.pypa.io/get-pip.py /tmp/get-pip.py
 ADD . /tmp/ftarc
 
 RUN set -e \
@@ -30,12 +31,13 @@ ENV PATH /opt/gatk/bin:/opt/conda/envs/gatk/bin:/opt/conda/bin:${PATH}
 RUN set -e \
       && source /opt/gatk/gatkenv.rc \
       && /opt/conda/bin/conda update -n base -c defaults conda \
+      && /opt/conda/bin/python3 /tmp/get-pip.py \
       && /opt/conda/bin/python3 -m pip install -U --no-cache-dir \
         cutadapt /tmp/ftarc \
       && /opt/conda/bin/conda clean -yaf \
       && find /opt/conda -follow -type f -name '*.a' -delete \
       && find /opt/conda -follow -type f -name '*.pyc' -delete \
-      && rm -rf /root/.cache/pip
+      && rm -rf /root/.cache/pip /tmp/get-pip.py
 
 RUN set -e \
       && cd /usr/local/src/bwa \
