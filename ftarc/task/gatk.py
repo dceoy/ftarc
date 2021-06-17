@@ -112,15 +112,15 @@ class ApplyBQSR(FtarcTask):
                 output_files_or_dirs=tmp_bam
             )
         else:
-            bqsr_csv = output_cram.parent.joinpath(
-                f'{output_cram.stem}.data.csv'
+            bqsr_txt = output_cram.parent.joinpath(
+                f'{output_cram.stem}.data.txt'
             )
             self.run_shell(
                 args=(
                     f'set -e && {self.gatk} BaseRecalibrator'
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
-                    + f' --output {bqsr_csv}'
+                    + f' --output {bqsr_txt}'
                     + ' --use-original-qualities true'
                     + ''.join(f' --known-sites {p}' for p in known_sites_vcfs)
                     + ' --disable-bam-index-caching '
@@ -129,14 +129,14 @@ class ApplyBQSR(FtarcTask):
                 input_files_or_dirs=[
                     input_sam, fa, fa_dict, *known_sites_vcfs
                 ],
-                output_files_or_dirs=bqsr_csv
+                output_files_or_dirs=bqsr_txt
             )
             self.run_shell(
                 args=(
                     f'set -e && {self.gatk} ApplyBQSR'
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
-                    + f' --bqsr-recal-file {bqsr_csv}'
+                    + f' --bqsr-recal-file {bqsr_txt}'
                     + f' --output {tmp_bam}'
                     + ''.join(
                         f' --static-quantized-quals {i}'
@@ -147,7 +147,7 @@ class ApplyBQSR(FtarcTask):
                     + ' --disable-bam-index-caching '
                     + str(self.save_memory).lower()
                 ),
-                input_files_or_dirs=[input_sam, fa, fa_dict, bqsr_csv],
+                input_files_or_dirs=[input_sam, fa, fa_dict, bqsr_txt],
                 output_files_or_dirs=tmp_bam
             )
         self.samtools_view(
