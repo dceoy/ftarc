@@ -9,7 +9,6 @@ COPY --from=dceoy/trim_galore:latest /usr/local/src/FastQC /usr/local/src/FastQC
 COPY --from=dceoy/trim_galore:latest /usr/local/src/TrimGalore /usr/local/src/TrimGalore
 COPY --from=dceoy/gatk:latest /opt/conda /opt/conda
 COPY --from=dceoy/gatk:latest /opt/gatk /opt/gatk
-ADD https://raw.githubusercontent.com/dceoy/print-github-tags/master/print-github-tags /usr/local/bin/print-github-tags
 ADD https://bootstrap.pypa.io/get-pip.py /tmp/get-pip.py
 ADD . /tmp/ftarc
 
