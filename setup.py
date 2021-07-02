@@ -42,8 +42,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: Bio-Informatics',
-        'Topic :: Scientific/Engineering :: Medical Science Apps.',
-        'Topic :: Scientific/Engineering :: Visualization'
+        'Topic :: Scientific/Engineering :: Medical Science Apps.'
     ],
     python_requires='>=3.6',
 )
