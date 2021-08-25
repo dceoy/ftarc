@@ -3,9 +3,9 @@
 FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 
 Usage:
-    ftarc init [--debug|--info] [--yml=<path>]
     ftarc download [--debug|--info] [--cpus=<int>] [--skip-cleaning]
         [--print-subprocesses] [--use-bwa-mem2] [--dest-dir=<path>]
+    ftarc init [--debug|--info] [--yml=<path>]
     ftarc run [--debug|--info] [--yml=<path>] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2] [--use-spark]
         [--dest-dir=<path>]
@@ -17,6 +17,9 @@ Usage:
     ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
         <sam_path>...
+    ftarc markdup [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--skip-cleaning] [--print-subprocesses] [--use-spark]
+        [--dest-dir=<path>] <fa_path> <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-spark] [--dedup]
         [--dest-dir=<path>] (--known-sites=<vcf_path>)... <fa_path>
@@ -28,8 +31,8 @@ Usage:
     ftarc --version
 
 Commands:
-    init                    Create a config YAML template
     download                Download and process GRCh38 resource data
+    init                    Create a config YAML template
     run                     Create analysis-ready CRAM files from FASTQ files
                             (Trim adapters, align reads, mark duplicates, and
                              apply BQSR)
@@ -37,6 +40,7 @@ Commands:
     fastqc                  Collect metrics from FASTQ files using FastQC
     samqc                   Collect metrics from CRAM or BAM files using Picard
                             and Samtools
+    markdup                 Mark duplicates to BAM or CRAM files using GATK
     bqsr                    Apply BQSR to BAM or CRAM files using GATK
     dedup                   Remove duplicates in marked BAM or CRAM files
 
@@ -75,8 +79,8 @@ from .. import __version__
 from ..task.controller import CollectMultipleSamMetrics
 from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
-from ..task.gatk import ApplyBQSR, DeduplicateReads
-from ..task.picard import ValidateSamFile
+from ..task.gatk import ApplyBqsr, DeduplicateReads
+from ..task.picard import MarkDuplicates, ValidateSamFile
 from ..task.samtools import RemoveDuplicates
 from .pipeline import run_processing_pipeline
 from .util import (build_luigi_tasks, fetch_executable, load_default_dict,
@@ -200,6 +204,29 @@ def main():
                 ],
                 workers=n_worker, log_level=log_level
             )
+        elif args['markdup']:
+            n_worker = min(
+                int(args['--workers']), n_cpu, len(args['<sam_path>'])
+            )
+            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
+                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
+            )
+            kwargs = {
+                'fa_path': args['<fa_path>'],
+                'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
+                'samtools': fetch_executable('samtools'),
+                'use_spark': args['--use-spark'],
+                'n_cpu': worker_cpus_n_memory['n_cpu'],
+                'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
+                'sh_config': sh_config
+            }
+            build_luigi_tasks(
+                tasks=[
+                    MarkDuplicates(input_sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
+                ],
+                workers=n_worker, log_level=log_level
+            )
         elif args['bqsr']:
             n_worker = min(
                 int(args['--workers']), n_cpu, len(args['<sam_path>'])
@@ -210,9 +237,9 @@ def main():
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'known_sites_vcf_paths': args['--known-sites'],
-                'dest_dir_path': args['--dest-dir'],
-                'use_spark': args['--use-spark'], 'gatk': gatk_or_picard,
+                'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
+                'use_spark': args['--use-spark'],
                 'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
                 'sh_config': sh_config, **worker_cpus_n_memory
             }
@@ -227,7 +254,7 @@ def main():
             else:
                 build_luigi_tasks(
                     tasks=[
-                        ApplyBQSR(input_sam_path=p, **kwargs)
+                        ApplyBqsr(input_sam_path=p, **kwargs)
                         for p in args['<sam_path>']
                     ],
                     workers=n_worker, log_level=log_level

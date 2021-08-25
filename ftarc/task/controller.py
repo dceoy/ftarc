@@ -10,7 +10,7 @@ from luigi.util import requires
 
 from .core import FtarcTask
 from .fastqc import CollectFqMetricsWithFastqc
-from .gatk import RecalibrateBaseQualityScoresAndDeduplicateReads
+from .gatk import ApplyBqsrAndDeduplicateReads
 from .picard import CollectSamMetricsWithPicard, ValidateSamFile
 from .resource import FetchReferenceFasta
 from .samtools import CollectSamMetricsWithSamtools
@@ -35,7 +35,7 @@ class PrintEnvVersions(FtarcTask):
         self.__is_completed = True
 
 
-@requires(RecalibrateBaseQualityScoresAndDeduplicateReads, FetchReferenceFasta,
+@requires(ApplyBqsrAndDeduplicateReads, FetchReferenceFasta,
           PrepareFastqs)
 class PrepareAnalysisReadyCram(luigi.Task):
     sample_name = luigi.Parameter()

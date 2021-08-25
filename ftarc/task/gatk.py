@@ -5,15 +5,16 @@ from pathlib import Path
 import luigi
 from luigi.util import requires
 
+from .bwa import AlignReads
 from .core import FtarcTask
 from .picard import CreateSequenceDictionary, MarkDuplicates
 from .resource import FetchKnownSitesVcfs, FetchReferenceFasta
 from .samtools import RemoveDuplicates
 
 
-@requires(MarkDuplicates, FetchReferenceFasta, CreateSequenceDictionary,
+@requires(AlignReads, FetchReferenceFasta, CreateSequenceDictionary,
           FetchKnownSitesVcfs)
-class RecalibrateBaseQualityScoresAndDeduplicateReads(luigi.Task):
+class ApplyBqsrAndDeduplicateReads(luigi.Task):
     cf = luigi.DictParameter()
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
@@ -24,24 +25,36 @@ class RecalibrateBaseQualityScoresAndDeduplicateReads(luigi.Task):
         input_cram = Path(self.input()[0][0].path)
         return [
             luigi.LocalTarget(
-                input_cram.parent.joinpath(f'{input_cram.stem}.bqsr.{s}')
-            ) for s in ['cram', 'cram.crai', 'dedup.cram', 'dedup.cram.crai']
+                input_cram.parent.joinpath(f'{input_cram.stem}.{s}')
+            ) for s in [
+                'markdup.bqsr.cram', 'markdup.bqsr.cram.crai',
+                'markdup.bqsr.dedup.cram', 'markdup.bqsr.dedup.cram.crai',
+                'markdup.cram', 'markdup.cram.crai', 'metrics.txt'
+            ]
         ]
 
     def run(self):
-        yield DeduplicateReads(
-            input_sam_path=self.input()[0][0].path,
-            fa_path=self.input()[1][0].path,
-            known_sites_vcf_paths=[i[0].path for i in self.input()[3]],
-            dest_dir_path=str(Path(self.output()[0].path).parent),
+        fa_path = self.input()[1][0].path
+        dest_dir_path = str(Path(self.output()[0].path).parent)
+        markdup_target = yield MarkDuplicates(
+            input_sam_path=self.input()[0][0].path, fa_path=fa_path,
+            dest_dir_path=dest_dir_path,
             gatk=self.cf['gatk'], samtools=self.cf['samtools'],
             use_spark=self.cf['use_spark'], save_memory=self.cf['save_memory'],
             n_cpu=self.n_cpu, memory_mb=self.memory_mb,
             sh_config=self.sh_config
         )
+        yield DeduplicateReads(
+            input_sam_path=markdup_target[0].path, fa_path=fa_path,
+            known_sites_vcf_paths=[i[0].path for i in self.input()[3]],
+            dest_dir_path=dest_dir_path, gatk=self.cf['gatk'],
+            samtools=self.cf['samtools'], use_spark=self.cf['use_spark'],
+            save_memory=self.cf['save_memory'], n_cpu=self.n_cpu,
+            memory_mb=self.memory_mb, sh_config=self.sh_config
+        )
 
 
-class ApplyBQSR(FtarcTask):
+class ApplyBqsr(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     known_sites_vcf_paths = luigi.ListParameter()
@@ -72,12 +85,12 @@ class ApplyBQSR(FtarcTask):
         run_id = target_sam.stem
         self.print_log(f'Apply base quality score recalibration:\t{run_id}')
         input_sam = target_sam.resolve()
-        output_cram = Path(self.output()[0].path)
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         known_sites_vcfs = [
             Path(p).resolve() for p in self.known_sites_vcf_paths
         ]
+        output_cram = Path(self.output()[0].path)
         dest_dir = output_cram.parent
         tmp_bam = dest_dir.joinpath(f'{output_cram.stem}.bam')
         self.setup_shell(
@@ -157,7 +170,7 @@ class ApplyBQSR(FtarcTask):
         )
 
 
-@requires(ApplyBQSR)
+@requires(ApplyBqsr)
 class DeduplicateReads(FtarcTask):
     fa_path = luigi.Parameter()
     samtools = luigi.Parameter(default='samtools')
