@@ -3,45 +3,8 @@
 from pathlib import Path
 
 import luigi
-from luigi.util import requires
 
 from .core import FtarcTask
-from .resource import FetchReferenceFasta
-
-
-@requires(FetchReferenceFasta)
-class CreateSequenceDictionary(FtarcTask):
-    cf = luigi.DictParameter()
-    n_cpu = luigi.IntParameter(default=1)
-    memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
-    priority = 70
-
-    def output(self):
-        fa = Path(self.input()[0].path)
-        return luigi.LocalTarget(fa.parent.joinpath(f'{fa.stem}.dict'))
-
-    def run(self):
-        fa = Path(self.input()[0].path)
-        run_id = fa.stem
-        self.print_log(f'Create a sequence dictionary:\t{run_id}')
-        gatk = self.cf.get('gatk') or self.cf['picard']
-        seq_dict_path = self.output().path
-        self.setup_shell(
-            run_id=run_id, commands=gatk, cwd=fa.parent, **self.sh_config,
-            env={
-                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
-                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
-                )
-            }
-        )
-        self.run_shell(
-            args=(
-                f'set -e && {gatk} CreateSequenceDictionary'
-                + f' --REFERENCE {fa} --OUTPUT {seq_dict_path}'
-            ),
-            input_files_or_dirs=fa, output_files_or_dirs=seq_dict_path
-        )
 
 
 class MarkDuplicates(FtarcTask):
