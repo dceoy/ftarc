@@ -7,8 +7,9 @@ from luigi.util import requires
 
 from .bwa import AlignReads
 from .core import FtarcTask
-from .picard import CreateSequenceDictionary, MarkDuplicates
-from .resource import FetchKnownSitesVcfs, FetchReferenceFasta
+from .picard import MarkDuplicates
+from .resource import (CreateSequenceDictionary, FetchKnownSitesVcfs,
+                       FetchReferenceFasta)
 from .samtools import RemoveDuplicates
 
 

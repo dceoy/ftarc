@@ -10,8 +10,7 @@ from luigi.util import requires
 
 from .bwa import CreateBwaIndices
 from .core import FtarcTask
-from .picard import CreateSequenceDictionary
-from .resource import FetchResourceVcf
+from .resource import CreateSequenceDictionary, FetchResourceVcf
 
 
 class DownloadResourceFiles(FtarcTask):
