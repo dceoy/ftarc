@@ -9,7 +9,7 @@ from .core import FtarcTask
 
 
 class CollectFqMetricsWithFastqc(FtarcTask):
-    input_fq_paths = luigi.ListParameter()
+    fq_paths = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
     fastqc = luigi.Parameter(default='fastqc')
     n_cpu = luigi.IntParameter(default=1)
@@ -20,12 +20,12 @@ class CollectFqMetricsWithFastqc(FtarcTask):
     def output(self):
         return [
             luigi.LocalTarget(o)
-            for o in self._generate_output_files(*self.input_fq_paths)
+            for o in self._generate_output_files(*self.fq_paths)
         ]
 
     def run(self):
         dest_dir = Path(self.dest_dir_path).resolve()
-        for p in self.input_fq_paths:
+        for p in self.fq_paths:
             fq = Path(p).resolve()
             run_id = fq.stem
             self.print_log(f'Collect FASTQ metrics using FastQC:\t{run_id}')

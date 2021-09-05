@@ -8,9 +8,9 @@ from socket import gethostname
 import luigi
 from luigi.util import requires
 
-from .bwa import CreateBwaIndices
 from .core import FtarcTask
-from .resource import CreateSequenceDictionary, FetchResourceVcf
+from .resource import (CreateBwaIndices, CreateSequenceDictionary,
+                       FetchResourceVcf)
 
 
 class DownloadResourceFiles(FtarcTask):

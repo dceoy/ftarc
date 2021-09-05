@@ -97,7 +97,7 @@ Usage
 3.  Create analysis-ready CRAM files from FASTQ files
 
     ```sh
-    $ ftarc run --yml=ftarc.yml --workers=2
+    $ ftarc pipeline --yml=ftarc.yml --workers=2
     ```
 
     Standard workflow:
