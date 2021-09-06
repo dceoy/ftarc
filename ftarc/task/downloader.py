@@ -10,7 +10,9 @@ from luigi.util import requires
 
 from .bwa import CreateBwaIndices
 from .core import FtarcTask
-from .resource import CreateSequenceDictionary, FetchResourceVcf
+from .picard import CreateSequenceDictionary
+from .resource import FetchResourceVcf
+from .samtools import SamtoolsFaidx
 
 
 class DownloadResourceFiles(FtarcTask):
@@ -30,7 +32,7 @@ class DownloadResourceFiles(FtarcTask):
         for u in self.src_urls:
             p = str(dest_dir.joinpath(Path(u).name))
             if u.endswith(tuple([f'.{a}.{b}' for a, b
-                                 in product(('fa', 'fna', 'fasta'),
+                                 in product(('fa', 'fna', 'fasta', 'txt'),
                                             ('gz', 'bz2'))])):
                 yield luigi.LocalTarget(re.sub(r'\.(gz|bz2)$', '', p))
             elif u.endswith('.bgz'):
@@ -78,11 +80,9 @@ class DownloadResourceFiles(FtarcTask):
 class DownloadAndProcessResourceFiles(luigi.Task):
     dest_dir_path = luigi.Parameter(default='.')
     bgzip = luigi.Parameter(default='bgzip')
-    pbzip2 = luigi.Parameter(default='pbzip2')
-    pigz = luigi.Parameter(default='pigz')
-    bwa = luigi.Parameter(default='bwa')
     samtools = luigi.Parameter(default='samtools')
     tabix = luigi.Parameter(default='tabix')
+    bwa = luigi.Parameter(default='bwa')
     gatk = luigi.Parameter(default='gatk')
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
@@ -109,22 +109,17 @@ class DownloadAndProcessResourceFiles(luigi.Task):
                 yield luigi.LocalTarget(file)
 
     def run(self):
-        common_kwargs = {
-            'cf': {
-                'pigz': self.pigz, 'pbzip2': self.pbzip2, 'bgzip': self.bgzip,
-                'bwa': self.bwa, 'samtools': self.samtools,
-                'tabix': self.tabix, 'gatk': self.gatk,
-                'use_bwa_mem2': self.use_bwa_mem2
-            },
-            'sh_config': self.sh_config
-        }
         for i in self.input():
             p = i.path
             if p.endswith(('.fa', '.fna', '.fasta')):
                 yield [
+                    SamtoolsFaidx(
+                        fa_path=p, samtools=self.samtools,
+                        sh_config=self.sh_config
+                    ),
                     CreateSequenceDictionary(
-                        ref_fa_path=p, n_cpu=self.n_cpu,
-                        memory_mb=self.memory_mb, **common_kwargs
+                        fa_path=p, gatk=self.gatk, n_cpu=self.n_cpu,
+                        memory_mb=self.memory_mb, sh_config=self.sh_config
                     ),
                     CreateBwaIndices(
                         fa_path=p, bwa=self.bwa,
@@ -134,7 +129,8 @@ class DownloadAndProcessResourceFiles(luigi.Task):
                 ]
             elif p.endswith('.vcf.gz'):
                 yield FetchResourceVcf(
-                    src_path=p, n_cpu=self.n_cpu, **common_kwargs
+                    src_path=p, bgzip=self.bgzip, tabix=self.tabix,
+                    n_cpu=self.n_cpu, sh_config=self.sh_config
                 )
 
 

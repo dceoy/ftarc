@@ -6,9 +6,11 @@ import luigi
 from luigi.util import requires
 
 from .core import FtarcTask
-from .samtools import RemoveDuplicates
+from .picard import CreateSequenceDictionary
+from .samtools import SamtoolsFaidx
 
 
+@requires(SamtoolsFaidx, CreateSequenceDictionary)
 class MarkDuplicates(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
@@ -114,6 +116,7 @@ class MarkDuplicates(FtarcTask):
         )
 
 
+@requires(SamtoolsFaidx, CreateSequenceDictionary)
 class ApplyBqsr(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
@@ -224,32 +227,6 @@ class ApplyBqsr(FtarcTask):
             input_sam_path=tmp_bam, fa_path=fa, output_sam_path=output_cram,
             samtools=self.samtools, n_cpu=self.n_cpu, index_sam=True,
             remove_input=True
-        )
-
-
-@requires(ApplyBqsr)
-class DeduplicateReads(FtarcTask):
-    fa_path = luigi.Parameter()
-    samtools = luigi.Parameter(default='samtools')
-    n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
-    priority = 70
-
-    def output(self):
-        input_cram = Path(self.input()[0].path)
-        return [
-            luigi.LocalTarget(
-                input_cram.parent.joinpath(f'{input_cram.stem}.dedup.cram{s}')
-            ) for s in ['', '.crai']
-        ]
-
-    def run(self):
-        input_cram = Path(self.input()[0].path)
-        yield RemoveDuplicates(
-            input_sam_path=str(input_cram), fa_path=self.fa_path,
-            dest_dir_path=str(input_cram.parent), samtools=self.samtools,
-            n_cpu=self.n_cpu, remove_input=False, index_sam=True,
-            sh_config=self.sh_config
         )
 
 

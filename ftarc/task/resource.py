@@ -4,29 +4,55 @@ import re
 from pathlib import Path
 
 import luigi
-from luigi.util import requires
 
 from .core import FtarcTask
+from .picard import CreateSequenceDictionary
+from .samtools import SamtoolsFaidx
 
 
-class FetchReferenceFasta(luigi.WrapperTask):
-    ref_fa_path = luigi.Parameter()
-    cf = luigi.DictParameter()
+class FetchReferenceFasta(luigi.Task):
+    fa_path = luigi.Parameter()
+    pigz = luigi.Parameter(default='pigz')
+    pbzip2 = luigi.Parameter(default='pbzip2')
+    samtools = luigi.Parameter(default='samtools')
+    gatk = luigi.Parameter(default='gatk')
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
     priority = 100
 
     def requires(self):
-        return FetchResourceFasta(
-            src_path=self.ref_fa_path, cf=self.cf, sh_config=self.sh_config
+        return FetchResourceFile(
+            src_path=self.fa_path, pigz=self.pigz, pbzip2=self.pbzip2,
+            n_cpu=self.n_cpu, sh_config=self.sh_config
         )
 
     def output(self):
-        return self.input()
+        fa = Path(self.input().path)
+        return [
+            luigi.LocalTarget(fa),
+            luigi.LocalTarget(f'{fa}.fai'),
+            luigi.LocalTarget(fa.parent.joinpath(f'{fa.stem}.dict'))
+        ]
+
+    def run(self):
+        fa_path = self.input().path
+        yield [
+            SamtoolsFaidx(
+                fa_path=fa_path, samtools=self.samtools,
+                sh_config=self.sh_config
+            ),
+            CreateSequenceDictionary(
+                fa_path=fa_path, gatk=self.gatk, n_cpu=self.n_cpu,
+                memory_mb=self.memory_mb, sh_config=self.sh_config
+            )
+        ]
 
 
 class FetchResourceFile(FtarcTask):
     src_path = luigi.Parameter()
-    cf = luigi.DictParameter()
+    pigz = luigi.Parameter(default='pigz')
+    pbzip2 = luigi.Parameter(default='pbzip2')
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
@@ -42,86 +68,32 @@ class FetchResourceFile(FtarcTask):
         dest_file = Path(self.output().path)
         run_id = dest_file.stem
         self.print_log(f'Create a resource:\t{run_id}')
-        pigz = self.cf['pigz']
-        pbzip2 = self.cf['pbzip2']
         self.setup_shell(
-            run_id=run_id, commands=[pigz, pbzip2], cwd=dest_file.parent,
-            **self.sh_config
+            run_id=run_id, commands=[self.pigz, self.pbzip2],
+            cwd=dest_file.parent, **self.sh_config
         )
         if self.src_path.endswith('.gz'):
-            a = f'{pigz} -p {self.n_cpu} -dc {self.src_path} > {dest_file}'
+            a = (
+                f'set -e && {self.pigz} -p {self.n_cpu} -dc {self.src_path}'
+                + f' > {dest_file}'
+            )
         elif self.src_path.endswith('.bz2'):
-            a = f'{pbzip2} -p{self.n_cpu} -dc {self.src_path} > {dest_file}'
+            a = (
+                f'set -e && {self.pbzip2} -p{self.n_cpu} -dc {self.src_path}'
+                + f' > {dest_file}'
+            )
         else:
-            a = f'cp {self.src_path} {dest_file}'
+            a = f'set -e && cp {self.src_path} {dest_file}'
         self.run_shell(
-            args=f'set -e && {a}', input_files_or_dirs=self.src_path,
+            args=a, input_files_or_dirs=self.src_path,
             output_files_or_dirs=dest_file
-        )
-
-
-@requires(FetchResourceFile)
-class FetchResourceFasta(FtarcTask):
-    cf = luigi.DictParameter()
-    sh_config = luigi.DictParameter(default=dict())
-    priority = 70
-
-    def output(self):
-        fa_path = self.input().path
-        return [luigi.LocalTarget(fa_path + s) for s in ['', '.fai']]
-
-    def run(self):
-        fa = Path(self.input().path)
-        run_id = fa.stem
-        self.print_log(f'Index FASTA:\t{run_id}')
-        samtools = self.cf['samtools']
-        self.setup_shell(
-            run_id=run_id,  commands=samtools, cwd=fa.parent, **self.sh_config
-        )
-        self.run_shell(
-            args=f'set -e && {samtools} faidx {fa}',
-            input_files_or_dirs=fa, output_files_or_dirs=f'{fa}.fai'
-        )
-
-
-@requires(FetchReferenceFasta)
-class CreateSequenceDictionary(FtarcTask):
-    cf = luigi.DictParameter()
-    n_cpu = luigi.IntParameter(default=1)
-    memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
-    priority = 70
-
-    def output(self):
-        fa = Path(self.input()[0].path)
-        return luigi.LocalTarget(fa.parent.joinpath(f'{fa.stem}.dict'))
-
-    def run(self):
-        fa = Path(self.input()[0].path)
-        run_id = fa.stem
-        self.print_log(f'Create a sequence dictionary:\t{run_id}')
-        gatk = self.cf.get('gatk') or self.cf['picard']
-        seq_dict_path = self.output().path
-        self.setup_shell(
-            run_id=run_id, commands=gatk, cwd=fa.parent, **self.sh_config,
-            env={
-                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
-                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
-                )
-            }
-        )
-        self.run_shell(
-            args=(
-                f'set -e && {gatk} CreateSequenceDictionary'
-                + f' --REFERENCE {fa} --OUTPUT {seq_dict_path}'
-            ),
-            input_files_or_dirs=fa, output_files_or_dirs=seq_dict_path
         )
 
 
 class FetchResourceVcf(FtarcTask):
     src_path = luigi.Parameter()
-    cf = luigi.DictParameter()
+    bgzip = luigi.Parameter(default='bgzip')
+    tabix = luigi.Parameter(default='tabix')
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
@@ -136,24 +108,22 @@ class FetchResourceVcf(FtarcTask):
         dest_vcf = Path(self.output()[0].path)
         run_id = Path(dest_vcf.stem).stem
         self.print_log(f'Create a VCF:\t{run_id}')
-        bgzip = self.cf['bgzip']
-        tabix = self.cf['tabix']
         self.setup_shell(
-            run_id=run_id, commands=[bgzip, tabix], cwd=dest_vcf.parent,
-            **self.sh_config
+            run_id=run_id, commands=[self.bgzip, self.tabix],
+            cwd=dest_vcf.parent, **self.sh_config
         )
         self.run_shell(
             args=(
-                'set -e && ' + (
-                    f'cp {self.src_path} {dest_vcf}'
-                    if self.src_path.endswith(('.gz', '.bgz')) else
-                    f'{bgzip} -@ {self.n_cpu} -c {self.src_path} > {dest_vcf}'
+                f'set -e && cp {self.src_path} {dest_vcf}'
+                if self.src_path.endswith(('.gz', '.bgz')) else (
+                    f'set -e && {self.bgzip} -@ {self.n_cpu}'
+                    + f' -c {self.src_path} > {dest_vcf}'
                 )
             ),
             input_files_or_dirs=self.src_path, output_files_or_dirs=dest_vcf
         )
         self.run_shell(
-            args=f'set -e && {tabix} --preset vcf {dest_vcf}',
+            args=f'set -e && {self.tabix} --preset vcf {dest_vcf}',
             input_files_or_dirs=dest_vcf,
             output_files_or_dirs=f'{dest_vcf}.tbi'
         )
@@ -161,14 +131,18 @@ class FetchResourceVcf(FtarcTask):
 
 class FetchKnownSitesVcfs(luigi.WrapperTask):
     known_sites_vcf_paths = luigi.ListParameter()
+    bgzip = luigi.Parameter(default='bgzip')
+    tabix = luigi.Parameter(default='tabix')
+    n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
-    cf = luigi.DictParameter()
     priority = 70
 
     def requires(self):
         return [
-            FetchResourceVcf(src_path=p, cf=self.cf, sh_config=self.sh_config)
-            for p in self.known_sites_vcf_paths
+            FetchResourceVcf(
+                src_path=p, bgzip=self.bgzip, tabix=self.tabix,
+                n_cpu=self.n_cpu, sh_config=self.sh_config
+            ) for p in self.known_sites_vcf_paths
         ]
 
     def output(self):

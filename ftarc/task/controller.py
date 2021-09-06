@@ -11,12 +11,11 @@ from luigi.util import requires
 from .bwa import AlignReads
 from .core import FtarcTask
 from .fastqc import CollectFqMetricsWithFastqc
-from .gatk import DeduplicateReads, MarkDuplicates
+from .gatk import ApplyBqsr, MarkDuplicates
 from .picard import CollectSamMetricsWithPicard, ValidateSamFile
-from .resource import (CreateSequenceDictionary, FetchKnownSitesVcfs,
-                       FetchReferenceFasta)
-from .samtools import CollectSamMetricsWithSamtools
-from .trimgalore import PrepareFastqs
+from .resource import FetchKnownSitesVcfs, FetchReferenceFasta
+from .samtools import CollectSamMetricsWithSamtools, RemoveDuplicates
+from .trimgalore import LocateFastqs, TrimAdapters
 
 
 class PrintEnvVersions(FtarcTask):
@@ -37,30 +36,82 @@ class PrintEnvVersions(FtarcTask):
         self.__is_completed = True
 
 
-@requires(PrepareFastqs, FetchReferenceFasta, CreateSequenceDictionary,
-          FetchKnownSitesVcfs)
+class PrepareFastqs(luigi.WrapperTask):
+    fq_paths = luigi.ListParameter()
+    sample_name = luigi.Parameter()
+    trim_dir_path = luigi.Parameter(default='.')
+    align_dir_path = luigi.Parameter(default='.')
+    pigz = luigi.Parameter(default='pigz')
+    pbzip2 = luigi.Parameter(default='pbzip2')
+    trim_galore = luigi.Parameter(default='trim_galore')
+    cutadapt = luigi.Parameter(default='cutadapt')
+    fastqc = luigi.Parameter(default='fastqc')
+    adapter_removal = luigi.BoolParameter(default=True)
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
+    sh_config = luigi.DictParameter(default=dict())
+    priority = 50
+
+    def requires(self):
+        if self.adapter_removal:
+            return TrimAdapters(
+                fq_paths=self.fq_paths,
+                dest_dir_path=str(
+                    Path(self.trim_dir_path).joinpath(self.sample_name)
+                ),
+                sample_name=self.sample_name, pigz=self.pigz,
+                pbzip2=self.pbzip2, trim_galore=self.trim_galore,
+                cutadapt=self.cutadapt, fastqc=self.fastqc, n_cpu=self.n_cpu,
+                memory_mb=self.memory_mb, sh_config=self.sh_config
+            )
+        else:
+            return LocateFastqs(
+                fq_paths=self.fq_paths,
+                dest_dir_path=str(
+                    Path(self.align_dir_path).joinpath(self.sample_name)
+                ),
+                sample_name=self.sample_name, pigz=self.pigz,
+                pbzip2=self.pbzip2, n_cpu=self.n_cpu, sh_config=self.sh_config
+            )
+
+    def output(self):
+        return self.input()
+
+
+@requires(PrepareFastqs, FetchReferenceFasta, FetchKnownSitesVcfs)
 class RunPreprocessingPipeline(luigi.Task):
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()
-    cf = luigi.DictParameter()
+    align_dir_path = luigi.Parameter(default='.')
+    bwa = luigi.Parameter(default='bwa')
+    samtools = luigi.Parameter(default='samtools')
+    gatk = luigi.Parameter(default='gatk')
+    reference_name = luigi.Parameter(default='')
+    adapter_removal = luigi.BoolParameter(default=True)
+    use_bwa_mem2 = luigi.BoolParameter(default=False)
+    use_spark = luigi.BoolParameter(default=False)
+    save_memory = luigi.BoolParameter(default=False)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
     def output(self):
-        dest_dir = Path(self.cf['align_dir_path']).resolve().joinpath(
+        dest_dir = Path(self.align_dir_path).resolve().joinpath(
             self.sample_name
         )
         output_stem = (
             self.sample_name
-            + ('.trim.' if self.cf['adapter_removal'] else '.')
-            + (self.cf['reference_name'] or Path(self.input()[1][0].path).stem)
+            + ('.trim.' if self.adapter_removal else '.')
+            + (self.reference_name or Path(self.input()[1][0].path).stem)
             + '.markdup.bqsr'
         )
         return [
             luigi.LocalTarget(dest_dir.joinpath(f'{output_stem}.{s}'))
-            for s in ['cram', 'cram.crai', 'dedup.cram', 'dedup.cram.crai']
+            for s in [
+                'cram', 'cram.crai', 'cram.ValidateSamFile.txt', 'dedup.cram',
+                'dedup.cram.crai'
+            ]
         ]
 
     def run(self):
@@ -72,33 +123,53 @@ class RunPreprocessingPipeline(luigi.Task):
             dest_dir_path=dest_dir_path, sample_name=self.sample_name,
             read_group=self.read_group,
             output_stem=Path(Path(output_cram.stem).stem).stem,
-            bwa=self.cf['bwa'], samtools=self.cf['samtools'],
-            use_bwa_mem2=self.cf['use_bwa_mem2'], n_cpu=self.n_cpu,
+            bwa=self.bwa, samtools=self.samtools,
+            use_bwa_mem2=self.use_bwa_mem2, n_cpu=self.n_cpu,
             memory_mb=self.memory_mb, sh_config=self.sh_config
         )
         markdup_target = yield MarkDuplicates(
             input_sam_path=align_target[0].path, fa_path=fa_path,
-            dest_dir_path=dest_dir_path,
-            gatk=self.cf['gatk'], samtools=self.cf['samtools'],
-            use_spark=self.cf['use_spark'], save_memory=self.cf['save_memory'],
-            n_cpu=self.n_cpu, memory_mb=self.memory_mb,
-            sh_config=self.sh_config
-        )
-        yield DeduplicateReads(
-            input_sam_path=markdup_target[0].path, fa_path=fa_path,
-            known_sites_vcf_paths=[i[0].path for i in self.input()[3]],
-            dest_dir_path=dest_dir_path, gatk=self.cf['gatk'],
-            samtools=self.cf['samtools'], use_spark=self.cf['use_spark'],
-            save_memory=self.cf['save_memory'], n_cpu=self.n_cpu,
+            dest_dir_path=dest_dir_path, gatk=self.gatk,
+            samtools=self.samtools, use_spark=self.use_spark,
+            save_memory=self.save_memory, n_cpu=self.n_cpu,
             memory_mb=self.memory_mb, sh_config=self.sh_config
         )
+        bqsr_target = yield ApplyBqsr(
+            input_sam_path=markdup_target[0].path, fa_path=fa_path,
+            known_sites_vcf_paths=[i[0].path for i in self.input()[2]],
+            dest_dir_path=dest_dir_path, gatk=self.gatk,
+            samtools=self.samtools, use_spark=self.use_spark,
+            save_memory=self.save_memory, n_cpu=self.n_cpu,
+            memory_mb=self.memory_mb, sh_config=self.sh_config
+        )
+        yield [
+            RemoveDuplicates(
+                input_sam_path=bqsr_target[0].path, fa_path=self.fa_path,
+                dest_dir_path=dest_dir_path, samtools=self.samtools,
+                n_cpu=self.n_cpu, sh_config=self.sh_config
+            ),
+            ValidateSamFile(
+                sam_path=bqsr_target[0].path, fa_path=self.fa_path,
+                dest_dir_path=dest_dir_path, picard=self.gatk,
+                n_cpu=self.n_cpu, memory_mb=self.memory_mb,
+                sh_config=self.sh_config
+            )
+        ]
 
 
 @requires(RunPreprocessingPipeline, FetchReferenceFasta,
           PrepareFastqs)
 class PrepareAnalysisReadyCram(luigi.Task):
     sample_name = luigi.Parameter()
-    cf = luigi.DictParameter()
+    qc_dir_path = luigi.Parameter(default='.')
+    fastqc = luigi.Parameter(default='fastqc')
+    gatk = luigi.Parameter(default='gatk')
+    samtools = luigi.Parameter(default='samtools')
+    plot_bamstats = luigi.Parameter(default='plot_bamstats')
+    gnuplot = luigi.Parameter(default='gnuplot')
+    metrics_collectors = luigi.ListParameter(
+        default=['fastqc', 'picard', 'samtools']
+    )
     picard_qc_commands = luigi.ListParameter(
         default=[
             'CollectRawWgsMetrics', 'CollectAlignmentSummaryMetrics',
@@ -117,7 +188,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
 
     def output(self):
         cram = Path(self.input()[0][0].path)
-        qc_dir = Path(self.cf['qc_dir_path'])
+        qc_dir = Path(self.qc_dir_path)
         return (
             [
                 luigi.LocalTarget(
@@ -128,7 +199,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
                     )
                 ) for s in (
                     [Path(i.path).stem for i in self.input()[2]]
-                    if 'fastqc' in self.cf['metrics_collectors'] else list()
+                    if 'fastqc' in self.metrics_collectors else list()
                 )
             ] + [
                 luigi.LocalTarget(
@@ -137,7 +208,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
                     ).joinpath(f'{cram.stem}.{c}.txt')
                 ) for c in (
                     self.picard_qc_commands
-                    if 'picard' in self.cf['metrics_collectors'] else list()
+                    if 'picard' in self.metrics_collectors else list()
                 )
             ] + [
                 luigi.LocalTarget(
@@ -146,45 +217,38 @@ class PrepareAnalysisReadyCram(luigi.Task):
                     ).joinpath(f'{cram.stem}.{c}.txt')
                 ) for c in (
                     self.samtools_qc_commands
-                    if 'samtools' in self.cf['metrics_collectors'] else list()
+                    if 'samtools' in self.metrics_collectors else list()
                 )
             ]
         )
 
     def run(self):
-        cram_path = self.input()[0][0].path
-        fa_path = self.input()[1][0].path
-        yield ValidateSamFile(
-            sam_path=cram_path, fa_path=fa_path,
-            dest_dir_path=str(Path(cram_path).parent),
-            picard=self.cf['gatk'], n_cpu=self.n_cpu, memory_mb=self.memory_mb,
-            sh_config=self.sh_config
-        )
-        qc_dir = Path(self.cf['qc_dir_path'])
-        if 'fastqc' in self.cf['metrics_collectors']:
+        qc_dir = Path(self.qc_dir_path)
+        if 'fastqc' in self.metrics_collectors:
             yield CollectFqMetricsWithFastqc(
                 fq_paths=[i.path for i in self.input()[2]],
                 dest_dir_path=str(
                     qc_dir.joinpath('fastqc').joinpath(self.sample_name)
                 ),
-                fastqc=self.cf['fastqc'], n_cpu=self.n_cpu,
+                fastqc=self.fastqc, n_cpu=self.n_cpu,
                 memory_mb=self.memory_mb, sh_config=self.sh_config
             )
-        if {'picard', 'samtools'} & set(self.cf['metrics_collectors']):
+        if {'picard', 'samtools'} & set(self.metrics_collectors):
             yield [
                 CollectMultipleSamMetrics(
-                    sam_path=cram_path, fa_path=fa_path,
+                    sam_path=self.input()[0][0].path,
+                    fa_path=self.input()[1][0].path,
                     dest_dir_path=str(
                         qc_dir.joinpath(m).joinpath(self.sample_name)
                     ),
                     metrics_collectors=[m],
                     picard_qc_commands=self.picard_qc_commands,
                     samtools_qc_commands=self.samtools_qc_commands,
-                    picard=self.cf['gatk'], samtools=self.cf['samtools'],
-                    plot_bamstats=self.cf['plot_bamstats'],
-                    gnuplot=self.cf['gnuplot'], n_cpu=self.n_cpu,
-                    memory_mb=self.memory_mb, sh_config=self.sh_config
-                ) for m in self.cf['metrics_collectors']
+                    picard=self.gatk, samtools=self.samtools,
+                    plot_bamstats=self.plot_bamstats, gnuplot=self.gnuplot,
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb,
+                    sh_config=self.sh_config
+                ) for m in self.metrics_collectors
             ]
 
 

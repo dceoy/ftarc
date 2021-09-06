@@ -3,10 +3,95 @@
 from pathlib import Path
 
 import luigi
+from luigi.util import requires
 
 from .core import FtarcTask
 
 
+class CreateSequenceDictionary(FtarcTask):
+    fa_path = luigi.Parameter()
+    gatk = luigi.Parameter(default='gatk')
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
+    sh_config = luigi.DictParameter(default=dict())
+    priority = 70
+
+    def output(self):
+        fa = Path(self.fa_path).resolve()
+        return luigi.LocalTarget(fa.parent.joinpath(f'{fa.stem}.dict'))
+
+    def run(self):
+        run_id = Path(self.fa_path).stem
+        self.print_log(f'Create a sequence dictionary:\t{run_id}')
+        fa = Path(self.fa_path).resolve()
+        seq_dict_path = self.output().path
+        self.setup_shell(
+            run_id=run_id, commands=self.gatk, cwd=fa.parent, **self.sh_config,
+            env={
+                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
+                )
+            }
+        )
+        self.run_shell(
+            args=(
+                f'set -e && {self.gatk} CreateSequenceDictionary'
+                + f' --REFERENCE {fa} --OUTPUT {seq_dict_path}'
+            ),
+            input_files_or_dirs=fa, output_files_or_dirs=seq_dict_path
+        )
+
+
+@requires(CreateSequenceDictionary)
+class ValidateSamFile(FtarcTask):
+    sam_path = luigi.Parameter()
+    fa_path = luigi.Parameter()
+    dest_dir_path = luigi.Parameter(default='.')
+    picard = luigi.Parameter(default='picard')
+    mode_of_output = luigi.Parameter(default='VERBOSE')
+    ignored_warnings = luigi.ListParameter(default=['MISSING_TAG_NM'])
+    n_cpu = luigi.IntParameter(default=1)
+    memory_mb = luigi.FloatParameter(default=4096)
+    sh_config = luigi.DictParameter(default=dict())
+    priority = luigi.IntParameter(default=100)
+
+    def output(self):
+        return luigi.LocalTarget(
+            Path(self.dest_dir_path).resolve().joinpath(
+                Path(self.sam_path).name + '.ValidateSamFile.txt'
+            )
+        )
+
+    def run(self):
+        run_id = Path(self.sam_path).name
+        self.print_log(f'Validate a SAM file:\t{run_id}')
+        sam = Path(self.sam_path).resolve()
+        fa = Path(self.fa_path).resolve()
+        fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
+        dest_dir = Path(self.dest_dir_path).resolve()
+        output_txt = Path(self.output().path)
+        self.setup_shell(
+            run_id=run_id, commands=self.picard, cwd=dest_dir,
+            **self.sh_config,
+            env={
+                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
+                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
+                )
+            }
+        )
+        self.run_shell(
+            args=(
+                f'set -e && {self.picard} ValidateSamFile'
+                + f' --INPUT {sam} --REFERENCE_SEQUENCE {fa}'
+                + f' --OUTPUT {output_txt} --MODE {self.mode_of_output}'
+                + ''.join(f' --IGNORE {w}' for w in self.ignored_warnings)
+            ),
+            input_files_or_dirs=[sam, fa, fa_dict],
+            output_files_or_dirs=output_txt
+        )
+
+
+@requires(CreateSequenceDictionary)
 class CollectSamMetricsWithPicard(FtarcTask):
     sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
@@ -78,54 +163,6 @@ class CollectSamMetricsWithPicard(FtarcTask):
                     if v.endswith(('.txt', '.pdf'))
                 ]
             )
-
-
-class ValidateSamFile(FtarcTask):
-    sam_path = luigi.Parameter()
-    fa_path = luigi.Parameter()
-    dest_dir_path = luigi.Parameter(default='.')
-    picard = luigi.Parameter(default='picard')
-    mode_of_output = luigi.Parameter(default='VERBOSE')
-    ignored_warnings = luigi.ListParameter(default=['MISSING_TAG_NM'])
-    n_cpu = luigi.IntParameter(default=1)
-    memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
-    priority = luigi.IntParameter(default=100)
-
-    def output(self):
-        return luigi.LocalTarget(
-            Path(self.dest_dir_path).resolve().joinpath(
-                Path(self.sam_path).name + '.ValidateSamFile.txt'
-            )
-        )
-
-    def run(self):
-        run_id = Path(self.sam_path).name
-        self.print_log(f'Validate a SAM file:\t{run_id}')
-        sam = Path(self.sam_path).resolve()
-        fa = Path(self.fa_path).resolve()
-        fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
-        dest_dir = Path(self.dest_dir_path).resolve()
-        output_txt = Path(self.output().path)
-        self.setup_shell(
-            run_id=run_id, commands=self.picard, cwd=dest_dir,
-            **self.sh_config,
-            env={
-                'JAVA_TOOL_OPTIONS': self.generate_gatk_java_options(
-                    n_cpu=self.n_cpu, memory_mb=self.memory_mb
-                )
-            }
-        )
-        self.run_shell(
-            args=(
-                f'set -e && {self.picard} ValidateSamFile'
-                + f' --INPUT {sam} --REFERENCE_SEQUENCE {fa}'
-                + f' --OUTPUT {output_txt} --MODE {self.mode_of_output}'
-                + ''.join(f' --IGNORE {w}' for w in self.ignored_warnings)
-            ),
-            input_files_or_dirs=[sam, fa, fa_dict],
-            output_files_or_dirs=output_txt
-        )
 
 
 if __name__ == '__main__':

@@ -4,10 +4,36 @@ import re
 from pathlib import Path
 
 import luigi
+from luigi.util import requires
 
 from .core import FtarcTask
 
 
+class SamtoolsFaidx(FtarcTask):
+    fa_path = luigi.Parameter()
+    samtools = luigi.Parameter(default='samtools')
+    sh_config = luigi.DictParameter(default=dict())
+    priority = 70
+
+    def output(self):
+        fa = Path(self.fa_path).resolve()
+        return luigi.LocalTarget(f'{fa}.fai')
+
+    def run(self):
+        run_id = Path(self.fa_path).stem
+        self.print_log(f'Index FASTA:\t{run_id}')
+        fa = Path(self.fa_path).resolve()
+        self.setup_shell(
+            run_id=run_id, commands=self.samtools, cwd=fa.parent,
+            **self.sh_config
+        )
+        self.run_shell(
+            args=f'set -e && {self.samtools} faidx {fa}',
+            input_files_or_dirs=fa, output_files_or_dirs=f'{fa}.fai'
+        )
+
+
+@requires(SamtoolsFaidx)
 class SamtoolsView(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
@@ -103,6 +129,7 @@ class RemoveDuplicates(luigi.WrapperTask):
         return self.input()
 
 
+@requires(SamtoolsFaidx)
 class CollectSamMetricsWithSamtools(FtarcTask):
     sam_path = luigi.Parameter()
     fa_path = luigi.Parameter(default='')

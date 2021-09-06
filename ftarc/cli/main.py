@@ -19,7 +19,7 @@ Usage:
         [--skip-cleaning] [--print-subprocesses] [--use-spark]
         [--dest-dir=<path>] <fa_path> <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--print-subprocesses] [--use-spark] [--dedup]
+        [--skip-cleaning] [--print-subprocesses] [--use-spark]
         [--dest-dir=<path>] (--known-sites=<vcf_path>)... <fa_path>
         <sam_path>...
     ftarc dedup [--debug|--info] [--cpus=<int>] [--workers=<int>]
@@ -65,7 +65,6 @@ Options:
     --use-spark             Use Spark-enabled GATK tools
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --summary               Set SUMMARY to the mode of output
-    --dedup                 Create a deduplicated CRAM file
     --known-sites=<vcf_path>
                             Specify paths of known polymorphic sites VCF files
 
@@ -91,7 +90,7 @@ from ..task.bwa import AlignReads
 from ..task.controller import CollectMultipleSamMetrics
 from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
-from ..task.gatk import ApplyBqsr, DeduplicateReads, MarkDuplicates
+from ..task.gatk import ApplyBqsr, MarkDuplicates
 from ..task.picard import ValidateSamFile
 from ..task.samtools import RemoveDuplicates
 from ..task.trimgalore import TrimAdapters
@@ -255,22 +254,13 @@ def main():
                 'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
                 'sh_config': sh_config, **worker_cpus_n_memory
             }
-            if args['--dedup']:
-                build_luigi_tasks(
-                    tasks=[
-                        DeduplicateReads(input_sam_path=p, **kwargs)
-                        for p in args['<sam_path>']
-                    ],
-                    workers=n_worker, log_level=log_level
-                )
-            else:
-                build_luigi_tasks(
-                    tasks=[
-                        ApplyBqsr(input_sam_path=p, **kwargs)
-                        for p in args['<sam_path>']
-                    ],
-                    workers=n_worker, log_level=log_level
-                )
+            build_luigi_tasks(
+                tasks=[
+                    ApplyBqsr(input_sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
+                ],
+                workers=n_worker, log_level=log_level
+            )
         elif args['dedup']:
             n_worker = min(
                 int(args['--workers']), n_cpu, len(args['<sam_path>'])

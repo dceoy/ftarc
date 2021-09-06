@@ -6,6 +6,7 @@ import luigi
 from luigi.util import requires
 
 from .core import FtarcTask
+from .samtools import SamtoolsFaidx
 
 
 class CreateBwaIndices(FtarcTask):
@@ -36,7 +37,7 @@ class CreateBwaIndices(FtarcTask):
         )
 
 
-@requires(CreateBwaIndices)
+@requires(SamtoolsFaidx, CreateBwaIndices)
 class AlignReads(FtarcTask):
     fq_paths = luigi.ListParameter()
     fa_path = luigi.Parameter()

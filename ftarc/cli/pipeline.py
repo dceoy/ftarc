@@ -67,7 +67,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     memory_mb = virtual_memory().total / 1024 / 1024 / 2
     memory_mb_per_worker = int(memory_mb / n_worker)
     cf_dict = {
-        'reference_name': config.get('reference_name'),
+        'reference_name': (config.get('reference_name') or ''),
         'use_bwa_mem2': use_bwa_mem2, 'use_spark': use_spark,
         'adapter_removal': adapter_removal,
         'plot_bamstats': (
@@ -80,7 +80,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
             f'{k}_dir_path': str(dest_dir.joinpath(k))
             for k in {'trim', 'align', 'qc'}
         },
-        **command_dict
+        **{k: v for k, v in command_dict.items() if k != 'java'}
     }
     logger.debug('cf_dict:' + os.linesep + pformat(cf_dict))
 
@@ -91,10 +91,10 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     }
     logger.debug('sh_config:' + os.linesep + pformat(sh_config))
 
-    resource_keys = {'ref_fa', 'known_sites_vcf'}
     resource_path_dict = _resolve_input_file_paths(
         path_dict={
-            k: v for k, v in config['resources'].items() if k in resource_keys
+            'fa': config['resources']['ref_fa'],
+            'known_sites_vcf': config['resources']['known_sites_vcf']
         }
     )
     logger.debug(
@@ -144,7 +144,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     build_luigi_tasks(
         tasks=[
             PrepareAnalysisReadyCram(
-                **d, **resource_path_dict, cf=cf_dict, n_cpu=n_cpu_per_worker,
+                **d, **resource_path_dict, **cf_dict, n_cpu=n_cpu_per_worker,
                 memory_mb=memory_mb_per_worker, sh_config=sh_config
             ) for d in sample_dict_list
         ],
