@@ -119,36 +119,6 @@ class CreateSequenceDictionary(FtarcTask):
         )
 
 
-@requires(FetchReferenceFasta)
-class CreateBwaIndices(FtarcTask):
-    cf = luigi.DictParameter()
-    sh_config = luigi.DictParameter(default=dict())
-    priority = 100
-
-    def output(self):
-        fa_path = self.input()[0].path
-        return [
-            luigi.LocalTarget(f'{fa_path}.{s}') for s in (
-                ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64']
-                if self.cf['use_bwa_mem2'] else
-                ['pac', 'bwt', 'ann', 'amb', 'sa']
-            )
-        ]
-
-    def run(self):
-        fa = Path(self.input()[0].path)
-        run_id = fa.stem
-        self.print_log(f'Create BWA indices:\t{run_id}')
-        bwa = self.cf['bwa']
-        self.setup_shell(
-            run_id=run_id, commands=bwa, cwd=fa.parent, **self.sh_config
-        )
-        self.run_shell(
-            args=f'set -e && {bwa} index {fa}', input_files_or_dirs=fa,
-            output_files_or_dirs=[o.path for o in self.output()]
-        )
-
-
 class FetchResourceVcf(FtarcTask):
     src_path = luigi.Parameter()
     cf = luigi.DictParameter()

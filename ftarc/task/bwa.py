@@ -3,10 +3,40 @@
 from pathlib import Path
 
 import luigi
+from luigi.util import requires
 
 from .core import FtarcTask
 
 
+class CreateBwaIndices(FtarcTask):
+    fa_path = luigi.Parameter()
+    bwa = luigi.Parameter(default='bwa')
+    use_bwa_mem2 = luigi.BoolParameter(default=False)
+    sh_config = luigi.DictParameter(default=dict())
+    priority = 100
+
+    def output(self):
+        return [
+            luigi.LocalTarget(f'{self.fa_path}.{s}') for s in (
+                ['0123', 'amb', 'ann', 'pac', 'bwt.2bit.64']
+                if self.use_bwa_mem2 else ['pac', 'bwt', 'ann', 'amb', 'sa']
+            )
+        ]
+
+    def run(self):
+        fa = Path(self.fa_path)
+        run_id = fa.stem
+        self.print_log(f'Create BWA indices:\t{run_id}')
+        self.setup_shell(
+            run_id=run_id, commands=self.bwa, cwd=fa.parent, **self.sh_config
+        )
+        self.run_shell(
+            args=f'set -e && {self.bwa} index {fa}', input_files_or_dirs=fa,
+            output_files_or_dirs=[o.path for o in self.output()]
+        )
+
+
+@requires(CreateBwaIndices)
 class AlignReads(FtarcTask):
     fq_paths = luigi.ListParameter()
     fa_path = luigi.Parameter()

@@ -13,8 +13,8 @@ from .core import FtarcTask
 from .fastqc import CollectFqMetricsWithFastqc
 from .gatk import DeduplicateReads, MarkDuplicates
 from .picard import CollectSamMetricsWithPicard, ValidateSamFile
-from .resource import (CreateBwaIndices, CreateSequenceDictionary,
-                       FetchKnownSitesVcfs, FetchReferenceFasta)
+from .resource import (CreateSequenceDictionary, FetchKnownSitesVcfs,
+                       FetchReferenceFasta)
 from .samtools import CollectSamMetricsWithSamtools
 from .trimgalore import PrepareFastqs
 
@@ -37,8 +37,8 @@ class PrintEnvVersions(FtarcTask):
         self.__is_completed = True
 
 
-@requires(PrepareFastqs, FetchReferenceFasta, CreateBwaIndices,
-          CreateSequenceDictionary, FetchKnownSitesVcfs)
+@requires(PrepareFastqs, FetchReferenceFasta, CreateSequenceDictionary,
+          FetchKnownSitesVcfs)
 class RunPreprocessingPipeline(luigi.Task):
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()
