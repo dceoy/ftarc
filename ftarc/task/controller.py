@@ -56,7 +56,7 @@ class RunPreprocessingPipeline(luigi.Task):
             self.sample_name
             + ('.trim.' if self.cf['adapter_removal'] else '.')
             + (self.cf['reference_name'] or Path(self.input()[1][0].path).stem)
-            + '.markdup.bqsr.cram'
+            + '.markdup.bqsr'
         )
         return [
             luigi.LocalTarget(dest_dir.joinpath(f'{output_stem}.{s}'))
@@ -65,16 +65,13 @@ class RunPreprocessingPipeline(luigi.Task):
 
     def run(self):
         fa_path = self.input()[1][0].path
-        dest_dir_path = str(Path(self.output()[0].path).parent)
+        output_cram = Path(self.output()[0].path)
+        dest_dir_path = str(output_cram.parent)
         align_target = yield AlignReads(
             fq_paths=[i.path for i in self.input()[0]], fa_path=fa_path,
             dest_dir_path=dest_dir_path, sample_name=self.sample_name,
             read_group=self.read_group,
-            output_stem=(
-                self.sample_name
-                + ('.trim.' if self.cf['adapter_removal'] else '.')
-                + (self.cf['reference_name'] or Path(fa_path).stem)
-            ),
+            output_stem=Path(Path(output_cram.stem).stem).stem,
             bwa=self.cf['bwa'], samtools=self.cf['samtools'],
             use_bwa_mem2=self.cf['use_bwa_mem2'], n_cpu=self.n_cpu,
             memory_mb=self.memory_mb, sh_config=self.sh_config
@@ -119,7 +116,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
     priority = luigi.IntParameter(default=sys.maxsize)
 
     def output(self):
-        input_cram = Path(self.input()[0][0].path)
+        cram = Path(self.input()[0][0].path)
         qc_dir = Path(self.cf['qc_dir_path'])
         return (
             [
@@ -137,7 +134,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
                 luigi.LocalTarget(
                     qc_dir.joinpath('picard').joinpath(
                         self.sample_name
-                    ).joinpath(f'{input_cram.stem}.{c}.txt')
+                    ).joinpath(f'{cram.stem}.{c}.txt')
                 ) for c in (
                     self.picard_qc_commands
                     if 'picard' in self.cf['metrics_collectors'] else list()
@@ -146,7 +143,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
                 luigi.LocalTarget(
                     qc_dir.joinpath('samtools').joinpath(
                         self.sample_name
-                    ).joinpath(f'{input_cram.stem}.{c}.txt')
+                    ).joinpath(f'{cram.stem}.{c}.txt')
                 ) for c in (
                     self.samtools_qc_commands
                     if 'samtools' in self.cf['metrics_collectors'] else list()
@@ -155,11 +152,11 @@ class PrepareAnalysisReadyCram(luigi.Task):
         )
 
     def run(self):
-        input_sam_path = self.input()[0][0].path
+        cram_path = self.input()[0][0].path
         fa_path = self.input()[1][0].path
         yield ValidateSamFile(
-            input_sam_path=input_sam_path, fa_path=fa_path,
-            dest_dir_path=str(Path(input_sam_path).parent),
+            sam_path=cram_path, fa_path=fa_path,
+            dest_dir_path=str(Path(cram_path).parent),
             picard=self.cf['gatk'], n_cpu=self.n_cpu, memory_mb=self.memory_mb,
             sh_config=self.sh_config
         )
@@ -176,7 +173,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
         if {'picard', 'samtools'} & set(self.cf['metrics_collectors']):
             yield [
                 CollectMultipleSamMetrics(
-                    input_sam_path=input_sam_path, fa_path=fa_path,
+                    sam_path=cram_path, fa_path=fa_path,
                     dest_dir_path=str(
                         qc_dir.joinpath(m).joinpath(self.sample_name)
                     ),
@@ -192,7 +189,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
 
 
 class CollectMultipleSamMetrics(luigi.WrapperTask):
-    input_sam_path = luigi.Parameter()
+    sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
     metrics_collectors = luigi.ListParameter(default=['picard', 'samtools'])
@@ -220,7 +217,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
         return (
             [
                 CollectSamMetricsWithPicard(
-                    input_sam_path=self.input_sam_path, fa_path=self.fa_path,
+                    sam_path=self.sam_path, fa_path=self.fa_path,
                     dest_dir_path=self.dest_dir_path, picard_commands=[c],
                     picard=self.picard, n_cpu=self.n_cpu,
                     memory_mb=self.memory_mb, sh_config=self.sh_config
@@ -230,7 +227,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
                 )
             ] + [
                 CollectSamMetricsWithSamtools(
-                    input_sam_path=self.input_sam_path, fa_path=self.fa_path,
+                    sam_path=self.sam_path, fa_path=self.fa_path,
                     dest_dir_path=self.dest_dir_path, samtools_commands=[c],
                     samtools=self.samtools, plot_bamstats=self.plot_bamstats,
                     gnuplot=self.gnuplot, n_cpu=self.n_cpu,

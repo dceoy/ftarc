@@ -8,7 +8,7 @@ from .core import FtarcTask
 
 
 class CollectSamMetricsWithPicard(FtarcTask):
-    input_sam_path = luigi.Parameter()
+    sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
     picard_commands = luigi.ListParameter(
@@ -26,7 +26,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
     priority = 100
 
     def output(self):
-        sam_name = Path(self.input_sam_path).name
+        sam_name = Path(self.sam_path).name
         dest_dir = Path(self.dest_dir_path).resolve()
         return [
             luigi.LocalTarget(dest_dir.joinpath(f'{sam_name}.{c}.txt'))
@@ -34,10 +34,9 @@ class CollectSamMetricsWithPicard(FtarcTask):
         ]
 
     def run(self):
-        target_sam = Path(self.input_sam_path)
-        run_id = target_sam.name
+        run_id = Path(self.sam_path).name
         self.print_log(f'Collect SAM metrics using Picard:\t{run_id}')
-        input_sam = target_sam.resolve()
+        sam = Path(self.sam_path).resolve()
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         for c, o in zip(self.picard_commands, self.output()):
@@ -70,10 +69,10 @@ class CollectSamMetricsWithPicard(FtarcTask):
             self.run_shell(
                 args=(
                     f'set -e && {self.picard} {c}'
-                    + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
+                    + f' --INPUT {sam} --REFERENCE_SEQUENCE {fa}'
                     + ''.join(f' --{k} {v}' for k, v in output_args.items())
                 ),
-                input_files_or_dirs=[input_sam, fa, fa_dict],
+                input_files_or_dirs=[sam, fa, fa_dict],
                 output_files_or_dirs=[
                     v for v in output_args.values()
                     if v.endswith(('.txt', '.pdf'))
@@ -82,7 +81,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
 
 
 class ValidateSamFile(FtarcTask):
-    input_sam_path = luigi.Parameter()
+    sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
     picard = luigi.Parameter(default='picard')
@@ -96,15 +95,14 @@ class ValidateSamFile(FtarcTask):
     def output(self):
         return luigi.LocalTarget(
             Path(self.dest_dir_path).resolve().joinpath(
-                Path(self.input_sam_path).name + '.ValidateSamFile.txt'
+                Path(self.sam_path).name + '.ValidateSamFile.txt'
             )
         )
 
     def run(self):
-        target_sam = Path(self.input_sam_path)
-        run_id = target_sam.stem
+        run_id = Path(self.sam_path).name
         self.print_log(f'Validate a SAM file:\t{run_id}')
-        input_sam = target_sam.resolve()
+        sam = Path(self.sam_path).resolve()
         fa = Path(self.fa_path).resolve()
         fa_dict = fa.parent.joinpath(f'{fa.stem}.dict')
         dest_dir = Path(self.dest_dir_path).resolve()
@@ -121,11 +119,11 @@ class ValidateSamFile(FtarcTask):
         self.run_shell(
             args=(
                 f'set -e && {self.picard} ValidateSamFile'
-                + f' --INPUT {input_sam} --REFERENCE_SEQUENCE {fa}'
+                + f' --INPUT {sam} --REFERENCE_SEQUENCE {fa}'
                 + f' --OUTPUT {output_txt} --MODE {self.mode_of_output}'
                 + ''.join(f' --IGNORE {w}' for w in self.ignored_warnings)
             ),
-            input_files_or_dirs=[input_sam, fa, fa_dict],
+            input_files_or_dirs=[sam, fa, fa_dict],
             output_files_or_dirs=output_txt
         )
 

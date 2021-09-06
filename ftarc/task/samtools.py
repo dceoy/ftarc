@@ -104,7 +104,7 @@ class RemoveDuplicates(luigi.WrapperTask):
 
 
 class CollectSamMetricsWithSamtools(FtarcTask):
-    input_sam_path = luigi.Parameter()
+    sam_path = luigi.Parameter()
     fa_path = luigi.Parameter(default='')
     dest_dir_path = luigi.Parameter(default='.')
     samtools_commands = luigi.ListParameter(
@@ -118,7 +118,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     priority = 10
 
     def output(self):
-        sam_name = Path(self.input_sam_path).name
+        sam_name = Path(self.sam_path).name
         dest_dir = Path(self.dest_dir_path).resolve()
         return (
             [
@@ -131,16 +131,15 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         )
 
     def run(self):
-        target_sam = Path(self.input_sam_path)
-        run_id = target_sam.name
+        run_id = Path(self.sam_path).name
         self.print_log(f'Collect SAM metrics using Samtools:\t{run_id}')
-        input_sam = target_sam.resolve()
+        sam = Path(self.sam_path).resolve()
         fa = (Path(self.fa_path).resolve() if self.fa_path else None)
         dest_dir = Path(self.dest_dir_path).resolve()
         output_txts = [
             Path(o.path) for o in self.output() if o.path.endswith('.txt')
         ]
-        ref_cache = str(input_sam.parent.joinpath('.ref_cache'))
+        ref_cache = str(sam.parent.joinpath('.ref_cache'))
         for t in output_txts:
             cmd = t.stem.split('.')[-1]
             self.setup_shell(
@@ -165,9 +164,9 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                         f' -@ {self.n_cpu}'
                         if cmd in {'flagstat', 'idxstats', 'stats'} else ''
                     )
-                    + f' {input_sam} | tee {t}'
+                    + f' {sam} | tee {t}'
                 ),
-                input_files_or_dirs=input_sam, output_files_or_dirs=t
+                input_files_or_dirs=sam, output_files_or_dirs=t
             )
             if cmd == 'stats':
                 plot_dir = t.parent.joinpath(t.stem)

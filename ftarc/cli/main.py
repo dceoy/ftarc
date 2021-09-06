@@ -307,7 +307,7 @@ def main():
             }
             build_luigi_tasks(
                 tasks=[
-                    ValidateSamFile(input_sam_path=p, **kwargs)
+                    ValidateSamFile(sam_path=p, **kwargs)
                     for p in args['<sam_path>']
                 ],
                 workers=n_worker, log_level=log_level
@@ -342,7 +342,7 @@ def main():
             }
             build_luigi_tasks(
                 tasks=[
-                    CollectMultipleSamMetrics(input_sam_path=p, **kwargs)
+                    CollectMultipleSamMetrics(sam_path=p, **kwargs)
                     for p in args['<sam_path>']
                 ],
                 workers=n_worker, log_level=log_level
