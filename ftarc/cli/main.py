@@ -3,8 +3,9 @@
 FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 
 Usage:
-    ftarc download [--debug|--info] [--cpus=<int>] [--skip-cleaning]
-        [--print-subprocesses] [--use-bwa-mem2] [--dest-dir=<path>]
+    ftarc download [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
+        [--dest-dir=<path>]
     ftarc init [--debug|--info] [--yml=<path>]
     ftarc pipeline [--debug|--info] [--yml=<path>] [--cpus=<int>]
         [--workers=<int>] [--skip-cleaning] [--print-subprocesses]
@@ -28,8 +29,9 @@ Usage:
     ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--summary]
         [--dest-dir=<path>] <fa_path> <sam_path>...
-    ftarc fastqc [--debug|--info] [--cpus=<int>] [--skip-cleaning]
-        [--print-subprocesses] [--dest-dir=<path>] <fq_path>...
+    ftarc fastqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
+        <fq_path>...
     ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
         <sam_path>...
@@ -79,7 +81,7 @@ Args:
 import logging
 import os
 from itertools import product
-from math import floor
+from math import ceil, floor
 from pathlib import Path
 
 from docopt import docopt
@@ -96,7 +98,7 @@ from ..task.samtools import RemoveDuplicates
 from ..task.trimgalore import TrimAdapters
 from .pipeline import run_processing_pipeline
 from .util import (build_luigi_tasks, fetch_executable, load_default_dict,
-                   print_log, write_config_yml)
+                   print_log, print_yml, write_config_yml)
 
 
 def main():
@@ -127,7 +129,16 @@ def main():
         )
     else:
         n_cpu = int(args['--cpus'] or cpu_count())
-        memory_mb = virtual_memory().total / 1024 / 1024 / 2
+        n_worker = min(int(args['--workers'] or 1), n_cpu)
+        n_cpu_per_worker = max(floor(n_cpu / n_worker), 1)
+        memory_mb_per_worker = ceil(
+            virtual_memory().total / 1024 / 1024 / 2 / n_worker
+        )
+        print_yml([
+            {'n_worker': n_worker}, {'n_cpu_per_worker': n_cpu_per_worker},
+            {'memory_mb_per_worker': memory_mb_per_worker}
+        ])
+        save_memory = (memory_mb_per_worker < 8192)
         gatk_or_picard = (
             fetch_executable('gatk', ignore_errors=(not args['bqsr']))
             or fetch_executable('picard')
@@ -142,7 +153,7 @@ def main():
             build_luigi_tasks(
                 tasks=[
                     DownloadAndProcessResourceFiles(
-                        src_urls=list(load_default_dict(stem='urls').values()),
+                        src_url_dict=load_default_dict(stem='urls'),
                         dest_dir_path=args['--dest-dir'],
                         **{
                             c: fetch_executable(c) for c in [
@@ -153,26 +164,19 @@ def main():
                         bwa=fetch_executable(
                             'bwa-mem2' if args['--use-bwa-mem2'] else 'bwa'
                         ),
-                        gatk=gatk_or_picard, n_cpu=n_cpu, memory_mb=memory_mb,
+                        gatk=gatk_or_picard, n_cpu=n_cpu_per_worker,
+                        memory_mb=memory_mb_per_worker,
                         use_bwa_mem2=args['--use-bwa-mem2'],
                         sh_config=sh_config
                     )
                 ],
-                log_level=log_level
+                workers=n_worker, log_level=log_level
             )
         elif args['trim']:
-            n_worker = min(
-                int(args['--workers']), n_cpu, len(args['<fq_path_prefix>'])
-            )
-            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
-                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-            )
             kwargs = {
                 'fa_path': args['<fa_path>'],
-                'dest_dir_path': args['--dest-dir'],
-                'n_cpu': worker_cpus_n_memory['n_cpu'],
-                'memory_mb': worker_cpus_n_memory['memory_mb'],
-                'sh_config': sh_config,
+                'dest_dir_path': args['--dest-dir'], 'n_cpu': n_cpu_per_worker,
+                'memory_mb': memory_mb_per_worker, 'sh_config': sh_config,
                 **{
                     c: fetch_executable(c) for c
                     in ['pigz', 'pbzip2', 'trim_galore', 'cutadapt', 'fastqc']
@@ -188,12 +192,6 @@ def main():
                 workers=n_worker, log_level=log_level
             )
         elif args['align']:
-            n_worker = min(
-                int(args['--workers']), n_cpu, len(args['<fq_path_prefix>'])
-            )
-            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
-                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-            )
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'],
@@ -202,8 +200,7 @@ def main():
                 ),
                 'samtools': fetch_executable('samtools'),
                 'use_bwa_mem2': args['--use-bwa-mem2'],
-                'n_cpu': worker_cpus_n_memory['n_cpu'],
-                'memory_mb': worker_cpus_n_memory['memory_mb'],
+                'n_cpu': n_cpu_per_worker, 'memory_mb': memory_mb_per_worker,
                 'sh_config': sh_config
             }
             build_luigi_tasks(
@@ -216,19 +213,12 @@ def main():
                 workers=n_worker, log_level=log_level
             )
         elif args['markdup']:
-            n_worker = min(
-                int(args['--workers']), n_cpu, len(args['<sam_path>'])
-            )
-            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
-                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-            )
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
-                'use_spark': args['--use-spark'],
-                'n_cpu': worker_cpus_n_memory['n_cpu'],
-                'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
+                'use_spark': args['--use-spark'], 'n_cpu': n_cpu_per_worker,
+                'memory_mb': memory_mb_per_worker, 'save_memory': save_memory,
                 'sh_config': sh_config
             }
             build_luigi_tasks(
@@ -239,20 +229,14 @@ def main():
                 workers=n_worker, log_level=log_level
             )
         elif args['bqsr']:
-            n_worker = min(
-                int(args['--workers']), n_cpu, len(args['<sam_path>'])
-            )
-            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
-                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-            )
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'known_sites_vcf_paths': args['--known-sites'],
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
-                'use_spark': args['--use-spark'],
-                'save_memory': (worker_cpus_n_memory['memory_mb'] < 8192),
-                'sh_config': sh_config, **worker_cpus_n_memory
+                'use_spark': args['--use-spark'], 'n_cpu': n_cpu_per_worker,
+                'memory_mb': memory_mb_per_worker, 'save_memory': save_memory,
+                'sh_config': sh_config
             }
             build_luigi_tasks(
                 tasks=[
@@ -262,17 +246,11 @@ def main():
                 workers=n_worker, log_level=log_level
             )
         elif args['dedup']:
-            n_worker = min(
-                int(args['--workers']), n_cpu, len(args['<sam_path>'])
-            )
-            worker_cpus_n_memory = _calculate_cpus_n_memory_per_worker(
-                n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-            )
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'],
                 'samtools': fetch_executable('samtools'),
-                'n_cpu': worker_cpus_n_memory['n_cpu'], 'sh_config': sh_config
+                'n_cpu': n_cpu_per_worker, 'sh_config': sh_config
             }
             build_luigi_tasks(
                 tasks=[
@@ -282,17 +260,12 @@ def main():
                 workers=n_worker, log_level=log_level
             )
         elif args['validate']:
-            n_worker = min(
-                int(args['--workers']), n_cpu, len(args['<sam_path>'])
-            )
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'], 'picard': gatk_or_picard,
                 'mode_of_output':
                 ('SUMMARY' if args['--summary'] else 'VERBOSE'),
-                **_calculate_cpus_n_memory_per_worker(
-                    n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-                ),
+                'n_cpu': n_cpu_per_worker, 'memory_mb': memory_mb_per_worker,
                 'sh_config': sh_config
             }
             build_luigi_tasks(
@@ -303,32 +276,27 @@ def main():
                 workers=n_worker, log_level=log_level
             )
         elif args['fastqc']:
+            kwargs = {
+                'dest_dir_path': args['--dest-dir'],
+                'fastqc': fetch_executable('fastqc'),
+                'n_cpu': n_cpu_per_worker, 'memory_mb': memory_mb_per_worker,
+                'sh_config': sh_config
+            }
             build_luigi_tasks(
                 tasks=[
-                    CollectFqMetricsWithFastqc(
-                        fq_paths=args['<fq_path>'],
-                        dest_dir_path=args['--dest-dir'],
-                        fastqc=fetch_executable('fastqc'), n_cpu=n_cpu,
-                        memory_mb=memory_mb, sh_config=sh_config
-                    )
+                    CollectFqMetricsWithFastqc(fq_paths=[p], **kwargs)
+                    for p in args['<fq_path>']
                 ],
-                log_level=log_level
+                workers=n_worker, log_level=log_level
             )
         elif args['samqc']:
-            n_worker = min(
-                int(args['--workers']), n_cpu, len(args['<sam_path>'])
-            )
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'],
                 'samtools': fetch_executable('samtools'),
                 'plot_bamstats': fetch_executable('plot-bamstats'),
-                'picard': gatk_or_picard,
-                **_calculate_cpus_n_memory_per_worker(
-                    n_cpu=n_cpu, memory_mb=memory_mb, n_worker=n_worker
-                ),
-                'n_cpu': max(floor(n_cpu / n_worker), 1),
-                'memory_mb': (memory_mb / n_worker), 'sh_config': sh_config
+                'picard': gatk_or_picard, 'n_cpu': n_cpu_per_worker,
+                'memory_mb': memory_mb_per_worker, 'sh_config': sh_config
             }
             build_luigi_tasks(
                 tasks=[
@@ -337,13 +305,6 @@ def main():
                 ],
                 workers=n_worker, log_level=log_level
             )
-
-
-def _calculate_cpus_n_memory_per_worker(n_cpu, memory_mb, n_worker=1):
-    return {
-        'n_cpu': max(floor(n_cpu / n_worker), 1),
-        'memory_mb': (memory_mb / n_worker)
-    }
 
 
 def _find_fq_paths(fq_path_prefix):
