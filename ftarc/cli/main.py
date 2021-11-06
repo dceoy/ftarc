@@ -21,8 +21,8 @@ Usage:
         [--dest-dir=<path>] <fa_path> <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-spark]
-        [--dest-dir=<path>] (--known-sites=<vcf_path>)... <fa_path>
-        <sam_path>...
+        [--dest-dir=<path>] (--known-sites=<vcf_path>)...
+        [--interval-list=<path>] <fa_path> <sam_path>...
     ftarc dedup [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
         <sam_path>...
@@ -69,6 +69,7 @@ Options:
     --summary               Set SUMMARY to the mode of output
     --known-sites=<vcf_path>
                             Specify paths of known polymorphic sites VCF files
+    --interval-list=<path>  Specify a path to an interval_list BED file
 
 Args:
     <fa_path>               Path to an reference FASTA file
@@ -232,6 +233,7 @@ def main():
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'known_sites_vcf_paths': args['--known-sites'],
+                'interval_list_path': (args['--interval-list'] or ''),
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
                 'use_spark': args['--use-spark'], 'n_cpu': n_cpu_per_worker,

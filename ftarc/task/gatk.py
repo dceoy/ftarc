@@ -121,6 +121,7 @@ class ApplyBqsr(FtarcTask):
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     known_sites_vcf_paths = luigi.ListParameter()
+    interval_list_path = luigi.Parameter(default='')
     dest_dir_path = luigi.Parameter(default='.')
     static_quantized_quals = luigi.ListParameter(default=[10, 20, 30])
     gatk = luigi.Parameter(default='gatk')
@@ -150,6 +151,10 @@ class ApplyBqsr(FtarcTask):
         known_sites_vcfs = [
             Path(p).resolve() for p in self.known_sites_vcf_paths
         ]
+        interval_list = (
+            Path(self.interval_list_path).resolve()
+            if self.interval_list_path else None
+        )
         output_cram = Path(self.output()[0].path)
         dest_dir = output_cram.parent
         tmp_bam = dest_dir.joinpath(f'{output_cram.stem}.bam')
@@ -171,6 +176,10 @@ class ApplyBqsr(FtarcTask):
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
                     + ''.join(f' --known-sites {p}' for p in known_sites_vcfs)
+                    + (
+                        f' --intervals {interval_list}'
+                        if interval_list else ''
+                    )
                     + f' --output {tmp_bam}'
                     + ''.join(
                         f' --static-quantized-quals {i}'
@@ -181,7 +190,8 @@ class ApplyBqsr(FtarcTask):
                     + ' --create-output-bam-splitting-index false'
                 ),
                 input_files_or_dirs=[
-                    input_sam, fa, fa_dict, *known_sites_vcfs
+                    input_sam, fa, fa_dict, *known_sites_vcfs,
+                    *([interval_list] if interval_list else list())
                 ],
                 output_files_or_dirs=tmp_bam
             )
@@ -195,13 +205,18 @@ class ApplyBqsr(FtarcTask):
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
                     + ''.join(f' --known-sites {p}' for p in known_sites_vcfs)
+                    + (
+                        f' --intervals {interval_list}'
+                        if interval_list else ''
+                    )
                     + f' --output {bqsr_txt}'
                     + ' --use-original-qualities true'
                     + ' --disable-bam-index-caching '
                     + str(self.save_memory).lower()
                 ),
                 input_files_or_dirs=[
-                    input_sam, fa, fa_dict, *known_sites_vcfs
+                    input_sam, fa, fa_dict, *known_sites_vcfs,
+                    *([interval_list] if interval_list else list())
                 ],
                 output_files_or_dirs=bqsr_txt
             )
@@ -211,6 +226,10 @@ class ApplyBqsr(FtarcTask):
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
                     + f' --bqsr-recal-file {bqsr_txt}'
+                    + (
+                        f' --intervals {interval_list}'
+                        if interval_list else ''
+                    )
                     + f' --output {tmp_bam}'
                     + ''.join(
                         f' --static-quantized-quals {i}'
@@ -222,7 +241,10 @@ class ApplyBqsr(FtarcTask):
                     + ' --disable-bam-index-caching '
                     + str(self.save_memory).lower()
                 ),
-                input_files_or_dirs=[input_sam, fa, fa_dict, bqsr_txt],
+                input_files_or_dirs=[
+                    input_sam, fa, fa_dict, bqsr_txt,
+                    *([interval_list] if interval_list else list())
+                ],
                 output_files_or_dirs=tmp_bam
             )
         self.samtools_view(
