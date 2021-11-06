@@ -175,7 +175,8 @@ class ApplyBqsr(FtarcTask):
                     + ''.join(
                         f' --static-quantized-quals {i}'
                         for i in self.static_quantized_quals
-                    ) + ' --use-original-qualities true'
+                    )
+                    + ' --use-original-qualities true'
                     + ' --create-output-bam-index false'
                     + ' --create-output-bam-splitting-index false'
                 ),
@@ -193,9 +194,9 @@ class ApplyBqsr(FtarcTask):
                     f'set -e && {self.gatk} BaseRecalibrator'
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
+                    + ''.join(f' --known-sites {p}' for p in known_sites_vcfs)
                     + f' --output {bqsr_txt}'
                     + ' --use-original-qualities true'
-                    + ''.join(f' --known-sites {p}' for p in known_sites_vcfs)
                     + ' --disable-bam-index-caching '
                     + str(self.save_memory).lower()
                 ),
@@ -214,8 +215,9 @@ class ApplyBqsr(FtarcTask):
                     + ''.join(
                         f' --static-quantized-quals {i}'
                         for i in self.static_quantized_quals
-                    ) + ' --add-output-sam-program-record'
+                    )
                     + ' --use-original-qualities true'
+                    + ' --add-output-sam-program-record true'
                     + ' --create-output-bam-index false'
                     + ' --disable-bam-index-caching '
                     + str(self.save_memory).lower()
