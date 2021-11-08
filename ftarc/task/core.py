@@ -199,10 +199,10 @@ class FtarcTask(ShellTask):
             args=(
                 f'set -e && {samtools} quickcheck -v {input_sam_path}'
                 + f' && {samtools} view -@ {n_cpu} -T {fa_path}'
-                + ' -{0}S{1}'.format(
-                    ('C' if str(output_sam_path).endswith('.cram') else 'b'),
-                    (f' {add_args}' if add_args else '')
-                )
+                + ' -{}S'.format(
+                    'C' if str(output_sam_path).endswith('.cram') else 'b'
+                ),
+                + (''.join(f' {a}' for a in add_args) if add_args else '')
                 + f' -o {output_sam_path} {input_sam_path}'
             ),
             input_files_or_dirs=[

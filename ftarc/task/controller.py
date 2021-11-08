@@ -131,8 +131,8 @@ class RunPreprocessingPipeline(luigi.Task):
             input_sam_path=align_target[0].path, fa_path=fa_path,
             dest_dir_path=dest_dir_path, gatk=self.gatk,
             samtools=self.samtools, use_spark=self.use_spark,
-            save_memory=self.save_memory, n_cpu=self.n_cpu,
-            memory_mb=self.memory_mb, sh_config=self.sh_config
+            n_cpu=self.n_cpu, memory_mb=self.memory_mb,
+            sh_config=self.sh_config
         )
         bqsr_target = yield ApplyBqsr(
             input_sam_path=markdup_target[0].path, fa_path=fa_path,

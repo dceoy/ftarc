@@ -139,7 +139,6 @@ def main():
             {'n_worker': n_worker}, {'n_cpu_per_worker': n_cpu_per_worker},
             {'memory_mb_per_worker': memory_mb_per_worker}
         ])
-        save_memory = (memory_mb_per_worker < 8192)
         gatk_or_picard = (
             fetch_executable('gatk', ignore_errors=(not args['bqsr']))
             or fetch_executable('picard')
@@ -219,8 +218,7 @@ def main():
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
                 'use_spark': args['--use-spark'], 'n_cpu': n_cpu_per_worker,
-                'memory_mb': memory_mb_per_worker, 'save_memory': save_memory,
-                'sh_config': sh_config
+                'memory_mb': memory_mb_per_worker, 'sh_config': sh_config
             }
             build_luigi_tasks(
                 tasks=[
@@ -237,7 +235,8 @@ def main():
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
                 'use_spark': args['--use-spark'], 'n_cpu': n_cpu_per_worker,
-                'memory_mb': memory_mb_per_worker, 'save_memory': save_memory,
+                'memory_mb': memory_mb_per_worker,
+                'save_memory': (memory_mb_per_worker < 8192),
                 'sh_config': sh_config
             }
             build_luigi_tasks(

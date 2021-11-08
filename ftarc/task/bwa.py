@@ -13,6 +13,7 @@ class CreateBwaIndices(FtarcTask):
     fa_path = luigi.Parameter()
     bwa = luigi.Parameter(default='bwa')
     use_bwa_mem2 = luigi.BoolParameter(default=False)
+    add_index_args = luigi.ListParameter(default=list())
     sh_config = luigi.DictParameter(default=dict())
     priority = 100
 
@@ -32,7 +33,12 @@ class CreateBwaIndices(FtarcTask):
             run_id=run_id, commands=self.bwa, cwd=fa.parent, **self.sh_config
         )
         self.run_shell(
-            args=f'set -e && {self.bwa} index {fa}', input_files_or_dirs=fa,
+            args=(
+                f'set -e && {self.bwa} index'
+                + ''.join(f' {a}' for a in self.add_index_args)
+                + f' {fa}'
+            ),
+            input_files_or_dirs=fa,
             output_files_or_dirs=[o.path for o in self.output()]
         )
 
@@ -48,6 +54,7 @@ class AlignReads(FtarcTask):
     bwa = luigi.Parameter(default='bwa')
     samtools = luigi.Parameter(default='samtools')
     use_bwa_mem2 = luigi.BoolParameter(default=False)
+    add_mem_args = luigi.ListParameter(default=['-P', '-T', '0'])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -101,7 +108,10 @@ class AlignReads(FtarcTask):
         self.run_shell(
             args=(
                 f'set -eo pipefail && {self.bwa} mem'
-                + f' -t {self.n_cpu} -R \'{rg}\' -T 0 -P {fa}'
+                + f' -t {self.n_cpu}'
+                + ''.join(f' {a}' for a in self.add_mem_args)
+                + f' -R \'{rg}\''
+                + f' {fa}'
                 + ''.join(f' {a}' for a in fqs)
                 + f' | {self.samtools} view -T {fa} -CS -o - -'
                 + f' | {self.samtools} sort -@ {self.n_cpu}'

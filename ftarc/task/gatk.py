@@ -18,7 +18,15 @@ class MarkDuplicates(FtarcTask):
     gatk = luigi.Parameter(default='gatk')
     samtools = luigi.Parameter(default='samtools')
     use_spark = luigi.BoolParameter(default=False)
-    save_memory = luigi.BoolParameter(default=False)
+    add_command_args = luigi.DictParameter(
+        default={
+            'MarkDuplicatesSpark': [
+                '--create-output-bam-index', 'false',
+                '--create-output-bam-splitting-index', 'false'
+            ],
+            'MarkDuplicates': ['--ASSUME_SORT_ORDER', 'coordinate']
+        }
+    )
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -64,10 +72,14 @@ class MarkDuplicates(FtarcTask):
                     + f' --spark-master local[{self.n_cpu}]'
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
+                    + ''.join(
+                        f' {a}' for a in (
+                            self.add_command_args.get('MarkDuplicatesSpark')
+                            or list()
+                        )
+                    )
                     + f' --metrics-file {markdup_metrics_txt}'
                     + f' --output {tmp_bams[0]}'
-                    + ' --create-output-bam-index false'
-                    + ' --create-output-bam-splitting-index false'
                 ),
                 input_files_or_dirs=[input_sam, fa, fa_dict],
                 output_files_or_dirs=[tmp_bams[0], markdup_metrics_txt]
@@ -76,8 +88,14 @@ class MarkDuplicates(FtarcTask):
                 args=(
                     f'set -e && {self.gatk} SetNmMdAndUqTags'
                     + f' --INPUT {tmp_bams[0]}'
-                    + f' --OUTPUT {tmp_bams[1]}'
                     + f' --REFERENCE_SEQUENCE {fa}'
+                    + ''.join(
+                        f' {a}' for a in (
+                            self.add_command_args.get('SetNmMdAndUqTags')
+                            or list()
+                        )
+                    )
+                    + f' --OUTPUT {tmp_bams[1]}'
                 ),
                 input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
                 output_files_or_dirs=tmp_bams[1]
@@ -88,9 +106,12 @@ class MarkDuplicates(FtarcTask):
                     f'set -e && {self.gatk} MarkDuplicates'
                     + f' --INPUT {input_sam}'
                     + f' --REFERENCE_SEQUENCE {fa}'
+                    + ''.join(
+                        f' {a}' for a in
+                        (self.add_command_args.get('MarkDuplicates') or list())
+                    )
                     + f' --METRICS_FILE {markdup_metrics_txt}'
                     + f' --OUTPUT {tmp_bams[0]}'
-                    + ' --ASSUME_SORT_ORDER coordinate'
                 ),
                 input_files_or_dirs=[input_sam, fa, fa_dict],
                 output_files_or_dirs=[tmp_bams[0], markdup_metrics_txt]
@@ -102,8 +123,14 @@ class MarkDuplicates(FtarcTask):
                     + f' -T {output_cram}.sort {tmp_bams[0]}'
                     + f' | {self.gatk} SetNmMdAndUqTags'
                     + ' --INPUT /dev/stdin'
-                    + f' --OUTPUT {tmp_bams[1]}'
                     + f' --REFERENCE_SEQUENCE {fa}'
+                    + ''.join(
+                        f' {a}' for a in (
+                            self.add_command_args.get('SetNmMdAndUqTags')
+                            or list()
+                        )
+                    )
+                    + f' --OUTPUT {tmp_bams[1]}'
                 ),
                 input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
                 output_files_or_dirs=tmp_bams[1]
@@ -123,11 +150,33 @@ class ApplyBqsr(FtarcTask):
     known_sites_vcf_paths = luigi.ListParameter()
     interval_list_path = luigi.Parameter(default='')
     dest_dir_path = luigi.Parameter(default='.')
-    static_quantized_quals = luigi.ListParameter(default=[10, 20, 30])
     gatk = luigi.Parameter(default='gatk')
     samtools = luigi.Parameter(default='samtools')
     use_spark = luigi.BoolParameter(default=False)
     save_memory = luigi.BoolParameter(default=False)
+    add_command_args = luigi.DictParameter(
+        default={
+            'BQSRPipelineSpark': [
+                '--static-quantized-quals', '10',
+                '--static-quantized-quals', '20',
+                '--static-quantized-quals', '30',
+                '--use-original-qualities', 'true',
+                '--create-output-bam-index', 'false',
+                '--create-output-bam-splitting-index', 'false'
+            ],
+            'BaseRecalibrator': [
+                '--use-original-qualities', 'true'
+            ],
+            'ApplyBQSR': [
+                '--static-quantized-quals', '10',
+                '--static-quantized-quals', '20',
+                '--static-quantized-quals', '30',
+                '--use-original-qualities', 'true',
+                '--add-output-sam-program-record', 'true',
+                '--create-output-bam-index', 'false'
+            ]
+        }
+    )
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -180,14 +229,13 @@ class ApplyBqsr(FtarcTask):
                         f' --intervals {interval_list}'
                         if interval_list else ''
                     )
-                    + f' --output {tmp_bam}'
                     + ''.join(
-                        f' --static-quantized-quals {i}'
-                        for i in self.static_quantized_quals
+                        f' {a}' for a in (
+                            self.add_command_args.get('BQSRPipelineSpark')
+                            or list()
+                        )
                     )
-                    + ' --use-original-qualities true'
-                    + ' --create-output-bam-index false'
-                    + ' --create-output-bam-splitting-index false'
+                    + f' --output {tmp_bam}'
                 ),
                 input_files_or_dirs=[
                     input_sam, fa, fa_dict, *known_sites_vcfs,
@@ -199,6 +247,10 @@ class ApplyBqsr(FtarcTask):
             bqsr_txt = output_cram.parent.joinpath(
                 f'{output_cram.stem}.data.txt'
             )
+            save_memory_args = (
+                ['--disable-bam-index-caching', 'True']
+                if self.save_memory else list()
+            )
             self.run_shell(
                 args=(
                     f'set -e && {self.gatk} BaseRecalibrator'
@@ -209,10 +261,15 @@ class ApplyBqsr(FtarcTask):
                         f' --intervals {interval_list}'
                         if interval_list else ''
                     )
+                    + ''.join(
+                        f' {a}' for a in (
+                            (
+                                self.add_command_args.get('BaseRecalibrator')
+                                or list()
+                            ) + save_memory_args
+                        )
+                    )
                     + f' --output {bqsr_txt}'
-                    + ' --use-original-qualities true'
-                    + ' --disable-bam-index-caching '
-                    + str(self.save_memory).lower()
                 ),
                 input_files_or_dirs=[
                     input_sam, fa, fa_dict, *known_sites_vcfs,
@@ -230,16 +287,13 @@ class ApplyBqsr(FtarcTask):
                         f' --intervals {interval_list}'
                         if interval_list else ''
                     )
-                    + f' --output {tmp_bam}'
                     + ''.join(
-                        f' --static-quantized-quals {i}'
-                        for i in self.static_quantized_quals
+                        f' {a}' for a in (
+                            (self.add_command_args.get('ApplyBQSR') or list())
+                            + save_memory_args
+                        )
                     )
-                    + ' --use-original-qualities true'
-                    + ' --add-output-sam-program-record true'
-                    + ' --create-output-bam-index false'
-                    + ' --disable-bam-index-caching '
-                    + str(self.save_memory).lower()
+                    + f' --output {tmp_bam}'
                 ),
                 input_files_or_dirs=[
                     input_sam, fa, fa_dict, bqsr_txt,
