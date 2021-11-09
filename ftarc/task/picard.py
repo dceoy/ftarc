@@ -11,7 +11,7 @@ from .core import FtarcTask
 class CreateSequenceDictionary(FtarcTask):
     fa_path = luigi.Parameter()
     gatk = luigi.Parameter(default='gatk')
-    add_args = luigi.ListParameter(default=list())
+    add_createsequencedictionary_args = luigi.ListParameter(default=list())
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -38,7 +38,9 @@ class CreateSequenceDictionary(FtarcTask):
             args=(
                 f'set -e && {self.gatk} CreateSequenceDictionary'
                 + f' --REFERENCE {fa}'
-                + ''.join(f' {a}' for a in self.add_args)
+                + ''.join(
+                    f' {a}' for a in self.add_createsequencedictionary_args
+                )
                 + f' --OUTPUT {seq_dict_path}'
             ),
             input_files_or_dirs=fa, output_files_or_dirs=seq_dict_path
@@ -51,7 +53,7 @@ class ValidateSamFile(FtarcTask):
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
     picard = luigi.Parameter(default='picard')
-    add_args = luigi.ListParameter(
+    add_validatesamfile_args = luigi.ListParameter(
         default=['--MODE', 'VERBOSE', '--IGNORE', 'MISSING_TAG_NM']
     )
     n_cpu = luigi.IntParameter(default=1)
@@ -88,7 +90,7 @@ class ValidateSamFile(FtarcTask):
                 f'set -e && {self.picard} ValidateSamFile'
                 + f' --INPUT {sam}'
                 + f' --REFERENCE_SEQUENCE {fa}'
-                + ''.join(f' {a}' for a in self.add_args)
+                + ''.join(f' {a}' for a in self.add_validatesamfile_args)
                 + f' --OUTPUT {output_txt}'
             ),
             input_files_or_dirs=[sam, fa, fa_dict],
@@ -110,7 +112,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
         ]
     )
     picard = luigi.Parameter(default='picard')
-    add_command_args = luigi.DictParameter(
+    add_picard_command_args = luigi.DictParameter(
         default={'CollectRawWgsMetrics': ['--INCLUDE_BQ_HISTOGRAM', 'true']}
     )
     n_cpu = luigi.IntParameter(default=1)
@@ -121,10 +123,24 @@ class CollectSamMetricsWithPicard(FtarcTask):
     def output(self):
         sam_name = Path(self.sam_path).name
         dest_dir = Path(self.dest_dir_path).resolve()
-        return [
-            luigi.LocalTarget(dest_dir.joinpath(f'{sam_name}.{c}.txt'))
-            for c in self.picard_commands
-        ]
+        return (
+            [
+                luigi.LocalTarget(dest_dir.joinpath(f'{sam_name}.{c}.txt'))
+                for c in self.picard_commands
+            ] + [
+                luigi.LocalTarget(
+                    dest_dir.joinpath(f'{sam_name}.{c}.summary.txt')
+                ) for c in self.picard_commands
+                if c in {'CollectGcBiasMetrics'}
+            ] + [
+                luigi.LocalTarget(dest_dir.joinpath(f'{sam_name}.{c}.pdf'))
+                for c in self.picard_commands if c in {
+                    'MeanQualityByCycle', 'QualityScoreDistribution',
+                    'CollectBaseDistributionByCycle',
+                    'CollectInsertSizeMetrics'
+                }
+            ]
+        )
 
     def run(self):
         run_id = Path(self.sam_path).name
@@ -146,37 +162,38 @@ class CollectSamMetricsWithPicard(FtarcTask):
             prefix = str(output_txt.parent.joinpath(output_txt.stem))
             if c in {'MeanQualityByCycle', 'QualityScoreDistribution',
                      'CollectBaseDistributionByCycle'}:
-                output_args = {
-                    'CHART_OUTPUT': f'{prefix}.pdf', 'OUTPUT': f'{prefix}.txt'
-                }
+                output_args = [
+                    '--CHART_OUTPUT', f'{prefix}.pdf',
+                    '--OUTPUT', f'{prefix}.txt'
+                ]
             elif c == 'CollectInsertSizeMetrics':
-                output_args = {
-                    'Histogram_FILE': f'{prefix}.histogram.pdf',
-                    'OUTPUT': f'{prefix}.txt'
-                }
+                output_args = [
+                    '--Histogram_FILE', f'{prefix}.pdf',
+                    '--OUTPUT', f'{prefix}.txt'
+                ]
             elif c == 'CollectGcBiasMetrics':
-                output_args = {
-                    'CHART_OUTPUT': f'{prefix}.pdf',
-                    'SUMMARY_OUTPUT': f'{prefix}.summary.txt',
-                    'OUTPUT': f'{prefix}.txt'
-                }
+                output_args = [
+                    '--CHART_OUTPUT', f'{prefix}.pdf',
+                    '--SUMMARY_OUTPUT', f'{prefix}.summary.txt',
+                    '--OUTPUT', f'{prefix}.txt'
+                ]
             else:
-                output_args = {'OUTPUT': f'{prefix}.txt'}
+                output_args = ['--OUTPUT', f'{prefix}.txt']
             self.run_shell(
                 args=(
                     f'set -e && {self.picard} {c}'
                     + f' --INPUT {sam}'
                     + f' --REFERENCE_SEQUENCE {fa}'
                     + ''.join(
-                        f' {a}'
-                        for a in (self.add_command_args.get(c) or list())
+                        f' {a}' for a in [
+                            *(self.add_picard_command_args.get(c) or list()),
+                            *output_args
+                        ]
                     )
-                    + ''.join(f' --{k} {v}' for k, v in output_args.items())
                 ),
                 input_files_or_dirs=[sam, fa, fa_dict],
                 output_files_or_dirs=[
-                    v for v in output_args.values()
-                    if v.endswith(('.txt', '.pdf'))
+                    a for a in output_args if a.endswith(('.txt', '.pdf'))
                 ]
             )
 

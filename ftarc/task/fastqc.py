@@ -12,7 +12,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
     fq_paths = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default='.')
     fastqc = luigi.Parameter(default='fastqc')
-    add_args = luigi.ListParameter(default=['--nogroup'])
+    add_fastqc_args = luigi.ListParameter(default=['--nogroup'])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -41,7 +41,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
                 args=(
                     f'set -e && {self.fastqc}'
                     + f' --threads {self.n_cpu}'
-                    + ''.join(f' {a}' for a in self.add_args)
+                    + ''.join(f' {a}' for a in self.add_fastqc_args)
                     + f' --outdir {dest_dir} {p}'
                 ),
                 input_files_or_dirs=p,

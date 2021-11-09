@@ -18,15 +18,16 @@ class MarkDuplicates(FtarcTask):
     gatk = luigi.Parameter(default='gatk')
     samtools = luigi.Parameter(default='samtools')
     use_spark = luigi.BoolParameter(default=False)
-    add_command_args = luigi.DictParameter(
-        default={
-            'MarkDuplicatesSpark': [
-                '--create-output-bam-index', 'false',
-                '--create-output-bam-splitting-index', 'false'
-            ],
-            'MarkDuplicates': ['--ASSUME_SORT_ORDER', 'coordinate']
-        }
+    add_markduplicatesspark_args = luigi.ListParameter(
+        default=[
+            '--create-output-bam-index', 'false',
+            '--create-output-bam-splitting-index', 'false'
+        ]
     )
+    add_markduplicates_args = luigi.ListParameter(
+        default=['--ASSUME_SORT_ORDER', 'coordinate']
+    )
+    add_setnmmdanduqtags_args = luigi.ListParameter(default=list())
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -73,10 +74,7 @@ class MarkDuplicates(FtarcTask):
                     + f' --input {input_sam}'
                     + f' --reference {fa}'
                     + ''.join(
-                        f' {a}' for a in (
-                            self.add_command_args.get('MarkDuplicatesSpark')
-                            or list()
-                        )
+                        f' {a}' for a in self.add_markduplicatesspark_args
                     )
                     + f' --metrics-file {markdup_metrics_txt}'
                     + f' --output {tmp_bams[0]}'
@@ -89,12 +87,7 @@ class MarkDuplicates(FtarcTask):
                     f'set -e && {self.gatk} SetNmMdAndUqTags'
                     + f' --INPUT {tmp_bams[0]}'
                     + f' --REFERENCE_SEQUENCE {fa}'
-                    + ''.join(
-                        f' {a}' for a in (
-                            self.add_command_args.get('SetNmMdAndUqTags')
-                            or list()
-                        )
-                    )
+                    + ''.join(f' {a}' for a in self.add_setnmmdanduqtags_args)
                     + f' --OUTPUT {tmp_bams[1]}'
                 ),
                 input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
@@ -106,10 +99,7 @@ class MarkDuplicates(FtarcTask):
                     f'set -e && {self.gatk} MarkDuplicates'
                     + f' --INPUT {input_sam}'
                     + f' --REFERENCE_SEQUENCE {fa}'
-                    + ''.join(
-                        f' {a}' for a in
-                        (self.add_command_args.get('MarkDuplicates') or list())
-                    )
+                    + ''.join(f' {a}' for a in self.add_markduplicates_args)
                     + f' --METRICS_FILE {markdup_metrics_txt}'
                     + f' --OUTPUT {tmp_bams[0]}'
                 ),
@@ -124,12 +114,7 @@ class MarkDuplicates(FtarcTask):
                     + f' | {self.gatk} SetNmMdAndUqTags'
                     + ' --INPUT /dev/stdin'
                     + f' --REFERENCE_SEQUENCE {fa}'
-                    + ''.join(
-                        f' {a}' for a in (
-                            self.add_command_args.get('SetNmMdAndUqTags')
-                            or list()
-                        )
-                    )
+                    + ''.join(f' {a}' for a in self.add_setnmmdanduqtags_args)
                     + f' --OUTPUT {tmp_bams[1]}'
                 ),
                 input_files_or_dirs=[tmp_bams[0], fa, fa_dict],
@@ -153,30 +138,26 @@ class ApplyBqsr(FtarcTask):
     gatk = luigi.Parameter(default='gatk')
     samtools = luigi.Parameter(default='samtools')
     use_spark = luigi.BoolParameter(default=False)
-    save_memory = luigi.BoolParameter(default=False)
-    add_command_args = luigi.DictParameter(
-        default={
-            'BQSRPipelineSpark': [
-                '--static-quantized-quals', '10',
-                '--static-quantized-quals', '20',
-                '--static-quantized-quals', '30',
-                '--use-original-qualities', 'true',
-                '--create-output-bam-index', 'false',
-                '--create-output-bam-splitting-index', 'false'
-            ],
-            'BaseRecalibrator': [
-                '--use-original-qualities', 'true'
-            ],
-            'ApplyBQSR': [
-                '--static-quantized-quals', '10',
-                '--static-quantized-quals', '20',
-                '--static-quantized-quals', '30',
-                '--use-original-qualities', 'true',
-                '--add-output-sam-program-record', 'true',
-                '--create-output-bam-index', 'false'
-            ]
-        }
+    add_bqsrpipelinespark_args = luigi.ListParameter(
+        default=[
+            '--static-quantized-quals', '10', '--static-quantized-quals', '20',
+            '--static-quantized-quals', '30', '--use-original-qualities',
+            'true', '--create-output-bam-index', 'false',
+            '--create-output-bam-splitting-index', 'false'
+        ]
     )
+    add_baserecalibrator_args = luigi.ListParameter(
+        default=['--use-original-qualities', 'true']
+    )
+    add_applybqsr_args = luigi.ListParameter(
+        default=[
+            '--static-quantized-quals', '10', '--static-quantized-quals', '20',
+            '--static-quantized-quals', '30', '--use-original-qualities',
+            'true', '--add-output-sam-program-record', 'true',
+            '--create-output-bam-index', 'false'
+        ]
+    )
+    save_memory = luigi.BoolParameter(default=False)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -229,12 +210,7 @@ class ApplyBqsr(FtarcTask):
                         f' --intervals {interval_list}'
                         if interval_list else ''
                     )
-                    + ''.join(
-                        f' {a}' for a in (
-                            self.add_command_args.get('BQSRPipelineSpark')
-                            or list()
-                        )
-                    )
+                    + ''.join(f' {a}' for a in self.add_bqsrpipelinespark_args)
                     + f' --output {tmp_bam}'
                 ),
                 input_files_or_dirs=[
@@ -248,7 +224,7 @@ class ApplyBqsr(FtarcTask):
                 f'{output_cram.stem}.data.txt'
             )
             save_memory_args = (
-                ['--disable-bam-index-caching', 'True']
+                ['--disable-bam-index-caching', 'true']
                 if self.save_memory else list()
             )
             self.run_shell(
@@ -262,12 +238,8 @@ class ApplyBqsr(FtarcTask):
                         if interval_list else ''
                     )
                     + ''.join(
-                        f' {a}' for a in (
-                            (
-                                self.add_command_args.get('BaseRecalibrator')
-                                or list()
-                            ) + save_memory_args
-                        )
+                        f' {a}' for a
+                        in [*self.add_baserecalibrator_args, *save_memory_args]
                     )
                     + f' --output {bqsr_txt}'
                 ),
@@ -288,10 +260,8 @@ class ApplyBqsr(FtarcTask):
                         if interval_list else ''
                     )
                     + ''.join(
-                        f' {a}' for a in (
-                            (self.add_command_args.get('ApplyBQSR') or list())
-                            + save_memory_args
-                        )
+                        f' {a}'
+                        for a in [*self.add_applybqsr_args, *save_memory_args]
                     )
                     + f' --output {tmp_bam}'
                 ),

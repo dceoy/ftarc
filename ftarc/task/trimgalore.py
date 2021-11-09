@@ -17,7 +17,7 @@ class TrimAdapters(FtarcTask):
     trim_galore = luigi.Parameter(default='trim_galore')
     cutadapt = luigi.Parameter(default='cutadapt')
     fastqc = luigi.Parameter(default='fastqc')
-    add_args = luigi.ListParameter(default=list())
+    add_trim_galore_args = luigi.ListParameter(default=list())
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default=dict())
@@ -69,7 +69,7 @@ class TrimAdapters(FtarcTask):
                 + f' --path_to_cutadapt {self.cutadapt}'
                 + f' --cores {self.n_cpu}'
                 + (' --paired' if len(work_fq_paths) > 1 else '')
-                + ''.join(f' {a}' for a in self.add_args)
+                + ''.join(f' {a}' for a in self.add_trim_galore_args)
                 + f' --output_dir {run_dir}'
                 + ''.join(f' {p}' for p in work_fq_paths)
             ),

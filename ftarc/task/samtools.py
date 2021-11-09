@@ -12,7 +12,7 @@ from .core import FtarcTask
 class SamtoolsFaidx(FtarcTask):
     fa_path = luigi.Parameter()
     samtools = luigi.Parameter(default='samtools')
-    add_args = luigi.ListParameter(default=list())
+    add_faidx_args = luigi.ListParameter(default=list())
     sh_config = luigi.DictParameter(default=dict())
     priority = 70
 
@@ -31,7 +31,7 @@ class SamtoolsFaidx(FtarcTask):
         self.run_shell(
             args=(
                 f'set -e && {self.samtools} faidx'
-                + ''.join(f' {a}' for a in self.add_args)
+                + ''.join(f' {a}' for a in self.add_faidx_args)
                 + f' {fa}'
             ),
             input_files_or_dirs=fa, output_files_or_dirs=f'{fa}.fai'
@@ -45,7 +45,7 @@ class SamtoolsView(FtarcTask):
     output_sam_path = luigi.Parameter()
     samtools = luigi.Parameter(default='samtools')
     n_cpu = luigi.IntParameter(default=1)
-    add_args = luigi.ListParameter(default=list())
+    add_view_args = luigi.ListParameter(default=list())
     message = luigi.Parameter(default='')
     remove_input = luigi.BoolParameter(default=True)
     index_sam = luigi.BoolParameter(default=False)
@@ -100,7 +100,7 @@ class SamtoolsView(FtarcTask):
             self.samtools_view(
                 input_sam_path=input_sam, fa_path=fa,
                 output_sam_path=output_sam, samtools=self.samtools,
-                n_cpu=self.n_cpu, add_args=self.add_args,
+                n_cpu=self.n_cpu, add_args=self.add_view_args,
                 index_sam=self.index_sam, remove_input=self.remove_input
             )
 
@@ -110,7 +110,7 @@ class RemoveDuplicates(luigi.WrapperTask):
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default='.')
     samtools = luigi.Parameter(default='samtools')
-    add_args = luigi.ListParameter(default=['-F', '1024'])
+    add_view_args = luigi.ListParameter(default=['-F', '1024'])
     n_cpu = luigi.IntParameter(default=1)
     remove_input = luigi.BoolParameter(default=False)
     index_sam = luigi.BoolParameter(default=True)
@@ -126,9 +126,10 @@ class RemoveDuplicates(luigi.WrapperTask):
                     Path(self.input_sam_path).stem + '.dedup.cram'
                 )
             ),
-            samtools=self.samtools, n_cpu=self.n_cpu, add_args=self.add_args,
-            message='Remove duplicates', remove_input=self.remove_input,
-            index_sam=self.index_sam, sh_config=self.sh_config
+            samtools=self.samtools, n_cpu=self.n_cpu,
+            add_view_args=self.add_view_args, message='Remove duplicates',
+            remove_input=self.remove_input, index_sam=self.index_sam,
+            sh_config=self.sh_config
         )
 
     def output(self):
@@ -146,7 +147,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     samtools = luigi.Parameter(default='samtools')
     plot_bamstats = luigi.Parameter(default='plot-bamstats')
     gnuplot = luigi.Parameter(default='gnuplot')
-    add_command_args = luigi.DictParameter(default={'depth': ['-a']})
+    add_samtools_command_args = luigi.DictParameter(default={'depth': ['-a']})
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 10
@@ -197,8 +198,8 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                         if c in {'flagstat', 'idxstats', 'stats'} else ''
                     )
                     + ''.join(
-                        f' {a}'
-                        for a in (self.add_command_args.get(c) or list())
+                        f' {a}' for a
+                        in (self.add_samtools_command_args.get(c) or list())
                     )
                     + f' {sam} | tee {output_txt}'
                 ),
@@ -211,8 +212,9 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                         f'set -e && {self.plot_bamstats}'
                         + ''.join(
                             f' {a}' for a in (
-                                self.add_command_args.get('plot-bamstats')
-                                or list()
+                                self.add_samtools_command_args.get(
+                                    'plot-bamstats'
+                                ) or list()
                             )
                         )
                         + f' --prefix {plot_dir}/index {output_txt}'
