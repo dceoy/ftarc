@@ -201,8 +201,13 @@ class FtarcTask(ShellTask):
                 + f' && {samtools} view -@ {n_cpu} -T {fa_path}'
                 + ' -{}S'.format(
                     'C' if str(output_sam_path).endswith('.cram') else 'b'
-                ),
-                + (''.join(f' {a}' for a in add_args) if add_args else '')
+                )
+                + (
+                    ''.join(
+                        f' {a}' for a in
+                        ([add_args] if isinstance(add_args, str) else add_args)
+                    ) if add_args else ''
+                )
                 + f' -o {output_sam_path} {input_sam_path}'
             ),
             input_files_or_dirs=[
