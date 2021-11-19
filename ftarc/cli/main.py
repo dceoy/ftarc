@@ -5,36 +5,36 @@ FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 Usage:
     ftarc download [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
-        [--dest-dir=<path>]
+        [--dest-dir=<path>] [--log-dir=<path>]
     ftarc init [--debug|--info] [--yml=<path>]
     ftarc pipeline [--debug|--info] [--yml=<path>] [--cpus=<int>]
         [--workers=<int>] [--skip-cleaning] [--print-subprocesses]
         [--use-bwa-mem2] [--use-spark] [--dest-dir=<path>]
     ftarc trim [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses]
-        [--dest-dir=<path>] <fa_path> <fq_path_prefix>...
+        [--dest-dir=<path>] [--log-dir=<path>] <fa_path> <fq_path_prefix>...
     ftarc align [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
-        [--dest-dir=<path>] <fa_path> <fq_path_prefix>...
+        [--dest-dir=<path>] [--log-dir=<path>] <fa_path> <fq_path_prefix>...
     ftarc markdup [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-spark]
-        [--dest-dir=<path>] <fa_path> <sam_path>...
+        [--dest-dir=<path>] [--log-dir=<path>] <fa_path> <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-spark]
-        [--dest-dir=<path>] (--known-sites=<vcf_path>)...
+        [--dest-dir=<path>] [--log-dir=<path>] (--known-sites=<vcf_path>)...
         [--interval-list=<path>] <fa_path> <sam_path>...
     ftarc dedup [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
-        <sam_path>...
+        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
+        [--log-dir=<path>] <fa_path> <sam_path>...
     ftarc validate [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--summary]
-        [--dest-dir=<path>] <fa_path> <sam_path>...
+        [--dest-dir=<path>] [--log-dir=<path>] <fa_path> <sam_path>...
     ftarc fastqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
-        <fq_path>...
+        [--log-dir=<path>] <fq_path>...
     ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
-        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>] <fa_path>
-        <sam_path>...
+        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
+        [--log-dir=<path>] <fa_path> <sam_path>...
     ftarc -h|--help
     ftarc --version
 
@@ -66,6 +66,7 @@ Options:
     --use-bwa-mem2          Use Bwa-mem2 for read alignment
     --use-spark             Use Spark-enabled GATK tools
     --dest-dir=<path>       Specify a destination directory path [default: .]
+    --log-dir=<path>        Specify an output log directory path
     --summary               Set SUMMARY to the mode of output
     --known-sites=<vcf_path>
                             Specify paths of known polymorphic sites VCF files
@@ -144,7 +145,7 @@ def main():
             or fetch_executable('picard')
         )
         sh_config = {
-            'log_dir_path': args['--dest-dir'],
+            'log_dir_path': (args['--log-dir'] or args['--dest-dir']),
             'remove_if_failed': (not args['--skip-cleaning']),
             'quiet': (not args['--print-subprocesses']),
             'executable': fetch_executable('bash')
