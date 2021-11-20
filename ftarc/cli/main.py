@@ -21,7 +21,7 @@ Usage:
         [--dest-dir=<path>] [--log-dir=<path>] <fa_path> <sam_path>...
     ftarc bqsr [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-spark]
-        [--dest-dir=<path>] [--log-dir=<path>] (--known-sites=<vcf_path>)...
+        [--dest-dir=<path>] [--log-dir=<path>] (--known-sites-vcf=<path>)...
         [--interval-list=<path>] <fa_path> <sam_path>...
     ftarc dedup [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
@@ -68,7 +68,7 @@ Options:
     --dest-dir=<path>       Specify a destination directory path [default: .]
     --log-dir=<path>        Specify an output log directory path
     --summary               Set SUMMARY to the mode of output
-    --known-sites=<vcf_path>
+    --known-sites-vcf=<path>
                             Specify paths of known polymorphic sites VCF files
     --interval-list=<path>  Specify a path to an interval_list BED file
 
@@ -231,7 +231,7 @@ def main():
         elif args['bqsr']:
             kwargs = {
                 'fa_path': args['<fa_path>'],
-                'known_sites_vcf_paths': args['--known-sites'],
+                'known_sites_vcf_paths': args['--known-sites-vcf'],
                 'interval_list_path': (args['--interval-list'] or ''),
                 'dest_dir_path': args['--dest-dir'], 'gatk': gatk_or_picard,
                 'samtools': fetch_executable('samtools'),
