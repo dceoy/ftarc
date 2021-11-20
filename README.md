@@ -144,9 +144,9 @@ Usage
 
   ```sh
   $ ftarc bqsr \
-      --known-sites=/path/to/Homo_sapiens_assembly38.dbsnp138.vcf.gz \
-      --known-sites=/path/to/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz \
-      --known-sites=/path/to/Homo_sapiens_assembly38.known_indels.vcf.gz \
+      --known-sites-vcf=/path/to/Homo_sapiens_assembly38.dbsnp138.vcf.gz \
+      --known-sites-vcf=/path/to/Mills_and_1000G_gold_standard.indels.hg38.vcf.gz \
+      --known-sites-vcf=/path/to/Homo_sapiens_assembly38.known_indels.vcf.gz \
       /path/to/genome.fa /path/to/markdup.cram
   ```
 
