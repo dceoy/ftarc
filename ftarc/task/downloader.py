@@ -171,20 +171,20 @@ class DownloadAndProcessResourceFiles(luigi.WrapperTask):
         return [
             DownloadAndIndexReferenceFasta(
                 src_urls=[
-                    self.src_url_dict['ref_fa'],
-                    self.src_url_dict['ref_fa_alt']
+                    self.src_url_dict['reference_fa'],
+                    self.src_url_dict['reference_fa_alt']
                 ],
                 dest_dir_path=self.dest_dir_path,
-                run_id=Path(self.src_url_dict['ref_fa']).stem, wget=self.wget,
-                pigz=self.pigz, pbzip2=self.pbzip2, bgzip=self.bgzip,
-                samtools=self.samtools, gatk=self.gatk, bwa=self.bwa,
-                use_bwa_mem2=self.use_bwa_mem2, n_cpu=self.n_cpu,
+                run_id=Path(self.src_url_dict['reference_fa']).stem,
+                wget=self.wget, pigz=self.pigz, pbzip2=self.pbzip2,
+                bgzip=self.bgzip, samtools=self.samtools, gatk=self.gatk,
+                bwa=self.bwa, use_bwa_mem2=self.use_bwa_mem2, n_cpu=self.n_cpu,
                 memory_mb=self.memory_mb, sh_config=self.sh_config
             ),
             DownloadAndIndexResourceVcfs(
                 src_urls=[
                     v for k, v in self.src_url_dict.items()
-                    if k not in {'ref_fa', 'ref_fa_alt'}
+                    if k not in {'reference_fa', 'reference_fa_alt'}
                 ],
                 dest_dir_path=self.dest_dir_path, run_id='others',
                 wget=self.wget, pigz=self.pigz, pbzip2=self.pbzip2,

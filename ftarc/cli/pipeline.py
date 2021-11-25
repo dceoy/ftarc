@@ -93,7 +93,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
 
     resource_path_dict = _resolve_input_file_paths(
         path_dict={
-            'fa': config['resources']['ref_fa'],
+            'fa': config['resources']['reference_fa'],
             'known_sites_vcf': config['resources']['known_sites_vcf']
         }
     )
@@ -163,7 +163,7 @@ def _read_config_yml(path):
     config = read_yml(path=Path(path).resolve())
     assert (isinstance(config, dict) and config.get('resources')), config
     assert isinstance(config['resources'], dict), config['resources']
-    for k in ['ref_fa', 'known_sites_vcf']:
+    for k in ['reference_fa', 'known_sites_vcf']:
         v = config['resources'].get(k)
         if k == 'known_sites_vcf':
             assert isinstance(v, list), k
