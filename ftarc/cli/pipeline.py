@@ -13,7 +13,7 @@ from psutil import cpu_count, virtual_memory
 from ..cli.util import (build_luigi_tasks, fetch_executable, load_default_dict,
                         parse_fq_id, print_log, print_yml, read_yml,
                         render_luigi_log_cfg)
-from ..task.controller import PrepareAnalysisReadyCram, PrintEnvVersions
+from ..task.controller import PrintEnvVersions, RunPreprocessingPipeline
 
 
 def run_processing_pipeline(config_yml_path, dest_dir_path=None,
@@ -143,7 +143,7 @@ def run_processing_pipeline(config_yml_path, dest_dir_path=None,
     )
     build_luigi_tasks(
         tasks=[
-            PrepareAnalysisReadyCram(
+            RunPreprocessingPipeline(
                 **d, **resource_path_dict, **cf_dict, n_cpu=n_cpu_per_worker,
                 memory_mb=memory_mb_per_worker, sh_config=sh_config
             ) for d in sample_dict_list

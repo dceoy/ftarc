@@ -79,7 +79,7 @@ class PrepareFastqs(luigi.WrapperTask):
 
 
 @requires(PrepareFastqs, FetchReferenceFasta, FetchKnownSitesVcfs)
-class RunPreprocessingPipeline(luigi.Task):
+class PrepareAnalysisReadyCram(luigi.Task):
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()
     align_dir_path = luigi.Parameter(default='.')
@@ -157,9 +157,9 @@ class RunPreprocessingPipeline(luigi.Task):
         ]
 
 
-@requires(RunPreprocessingPipeline, FetchReferenceFasta,
+@requires(PrepareAnalysisReadyCram, FetchReferenceFasta,
           PrepareFastqs)
-class PrepareAnalysisReadyCram(luigi.Task):
+class RunPreprocessingPipeline(luigi.Task):
     sample_name = luigi.Parameter()
     qc_dir_path = luigi.Parameter(default='.')
     fastqc = luigi.Parameter(default='fastqc')
@@ -190,7 +190,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
         cram = Path(self.input()[0][0].path)
         qc_dir = Path(self.qc_dir_path)
         return (
-            [
+            self.input()[0] + [
                 luigi.LocalTarget(
                     qc_dir.joinpath('fastqc').joinpath(
                         self.sample_name
