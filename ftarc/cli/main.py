@@ -12,7 +12,7 @@ Usage:
         [--use-bwa-mem2] [--use-spark] [--dest-dir=<path>]
     ftarc trim [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses]
-        [--dest-dir=<path>] [--log-dir=<path>] <fa_path> <fq_path_prefix>...
+        [--dest-dir=<path>] [--log-dir=<path>] <fq_path_prefix>...
     ftarc align [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--use-bwa-mem2]
         [--dest-dir=<path>] [--log-dir=<path>] <fa_path> <fq_path_prefix>...
@@ -73,9 +73,9 @@ Options:
     --interval-list=<path>  Specify a path to an interval_list BED file
 
 Args:
+    <fq_path_prefix>        Path prefix of FASTQ files
     <fa_path>               Path to an reference FASTA file
                             (The index and sequence dictionary are required.)
-    <fq_path_prefix>        Path prefix of FASTQ files
     <sam_path>              Path to a sorted CRAM or BAM file
     <fq_path>               Path to a FASTQ file
 """
@@ -175,7 +175,6 @@ def main():
             )
         elif args['trim']:
             kwargs = {
-                'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'], 'n_cpu': n_cpu_per_worker,
                 'memory_mb': memory_mb_per_worker, 'sh_config': sh_config,
                 **{
