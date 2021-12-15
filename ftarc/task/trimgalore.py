@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import re
+from itertools import product
 from pathlib import Path
 
 import luigi
@@ -25,11 +26,16 @@ class TrimAdapters(FtarcTask):
 
     def output(self):
         dest_dir = Path(self.dest_dir_path).resolve()
+        standard_suffixes = tuple(
+            ''.join(t) for t in product(['.fastq', '.fq'], ['.gz', ''])
+        )
         return [
             luigi.LocalTarget(
                 dest_dir.joinpath(
-                    re.sub(r'\.(fastq|fq)$', '', Path(p).stem)
-                    + f'_val_{i + 1}.fq.gz'
+                    (
+                        re.sub(r'\.(fastq|fq)$', '', Path(p).stem)
+                        if p.endswith(standard_suffixes) else Path(p).name
+                    ) + f'_val_{i + 1}.fq.gz'
                 )
             ) for i, p in enumerate(self.fq_paths)
         ]
