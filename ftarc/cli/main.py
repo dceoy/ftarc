@@ -264,8 +264,10 @@ def main():
             kwargs = {
                 'fa_path': args['<fa_path>'],
                 'dest_dir_path': args['--dest-dir'], 'picard': gatk_or_picard,
-                'mode_of_output':
-                ('SUMMARY' if args['--summary'] else 'VERBOSE'),
+                'add_validatesamfile_args': [
+                    '--MODE', ('SUMMARY' if args['--summary'] else 'VERBOSE'),
+                    '--IGNORE', 'MISSING_TAG_NM'
+                ],
                 'n_cpu': n_cpu_per_worker, 'memory_mb': memory_mb_per_worker,
                 'sh_config': sh_config
             }
