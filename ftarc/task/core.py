@@ -13,6 +13,8 @@ from shoper.shelloperator import ShellOperator
 
 
 class ShellTask(luigi.Task, metaclass=ABCMeta):
+    retry_count = 0
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.initialize_shell()
