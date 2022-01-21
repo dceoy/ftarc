@@ -136,7 +136,6 @@ class RemoveDuplicates(luigi.WrapperTask):
         return self.input()
 
 
-@requires(SamtoolsFaidx)
 class CollectSamMetricsWithSamtools(FtarcTask):
     sam_path = luigi.Parameter()
     fa_path = luigi.Parameter(default='')
@@ -148,9 +147,19 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     plot_bamstats = luigi.Parameter(default='plot-bamstats')
     gnuplot = luigi.Parameter(default='gnuplot')
     add_samtools_command_args = luigi.DictParameter(default={'depth': ['-a']})
+    add_faidx_args = luigi.ListParameter(default=list())
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default=dict())
     priority = 10
+
+    def requires(self):
+        if self.fa_path:
+            return SamtoolsView(
+                fa_path=self.fa_path, samtools=self.samtools,
+                add_faidx_args=self.add_faidx_args, sh_config=self.sh_config
+            )
+        else:
+            return super().requires()
 
     def output(self):
         sam_name = Path(self.sam_path).name
