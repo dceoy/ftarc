@@ -35,6 +35,9 @@ Usage:
     ftarc samqc [--debug|--info] [--cpus=<int>] [--workers=<int>]
         [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
         [--log-dir=<path>] <fa_path> <sam_path>...
+    ftarc depth [--debug|--info] [--cpus=<int>] [--workers=<int>]
+        [--skip-cleaning] [--print-subprocesses] [--dest-dir=<path>]
+        [--log-dir=<path>] [--bed=<path>] <sam_path>...
     ftarc -h|--help
     ftarc --version
 
@@ -53,6 +56,7 @@ Commands:
     fastqc                  Collect metrics from FASTQ files using FastQC
     samqc                   Collect metrics from CRAM or BAM files using Picard
                             and Samtools
+    depth                   Sound depths in CRAM or BAM files using Samtools
 
 Options:
     -h, --help              Print help and exit
@@ -71,6 +75,7 @@ Options:
     --known-sites-vcf=<path>
                             Specify paths of known polymorphic sites VCF files
     --interval-list=<path>  Specify a path to an interval_list BED file
+    --bed=<path>            Specify a path to a BED file
 
 Args:
     <fq_path_prefix>        Path prefix of FASTQ files
@@ -96,7 +101,7 @@ from ..task.downloader import DownloadAndProcessResourceFiles
 from ..task.fastqc import CollectFqMetricsWithFastqc
 from ..task.gatk import ApplyBqsr, MarkDuplicates
 from ..task.picard import ValidateSamFile
-from ..task.samtools import RemoveDuplicates
+from ..task.samtools import RemoveDuplicates, SoundReadDepthsWithSamtools
 from ..task.trimgalore import TrimAdapters
 from .pipeline import run_processing_pipeline
 from .util import (build_luigi_tasks, fetch_executable, load_default_dict,
@@ -304,6 +309,19 @@ def main():
             build_luigi_tasks(
                 tasks=[
                     CollectMultipleSamMetrics(sam_path=p, **kwargs)
+                    for p in args['<sam_path>']
+                ],
+                workers=n_worker, log_level=log_level
+            )
+        elif args['depth']:
+            kwargs = {
+                'bed_path': args['--bed'], 'dest_dir_path': args['--dest-dir'],
+                'samtools': fetch_executable('samtools'),
+                'n_cpu': n_cpu_per_worker, 'sh_config': sh_config
+            }
+            build_luigi_tasks(
+                tasks=[
+                    SoundReadDepthsWithSamtools(sam_path=p, **kwargs)
                     for p in args['<sam_path>']
                 ],
                 workers=n_worker, log_level=log_level

@@ -235,5 +235,62 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                 )
 
 
+class SoundReadDepthsWithSamtools(FtarcTask):
+    sam_path = luigi.Parameter()
+    fa_path = luigi.Parameter(default='')
+    bed_path = luigi.Parameter(default='')
+    dest_dir_path = luigi.Parameter(default='.')
+    samtools = luigi.Parameter(default='samtools')
+    add_samtools_depth_args = luigi.ListParameter(default=['-a'])
+    add_faidx_args = luigi.ListParameter(default=list())
+    n_cpu = luigi.IntParameter(default=1)
+    sh_config = luigi.DictParameter(default=dict())
+    priority = 10
+
+    def requires(self):
+        if self.fa_path:
+            return SamtoolsView(
+                fa_path=self.fa_path, samtools=self.samtools,
+                add_faidx_args=self.add_faidx_args, sh_config=self.sh_config
+            )
+        else:
+            return super().requires()
+
+    def output(self):
+        return luigi.LocalTarget(
+            Path(self.dest_dir_path).resolve().joinpath(
+                Path(self.sam_path).name + '.depth'
+                + ('_a' if '-a' in self.add_samtools_depth_args else '')
+                + (('_b.' + Path(self.bed_path).name) if self.bed_path else '')
+                + '.tsv.gz'
+            )
+        )
+
+    def run(self):
+        run_id = Path(self.sam_path).name
+        self.print_log(f'Sound read depths using Samtools:\t{run_id}')
+        sam = Path(self.sam_path).resolve()
+        fa = (Path(self.fa_path).resolve() if self.fa_path else None)
+        bed = (Path(self.bed_path).resolve() if self.bed_path else None)
+        dest_dir = Path(self.dest_dir_path).resolve()
+        ref_cache = str(sam.parent.joinpath('.ref_cache'))
+        output_tsv_gz = Path(self.output().path)
+        self.setup_shell(
+            run_id=run_id, commands=self.samtools, cwd=dest_dir,
+            **self.sh_config, env={'REF_CACHE': ref_cache}
+        )
+        self.run_shell(
+            args=(
+                f'set -eo pipefail && {self.samtools} depth'
+                + (f' --reference {fa}' if fa is not None else '')
+                + (f' -@ {self.n_cpu}' if self.n_cpu > 1 else '')
+                + ''.join(f' {a}' for a in self.add_samtools_depth_args)
+                + f' {sam} | gzip -c - > {output_tsv_gz}'
+            ),
+            input_files_or_dirs=[sam, *[f for f in [fa, bed] if f]],
+            output_files_or_dirs=output_tsv_gz
+        )
+
+
 if __name__ == '__main__':
     luigi.run()
