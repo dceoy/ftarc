@@ -283,6 +283,7 @@ class SoundReadDepthsWithSamtools(FtarcTask):
             args=(
                 f'set -eo pipefail && {self.samtools} depth'
                 + (f' --reference {fa}' if fa is not None else '')
+                + (f' -b {bed}' if bed is not None else '')
                 + (f' -@ {self.n_cpu}' if self.n_cpu > 1 else '')
                 + ''.join(f' {a}' for a in self.add_samtools_depth_args)
                 + f' {sam} | gzip -c - > {output_tsv_gz}'
