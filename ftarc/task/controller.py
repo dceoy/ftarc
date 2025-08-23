@@ -1,7 +1,8 @@
 """High-level pipeline controller tasks for ftarc.
 
-This module provides controller tasks that orchestrate the complete preprocessing pipeline,
-coordinating multiple processing stages for genomic data from FASTQ to analysis-ready CRAM.
+This module provides controller tasks that orchestrate the complete preprocessing
+pipeline, coordinating multiple processing stages for genomic data from FASTQ to
+analysis-ready CRAM.
 """
 
 import re
@@ -40,9 +41,15 @@ class PrintEnvVersions(FtarcTask):
     __is_completed = False
 
     def complete(self) -> bool:
+        """Check if the task has been completed.
+
+        Returns:
+            True if the task has completed, False otherwise.
+        """
         return self.__is_completed
 
     def run(self) -> None:
+        """Execute version printing for all configured tools."""
         self.print_log(f"Print environment versions:\t{self.run_id}")
         self.setup_shell(
             run_id=self.run_id, commands=self.command_paths, **self.sh_config
@@ -89,6 +96,11 @@ class PrepareFastqs(luigi.WrapperTask):
     priority = 50
 
     def requires(self) -> luigi.Task | list[luigi.Task]:
+        """Determine prerequisite tasks based on adapter removal configuration.
+
+        Returns:
+            TrimAdapters task if adapter_removal is True, otherwise LocateFastqs task.
+        """
         if self.adapter_removal:
             return TrimAdapters(
                 fq_paths=self.fq_paths,
@@ -210,10 +222,12 @@ class PrepareAnalysisReadyCram(luigi.Task):
         complete preprocessing pipeline from raw aligned reads to analysis-ready
         CRAM files suitable for variant calling and other downstream analyses.
 
-        Raises:
-            RuntimeError: If any step in the pipeline fails.
-            FileNotFoundError: If reference files or known sites VCFs are missing.
-            subprocess.CalledProcessError: If external tools fail during execution.
+        Yields:
+            AlignReads: Aligns FASTQ reads to reference genome
+            MarkDuplicates: Marks duplicate reads in aligned data
+            BaseRecalibration: Performs BQSR on marked reads
+            RemoveDuplicates: Removes marked duplicates
+            ValidateSamFile: Validates final CRAM file
         """
         fa_path = self.input()[1][0].path
         output_cram = Path(self.output()[0].path)
@@ -394,9 +408,10 @@ class RunPreprocessingPipeline(luigi.Task):
         - Picard metrics collection (alignment summary, insert size, GC bias, etc.)
         - Samtools statistics (coverage, flagstat, idxstats)
 
-        Raises:
-            RuntimeError: If any QC collection task fails.
-            subprocess.CalledProcessError: If external QC tools fail during execution.
+        Yields:
+            CollectFqMetricsWithFastqc: Collects FASTQ quality metrics
+            CollectSamMetricsWithPicard: Collects alignment metrics with Picard
+            CollectSamMetricsWithSamtools: Collects alignment metrics with samtools
         """
         qc_dir = Path(self.qc_dir_path)
         if "fastqc" in self.metrics_collectors:

@@ -114,6 +114,7 @@ from .util import (
 
 
 def main() -> None:
+    """Parse command-line arguments and execute the requested ftarc sub-command."""
     args = docopt(__doc__, version=__version__)
     if args["--debug"]:
         log_level = "DEBUG"

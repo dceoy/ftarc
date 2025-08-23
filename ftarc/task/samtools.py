@@ -46,10 +46,6 @@ class SamtoolsFaidx(FtarcTask):
 
         This method creates a .fai index file that enables fast random access
         to sequences in the FASTA file by genomic coordinates.
-
-        Raises:
-            subprocess.CalledProcessError: If samtools faidx execution fails.
-            FileNotFoundError: If the FASTA file is not found.
         """
         run_id = Path(self.fa_path).stem
         self.print_log(f"Index FASTA:\t{run_id}")
@@ -133,10 +129,6 @@ class SamtoolsView(FtarcTask):
 
         The method automatically detects the operation type based on input/output
         file extensions and parameters, providing appropriate logging messages.
-
-        Raises:
-            subprocess.CalledProcessError: If samtools view execution fails.
-            FileNotFoundError: If input files are not found.
         """
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
@@ -281,7 +273,8 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         """Return the dependency task for FASTA indexing if needed.
 
         Returns:
-            luigi.Task: SamtoolsFaidx task if reference FASTA is provided, otherwise None.
+            luigi.Task: SamtoolsFaidx task if reference FASTA is provided,
+                otherwise None.
         """
         if self.fa_path:
             return SamtoolsFaidx(
@@ -324,10 +317,6 @@ class CollectSamMetricsWithSamtools(FtarcTask):
 
         For the stats command, it also generates HTML visualization plots
         using plot-bamstats if gnuplot is available.
-
-        Raises:
-            subprocess.CalledProcessError: If samtools command execution fails.
-            FileNotFoundError: If input files are not found.
         """
         run_id = Path(self.sam_path).name
         self.print_log(f"Collect SAM metrics using Samtools:\t{run_id}")
@@ -419,7 +408,8 @@ class SoundReadDepthsWithSamtools(FtarcTask):
         """Return the dependency task for FASTA indexing if needed.
 
         Returns:
-            luigi.Task: SamtoolsFaidx task if reference FASTA is provided, otherwise None.
+            luigi.Task: SamtoolsFaidx task if reference FASTA is provided,
+                otherwise None.
         """
         if self.fa_path:
             return SamtoolsFaidx(
@@ -469,10 +459,6 @@ class SoundReadDepthsWithSamtools(FtarcTask):
         - Read depth
 
         The output file is automatically compressed with gzip for storage efficiency.
-
-        Raises:
-            subprocess.CalledProcessError: If samtools depth execution fails.
-            FileNotFoundError: If input files are not found.
         """
         run_id = Path(self.sam_path).name
         self.print_log(f"Sound read depths using Samtools:\t{run_id}")

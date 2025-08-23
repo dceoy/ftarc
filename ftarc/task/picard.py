@@ -1,7 +1,7 @@
 """Picard tools tasks for the ftarc pipeline.
 
-This module provides Luigi tasks for Picard tools operations including sequence dictionary
-creation, SAM file validation, and various quality metrics collection.
+This module provides Luigi tasks for Picard tools operations including sequence
+dictionary creation, SAM file validation, and various quality metrics collection.
 """
 
 from pathlib import Path
@@ -21,7 +21,8 @@ class CreateSequenceDictionary(FtarcTask):
     Parameters:
         fa_path: Path to the reference FASTA file.
         gatk: Path to the GATK executable.
-        add_createsequencedictionary_args: Additional arguments for CreateSequenceDictionary.
+        add_createsequencedictionary_args: Additional arguments for
+            CreateSequenceDictionary.
         n_cpu: Number of CPU threads to use.
         memory_mb: Memory allocation in MB.
         sh_config: Shell configuration parameters.
@@ -50,10 +51,6 @@ class CreateSequenceDictionary(FtarcTask):
         This method creates a sequence dictionary (.dict) file that contains metadata
         about the reference sequences, including sequence names, lengths, MD5 checksums,
         and other information required by GATK and other genomics tools.
-
-        Raises:
-            subprocess.CalledProcessError: If GATK CreateSequenceDictionary execution fails.
-            FileNotFoundError: If the reference FASTA file is not found.
         """
         run_id = Path(self.fa_path).stem
         self.print_log(f"Create a sequence dictionary:\t{run_id}")
@@ -137,10 +134,6 @@ class ValidateSamFile(FtarcTask):
         - Reference sequence consistency
         - Read group validation
         - Tag format verification
-
-        Raises:
-            subprocess.CalledProcessError: If Picard ValidateSamFile execution fails.
-            FileNotFoundError: If input files or reference files are not found.
         """
         run_id = Path(self.sam_path).name
         self.print_log(f"Validate a SAM file:\t{run_id}")
@@ -265,10 +258,6 @@ class CollectSamMetricsWithPicard(FtarcTask):
 
         Each command generates text-based metrics files and, when applicable,
         PDF visualization charts.
-
-        Raises:
-            subprocess.CalledProcessError: If any Picard command execution fails.
-            FileNotFoundError: If input files or reference files are not found.
         """
         run_id = Path(self.sam_path).name
         self.print_log(f"Collect SAM metrics using Picard:\t{run_id}")

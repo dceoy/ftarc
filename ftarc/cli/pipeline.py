@@ -1,7 +1,8 @@
 """Pipeline orchestration and configuration management for ftarc.
 
-This module handles the high-level pipeline execution, including configuration file parsing,
-resource allocation, and coordination of Luigi tasks for the complete genomic data processing workflow.
+This module handles the high-level pipeline execution, including configuration
+file parsing, resource allocation, and coordination of Luigi tasks for the
+complete genomic data processing workflow.
 """
 
 import logging
@@ -218,9 +219,6 @@ def _read_config_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
 
     Returns:
         Validated configuration dictionary
-
-    Raises:
-        AssertionError: If configuration validation fails
     """
     config = read_yml(path=Path(path).resolve())
     assert isinstance(config, dict) and config.get("resources"), config
@@ -273,9 +271,6 @@ def _resolve_file_path(path: str | os.PathLike[str]) -> str:
 
     Returns:
         Absolute path string
-
-    Raises:
-        AssertionError: If file does not exist
     """
     p = Path(path).resolve()
     assert p.is_file(), f"file not found: {p}"
@@ -311,7 +306,8 @@ def _determine_input_samples(run_dict: Mapping[str, Any]) -> dict[str, Any]:
     """Extract and process sample information from run configuration.
 
     Args:
-        run_dict: Run configuration dictionary containing FASTQ paths and read group info
+        run_dict: Run configuration dictionary containing FASTQ paths and read
+            group info
 
     Returns:
         Dictionary with processed sample information including paths and metadata

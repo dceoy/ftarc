@@ -1,7 +1,7 @@
 """Core base classes and shared functionality for ftarc Luigi tasks.
 
-This module provides the base task classes, common utilities, and shared patterns used by
-all specialized task implementations in the ftarc pipeline.
+This module provides the base task classes, common utilities, and shared patterns
+used by all specialized task implementations in the ftarc pipeline.
 """
 
 import logging
@@ -31,6 +31,7 @@ class ShellTask(luigi.Task, ABC):
     retry_count = 0
 
     def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialize the ShellTask with shell environment setup."""
         super().__init__(*args, **kwargs)
         self.initialize_shell()
 
@@ -42,7 +43,10 @@ class ShellTask(luigi.Task, ABC):
             processing_time: Total processing time in seconds
         """
         logger = logging.getLogger("task-timer")
-        message = f"{self.__class__.__module__}.{self.__class__.__name__} - total elapsed time:\t{timedelta(seconds=processing_time)}"
+        message = (
+            f"{self.__class__.__module__}.{self.__class__.__name__} - "
+            f"total elapsed time:\t{timedelta(seconds=processing_time)}"
+        )
         logger.info(message)
         print(message, flush=True)
 
@@ -206,6 +210,7 @@ class ShellTask(luigi.Task, ABC):
     @staticmethod
     @abstractmethod
     def generate_version_commands(commands: str | Sequence[str]) -> Iterable[str]:
+        """Generate version checking commands for the given executables."""
         raise NotImplementedError
 
 
@@ -218,6 +223,7 @@ class FtarcTask(ShellTask):
     """
 
     def __init__(self, *args: object, **kwargs: object) -> None:
+        """Initialize FtarcTask with parent class initialization."""
         super().__init__(*args, **kwargs)
 
     @staticmethod

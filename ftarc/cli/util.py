@@ -173,9 +173,6 @@ def build_luigi_tasks(
         check_scheduling_succeeded: Assert that scheduling succeeded
         hide_summary: Skip printing execution summary
         **kwargs: Additional arguments passed to luigi.build()
-
-    Raises:
-        AssertionError: If scheduling failed and check_scheduling_succeeded is True
     """
     r = luigi.build(local_scheduler=True, detailed_summary=True, **kwargs)
     if not hide_summary:

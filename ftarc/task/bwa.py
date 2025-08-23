@@ -65,10 +65,6 @@ class CreateBwaIndices(FtarcTask):
         1. Sets up the shell environment with BWA executable
         2. Runs the BWA index command with optional additional arguments
         3. Creates all required index files in the same directory as the FASTA
-
-        Raises:
-            subprocess.CalledProcessError: If BWA indexing command fails.
-            FileNotFoundError: If the reference FASTA file or BWA executable is not found.
         """
         fa = Path(self.fa_path)
         run_id = fa.stem
@@ -161,11 +157,6 @@ class AlignReads(FtarcTask):
 
         Memory is automatically allocated per thread for efficient sorting,
         and a reference cache directory is set up to improve CRAM compression.
-
-        Raises:
-            subprocess.CalledProcessError: If BWA alignment or samtools processing fails.
-            FileNotFoundError: If FASTQ files, reference FASTA, or executables are not found.
-            ValueError: If read group parameters are invalid or memory allocation fails.
         """
         output_cram = Path(self.output()[0].path)
         run_id = output_cram.stem

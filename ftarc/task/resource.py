@@ -78,7 +78,8 @@ class FetchReferenceFasta(luigi.Task):
         reference FASTA file, enabling efficient random access for genomics tools.
 
         Yields:
-            list[luigi.Task]: List of indexing tasks (SamtoolsFaidx, CreateSequenceDictionary).
+            list[luigi.Task]: List of indexing tasks (SamtoolsFaidx,
+                CreateSequenceDictionary).
         """
         fa_path = self.input().path
         yield [
@@ -141,10 +142,6 @@ class FetchResourceFile(FtarcTask):
 
         The method automatically detects compression format based on file extension
         and uses parallel decompression tools for better performance.
-
-        Raises:
-            subprocess.CalledProcessError: If decompression or file operations fail.
-            FileNotFoundError: If the source file is not found.
         """
         dest_file = Path(self.output().path)
         run_id = dest_file.stem
@@ -215,10 +212,6 @@ class FetchResourceVcf(FtarcTask):
 
         The method handles both compressed and uncompressed input VCF files,
         applying bgzip compression when needed and always creating tabix indices.
-
-        Raises:
-            subprocess.CalledProcessError: If bgzip or tabix execution fails.
-            FileNotFoundError: If the source VCF file is not found.
         """
         dest_vcf = Path(self.output()[0].path)
         run_id = Path(dest_vcf.stem).stem

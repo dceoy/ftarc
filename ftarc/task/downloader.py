@@ -1,7 +1,7 @@
 """Resource downloading and processing tasks for the ftarc pipeline.
 
-This module provides Luigi tasks for downloading and preparing reference genome resources,
-including FASTA files, known variant databases, and associated indices.
+This module provides Luigi tasks for downloading and preparing reference genome
+resources, including FASTA files, known variant databases, and associated indices.
 """
 
 import re
@@ -98,10 +98,6 @@ class DownloadResourceFiles(FtarcTask):
                - VCF/BED files: compressed with bgzip
                - Compressed FASTA/text: decompressed appropriately
                - Other files: left as-is
-
-        Raises:
-            subprocess.CalledProcessError: If any download or processing command fails.
-            FileNotFoundError: If required executables are not found in PATH.
         """
         dest_dir = Path(self.dest_dir_path).resolve()
         self.print_log(f"Download resource files:\t{dest_dir}")
@@ -207,10 +203,10 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
         Yields Luigi tasks to create all necessary indices for the reference genome,
         enabling efficient access by various bioinformatics tools in the pipeline.
 
-        Tasks yielded:
-            - SamtoolsFaidx: Creates .fai index for random access
-            - CreateSequenceDictionary: Creates .dict file for GATK
-            - CreateBwaIndices: Creates BWA alignment indices
+        Yields:
+            SamtoolsFaidx: Creates .fai index for random access
+            CreateSequenceDictionary: Creates .dict file for GATK
+            CreateBwaIndices: Creates BWA alignment indices
 
         Note:
             Uses yield instead of return to enable Luigi's dynamic dependency
@@ -284,8 +280,8 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
         Yields Luigi tasks to create tabix indices for all bgzip-compressed VCF files,
         enabling efficient random access by genomic coordinate during variant analysis.
 
-        Tasks yielded:
-            - FetchResourceVcf: Creates .tbi tabix index for each .vcf.gz file
+        Yields:
+            FetchResourceVcf: Creates .tbi tabix index for each .vcf.gz file
 
         Note:
             Uses yield instead of return to enable Luigi's dynamic dependency

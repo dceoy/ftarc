@@ -89,10 +89,6 @@ class TrimAdapters(FtarcTask):
         The method handles both single-end and paired-end data, automatically
         detecting the mode based on the number of input files. It also manages
         file format conversion from bzip2 to gzip when needed.
-
-        Raises:
-            subprocess.CalledProcessError: If Trim Galore execution fails.
-            FileNotFoundError: If input FASTQ files are not found.
         """
         run_id = self.sample_name or Path(Path(Path(self.fq_paths[0]).stem).stem).stem
         self.print_log(f"Trim adapters:\t{run_id}")
@@ -187,10 +183,6 @@ class LocateFastqs(FtarcTask):
 
         The conversion uses pbzip2 for decompression and pigz for recompression,
         utilizing multiple CPU cores for improved performance on large files.
-
-        Raises:
-            subprocess.CalledProcessError: If compression/decompression fails.
-            FileNotFoundError: If input FASTQ files are not found.
         """
         run_id = Path(Path(Path(self.fq_paths[0]).stem).stem).stem
         self.print_log(f"Bunzip2 and Gzip a file:\t{run_id}")

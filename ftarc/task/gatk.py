@@ -1,7 +1,8 @@
 """GATK tool tasks for the ftarc pipeline.
 
 This module provides Luigi tasks for Genome Analysis Toolkit (GATK) operations,
-including duplicate marking, base quality score recalibration (BQSR), and variant calling.
+including duplicate marking, base quality score recalibration (BQSR), and
+variant calling.
 """
 
 from pathlib import Path
@@ -80,16 +81,13 @@ class MarkDuplicates(FtarcTask):
 
         This method marks duplicate reads in SAM/BAM/CRAM files using GATK's
         MarkDuplicates or MarkDuplicatesSpark tool, depending on the use_spark
-        parameter. It also sets NM, MD, and UQ tags and converts the output to CRAM format.
+        parameter. It also sets NM, MD, and UQ tags and converts the output to
+        CRAM format.
 
         The process includes:
         1. Running MarkDuplicates/MarkDuplicatesSpark to identify duplicates
         2. Setting NM, MD, and UQ tags using SetNmMdAndUqTags
         3. Converting output to CRAM format with indexing
-
-        Raises:
-            subprocess.CalledProcessError: If GATK or samtools execution fails.
-            FileNotFoundError: If input files or reference files are not found.
         """
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
@@ -182,10 +180,13 @@ class MarkDuplicates(FtarcTask):
 
 @requires(SamtoolsFaidx, CreateSequenceDictionary)
 class ApplyBqsr(FtarcTask):
-    """Luigi task for applying Base Quality Score Recalibration (BQSR) to sequencing data.
+    """Luigi task for applying Base Quality Score Recalibration (BQSR).
 
-    This task recalibrates base quality scores in aligned reads using GATK's BQSR tools,
-    improving the accuracy of variant calling by correcting systematic errors in base quality scores.
+    Applies BQSR to sequencing data for improved base quality scoring.
+
+    This task recalibrates base quality scores in aligned reads using GATK's BQSR
+    tools, improving the accuracy of variant calling by correcting systematic errors
+    in base quality scores.
 
     Parameters:
         input_sam_path: Path to the input SAM/BAM/CRAM file.
@@ -277,15 +278,12 @@ class ApplyBqsr(FtarcTask):
         BaseRecalibrator + ApplyBQSR workflow.
 
         The process includes:
-        1. BaseRecalibrator: Analyzes covariation among quality scores, position in read, etc.
+        1. BaseRecalibrator: Analyzes covariation among quality scores, position
+            in read, etc.
         2. ApplyBQSR: Applies the recalibration model to adjust quality scores
         3. Conversion to CRAM format with indexing
 
         Uses known variant sites to avoid recalibrating true variants as errors.
-
-        Raises:
-            subprocess.CalledProcessError: If GATK or samtools execution fails.
-            FileNotFoundError: If input files, reference files, or known sites VCFs are not found.
         """
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem

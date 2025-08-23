@@ -44,7 +44,8 @@ class CollectFqMetricsWithFastqc(FtarcTask):
         """Return the output targets for the FastQC task.
 
         Returns:
-            list[luigi.LocalTarget]: List of output file targets including HTML and ZIP reports.
+            list[luigi.LocalTarget]: List of output file targets including HTML
+                and ZIP reports.
         """
         return [
             luigi.LocalTarget(o) for o in self._generate_output_files(*self.fq_paths)
@@ -57,10 +58,6 @@ class CollectFqMetricsWithFastqc(FtarcTask):
         HTML reports and ZIP archives containing detailed quality metrics. The
         analysis includes per-base quality scores, sequence content analysis,
         adapter contamination detection, and other important QC metrics.
-
-        Raises:
-            subprocess.CalledProcessError: If FastQC execution fails.
-            FileNotFoundError: If input FASTQ files are not found.
         """
         dest_dir = Path(self.dest_dir_path).resolve()
         for p in self.fq_paths:
