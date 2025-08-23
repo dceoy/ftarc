@@ -12,15 +12,15 @@ from .core import FtarcTask
 class SamtoolsFaidx(FtarcTask):
     fa_path = luigi.Parameter()
     samtools = luigi.Parameter(default="samtools")
-    add_faidx_args = luigi.ListParameter(default=list())
-    sh_config = luigi.DictParameter(default=dict())
+    add_faidx_args = luigi.ListParameter(default=[])
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
         fa = Path(self.fa_path).resolve()
         return luigi.LocalTarget(f"{fa}.fai")
 
-    def run(self):
+    def run(self) -> None:
         run_id = Path(self.fa_path).stem
         self.print_log(f"Index FASTA:\t{run_id}")
         fa = Path(self.fa_path).resolve()
@@ -45,11 +45,11 @@ class SamtoolsView(FtarcTask):
     output_sam_path = luigi.Parameter()
     samtools = luigi.Parameter(default="samtools")
     n_cpu = luigi.IntParameter(default=1)
-    add_view_args = luigi.ListParameter(default=list())
+    add_view_args = luigi.ListParameter(default=[])
     message = luigi.Parameter(default="")
     remove_input = luigi.BoolParameter(default=True)
     index_sam = luigi.BoolParameter(default=False)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 90
 
     def output(self):
@@ -63,11 +63,11 @@ class SamtoolsView(FtarcTask):
                     )
                 ]
                 if self.index_sam
-                else list()
+                else []
             ),
         ]
 
-    def run(self):
+    def run(self) -> None:
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
         input_sam = target_sam.resolve()
@@ -81,7 +81,7 @@ class SamtoolsView(FtarcTask):
         elif input_sam.suffix == output_sam.suffix:
             message = None
         else:
-            message = "Convert {0} to {1}".format(*[
+            message = "Convert {} to {}".format(*[
                 s.suffix[1:].upper() for s in [input_sam, output_sam]
             ])
         if message:
@@ -120,7 +120,7 @@ class RemoveDuplicates(luigi.WrapperTask):
     n_cpu = luigi.IntParameter(default=1)
     remove_input = luigi.BoolParameter(default=False)
     index_sam = luigi.BoolParameter(default=True)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 90
 
     def requires(self):
@@ -156,9 +156,9 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     plot_bamstats = luigi.Parameter(default="plot-bamstats")
     gnuplot = luigi.Parameter(default="gnuplot")
     add_samtools_command_args = luigi.DictParameter(default={"depth": ["-a"]})
-    add_faidx_args = luigi.ListParameter(default=list())
+    add_faidx_args = luigi.ListParameter(default=[])
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 10
 
     def requires(self):
@@ -181,10 +181,10 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         ] + (
             [luigi.LocalTarget(dest_dir.joinpath(f"{sam_name}.stats"))]
             if "stats" in self.samtools_commands
-            else list()
+            else []
         )
 
-    def run(self):
+    def run(self) -> None:
         run_id = Path(self.sam_path).name
         self.print_log(f"Collect SAM metrics using Samtools:\t{run_id}")
         sam = Path(self.sam_path).resolve()
@@ -216,8 +216,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                         else ""
                     )
                     + "".join(
-                        f" {a}"
-                        for a in (self.add_samtools_command_args.get(c) or list())
+                        f" {a}" for a in (self.add_samtools_command_args.get(c) or [])
                     )
                     + f" {sam} | tee {output_txt}"
                 ),
@@ -233,7 +232,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
                             f" {a}"
                             for a in (
                                 self.add_samtools_command_args.get("plot-bamstats")
-                                or list()
+                                or []
                             )
                         )
                         + f" --prefix {plot_dir}/index {output_txt}"
@@ -250,9 +249,9 @@ class SoundReadDepthsWithSamtools(FtarcTask):
     dest_dir_path = luigi.Parameter(default=".")
     samtools = luigi.Parameter(default="samtools")
     add_samtools_depth_args = luigi.ListParameter(default=["-a"])
-    add_faidx_args = luigi.ListParameter(default=list())
+    add_faidx_args = luigi.ListParameter(default=[])
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 10
 
     def requires(self):
@@ -279,7 +278,7 @@ class SoundReadDepthsWithSamtools(FtarcTask):
             )
         )
 
-    def run(self):
+    def run(self) -> None:
         run_id = Path(self.sam_path).name
         self.print_log(f"Sound read depths using Samtools:\t{run_id}")
         sam = Path(self.sam_path).resolve()

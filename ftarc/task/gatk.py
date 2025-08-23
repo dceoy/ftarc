@@ -29,10 +29,10 @@ class MarkDuplicates(FtarcTask):
     add_markduplicates_args = luigi.ListParameter(
         default=["--ASSUME_SORT_ORDER", "coordinate"]
     )
-    add_setnmmdanduqtags_args = luigi.ListParameter(default=list())
+    add_setnmmdanduqtags_args = luigi.ListParameter(default=[])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
@@ -43,7 +43,7 @@ class MarkDuplicates(FtarcTask):
             for s in ["cram", "cram.crai", "metrics.txt"]
         ]
 
-    def run(self):
+    def run(self) -> None:
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
         self.print_log(f"Mark duplicates:\t{run_id}")
@@ -181,7 +181,7 @@ class ApplyBqsr(FtarcTask):
     save_memory = luigi.BoolParameter(default=False)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
@@ -192,7 +192,7 @@ class ApplyBqsr(FtarcTask):
             for s in ["cram", "cram.crai"]
         ]
 
-    def run(self):
+    def run(self) -> None:
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
         self.print_log(f"Apply base quality score recalibration:\t{run_id}")
@@ -235,14 +235,14 @@ class ApplyBqsr(FtarcTask):
                     fa,
                     fa_dict,
                     *known_sites_vcfs,
-                    *([interval_list] if interval_list else list()),
+                    *([interval_list] if interval_list else []),
                 ],
                 output_files_or_dirs=tmp_bam,
             )
         else:
             bqsr_txt = output_cram.parent.joinpath(f"{output_cram.stem}.data.txt")
             save_memory_args = (
-                ["--disable-bam-index-caching", "true"] if self.save_memory else list()
+                ["--disable-bam-index-caching", "true"] if self.save_memory else []
             )
             self.run_shell(
                 args=(
@@ -262,7 +262,7 @@ class ApplyBqsr(FtarcTask):
                     fa,
                     fa_dict,
                     *known_sites_vcfs,
-                    *([interval_list] if interval_list else list()),
+                    *([interval_list] if interval_list else []),
                 ],
                 output_files_or_dirs=bqsr_txt,
             )
@@ -283,7 +283,7 @@ class ApplyBqsr(FtarcTask):
                     fa,
                     fa_dict,
                     bqsr_txt,
-                    *([interval_list] if interval_list else list()),
+                    *([interval_list] if interval_list else []),
                 ],
                 output_files_or_dirs=tmp_bam,
             )

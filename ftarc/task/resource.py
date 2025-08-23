@@ -18,7 +18,7 @@ class FetchReferenceFasta(luigi.Task):
     gatk = luigi.Parameter(default="gatk")
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 100
 
     def requires(self):
@@ -59,7 +59,7 @@ class FetchResourceFile(FtarcTask):
     pigz = luigi.Parameter(default="pigz")
     pbzip2 = luigi.Parameter(default="pbzip2")
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
@@ -69,7 +69,7 @@ class FetchResourceFile(FtarcTask):
             )
         )
 
-    def run(self):
+    def run(self) -> None:
         dest_file = Path(self.output().path)
         run_id = dest_file.stem
         self.print_log(f"Create a resource:\t{run_id}")
@@ -101,7 +101,7 @@ class FetchResourceVcf(FtarcTask):
     bgzip = luigi.Parameter(default="bgzip")
     tabix = luigi.Parameter(default="tabix")
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
@@ -110,7 +110,7 @@ class FetchResourceVcf(FtarcTask):
         )
         return [luigi.LocalTarget(f"{dest_vcf}{s}") for s in ["", ".tbi"]]
 
-    def run(self):
+    def run(self) -> None:
         dest_vcf = Path(self.output()[0].path)
         run_id = Path(dest_vcf.stem).stem
         self.print_log(f"Create a VCF:\t{run_id}")
@@ -144,7 +144,7 @@ class FetchKnownSitesVcfs(luigi.WrapperTask):
     bgzip = luigi.Parameter(default="bgzip")
     tabix = luigi.Parameter(default="tabix")
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def requires(self):

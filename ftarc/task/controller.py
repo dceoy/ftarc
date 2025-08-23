@@ -19,15 +19,15 @@ from .trimgalore import LocateFastqs, TrimAdapters
 
 
 class PrintEnvVersions(FtarcTask):
-    command_paths = luigi.ListParameter(default=list())
+    command_paths = luigi.ListParameter(default=[])
     run_id = luigi.Parameter(default=gethostname())
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     __is_completed = False
 
     def complete(self):
         return self.__is_completed
 
-    def run(self):
+    def run(self) -> None:
         self.print_log(f"Print environment versions:\t{self.run_id}")
         self.setup_shell(
             run_id=self.run_id, commands=self.command_paths, **self.sh_config
@@ -49,7 +49,7 @@ class PrepareFastqs(luigi.WrapperTask):
     adapter_removal = luigi.BoolParameter(default=True)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 50
 
     def requires(self):
@@ -97,7 +97,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
     save_memory = luigi.BoolParameter(default=False)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
@@ -208,7 +208,7 @@ class RunPreprocessingPipeline(luigi.Task):
     )
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = luigi.IntParameter(default=sys.maxsize)
 
     def output(self):
@@ -225,7 +225,7 @@ class RunPreprocessingPipeline(luigi.Task):
                 for s in (
                     [Path(i.path).stem for i in self.input()[2]]
                     if "fastqc" in self.metrics_collectors
-                    else list()
+                    else []
                 )
             ]
             + [
@@ -237,7 +237,7 @@ class RunPreprocessingPipeline(luigi.Task):
                 for c in (
                     self.picard_qc_commands
                     if "picard" in self.metrics_collectors
-                    else list()
+                    else []
                 )
             ]
             + [
@@ -249,7 +249,7 @@ class RunPreprocessingPipeline(luigi.Task):
                 for c in (
                     self.samtools_qc_commands
                     if "samtools" in self.metrics_collectors
-                    else list()
+                    else []
                 )
             ]
         )
@@ -311,7 +311,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     gnuplot = luigi.Parameter(default="gnuplot")
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 10
 
     def requires(self):
@@ -327,9 +327,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
                 sh_config=self.sh_config,
             )
             for c in (
-                self.picard_qc_commands
-                if "picard" in self.metrics_collectors
-                else list()
+                self.picard_qc_commands if "picard" in self.metrics_collectors else []
             )
         ] + [
             CollectSamMetricsWithSamtools(
@@ -346,7 +344,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
             for c in (
                 self.samtools_qc_commands
                 if "samtools" in self.metrics_collectors
-                else list()
+                else []
             )
         ]
 

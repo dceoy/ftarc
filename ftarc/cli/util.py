@@ -13,7 +13,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader
 
 
-def write_config_yml(path, src_yml="example_ftarc.yml"):
+def write_config_yml(path, src_yml="example_ftarc.yml") -> None:
     if Path(path).is_file():
         print_log(f"The file exists:\t{path}")
     else:
@@ -24,7 +24,7 @@ def write_config_yml(path, src_yml="example_ftarc.yml"):
         )
 
 
-def print_log(message):
+def print_log(message) -> None:
     logger = logging.getLogger(__name__)
     logger.debug(message)
     print(f">>\t{message}", flush=True)
@@ -43,29 +43,30 @@ def fetch_executable(cmd, ignore_errors=False):
     elif ignore_errors:
         return None
     else:
-        raise RuntimeError(f"command not found: {cmd}")
+        msg = f"command not found: {cmd}"
+        raise RuntimeError(msg)
 
 
 def read_yml(path):
     logger = logging.getLogger(__name__)
-    with open(str(path)) as f:
+    with open(str(path), encoding="utf-8") as f:
         d = yaml.load(f, Loader=yaml.FullLoader)
     logger.debug("YAML data:" + os.linesep + pformat(d))
     return d
 
 
-def print_yml(data):
+def print_yml(data) -> None:
     print(yaml.dump(data))
 
 
 def render_luigi_log_cfg(
     log_cfg_path, log_dir_path=None, console_log_level="WARNING", file_log_level="DEBUG"
-):
+) -> None:
     log_cfg = Path(str(log_cfg_path)).resolve()
     cfg_dir = log_cfg.parent
     log_dir = Path(str(log_dir_path)).resolve() if log_dir_path else cfg_dir
     log_txt = log_dir.joinpath(
-        "luigi.{0}.{1}.log.txt".format(
+        "luigi.{}.{}.log.txt".format(
             file_log_level, datetime.now().strftime("%Y%m%d_%H%M%S")
         )
     )
@@ -74,7 +75,7 @@ def render_luigi_log_cfg(
             print_log(f"Make a directory:\t{d}")
             d.mkdir(parents=True, exist_ok=True)
     print_log(
-        "{0} a file:\t{1}".format(
+        "{} a file:\t{}".format(
             ("Overwrite" if log_cfg.exists() else "Render"), log_cfg
         )
     )
@@ -99,7 +100,9 @@ def load_default_dict(stem):
     return read_yml(path=Path(__file__).parent.parent.joinpath(f"static/{stem}.yml"))
 
 
-def build_luigi_tasks(check_scheduling_succeeded=True, hide_summary=False, **kwargs):
+def build_luigi_tasks(
+    check_scheduling_succeeded=True, hide_summary=False, **kwargs
+) -> None:
     r = luigi.build(local_scheduler=True, detailed_summary=True, **kwargs)
     if not hide_summary:
         print(

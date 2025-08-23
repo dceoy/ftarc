@@ -4,7 +4,7 @@ import logging
 import os
 import re
 import sys
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -12,28 +12,28 @@ import luigi
 from shoper.shelloperator import ShellOperator
 
 
-class ShellTask(luigi.Task, metaclass=ABCMeta):
+class ShellTask(luigi.Task, ABC):
     retry_count = 0
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.initialize_shell()
 
     @luigi.Task.event_handler(luigi.Event.PROCESSING_TIME)
-    def print_execution_time(self, processing_time):
+    def print_execution_time(self, processing_time) -> None:
         logger = logging.getLogger("task-timer")
         message = f"{self.__class__.__module__}.{self.__class__.__name__} - total elapsed time:\t{timedelta(seconds=processing_time)}"
         logger.info(message)
         print(message, flush=True)
 
     @classmethod
-    def print_log(cls, message, new_line=True):
+    def print_log(cls, message, new_line=True) -> None:
         logger = logging.getLogger(cls.__name__)
         logger.info(message)
         print((os.linesep if new_line else "") + f">>\t{message}", flush=True)
 
     @classmethod
-    def initialize_shell(cls):
+    def initialize_shell(cls) -> None:
         cls.__log_txt_path = None
         cls.__sh = None
         cls.__run_kwargs = None
@@ -52,7 +52,7 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
         executable="/bin/bash",
         env=None,
         **kwargs,
-    ):
+    ) -> None:
         cls.__log_txt_path = (
             str(
                 Path(log_dir_path)
@@ -85,7 +85,7 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
             cls.run_shell(args=list(cls.generate_version_commands(commands)))
 
     @classmethod
-    def make_dirs(cls, *paths):
+    def make_dirs(cls, *paths) -> None:
         for p in paths:
             if p:
                 d = Path(str(p)).resolve()
@@ -94,7 +94,7 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
                     d.mkdir(parents=True, exist_ok=True)
 
     @classmethod
-    def run_shell(cls, *args, **kwargs):
+    def run_shell(cls, *args, **kwargs) -> None:
         logger = logging.getLogger(cls.__name__)
         start_datetime = datetime.now()
         cls.__sh.run(
@@ -108,11 +108,11 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
         message = f"shell elapsed time:\t{elapsed_timedelta}"
         logger.info(message)
         if cls.__log_txt_path:
-            with open(cls.__log_txt_path, "a") as f:
+            with open(cls.__log_txt_path, "a", encoding="utf-8") as f:
                 f.write(f"### {message}{os.linesep}")
 
     @classmethod
-    def remove_files_and_dirs(cls, *paths):
+    def remove_files_and_dirs(cls, *paths) -> None:
         targets = [Path(str(p)) for p in paths if Path(str(p)).exists()]
         if targets:
             cls.run_shell(
@@ -124,7 +124,7 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
             )
 
     @classmethod
-    def print_env_versions(cls):
+    def print_env_versions(cls) -> None:
         python = sys.executable
         version_files = [
             Path("/proc/version"),
@@ -151,7 +151,7 @@ class ShellTask(luigi.Task, metaclass=ABCMeta):
 
 
 class FtarcTask(ShellTask):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     @staticmethod
@@ -174,7 +174,7 @@ class FtarcTask(ShellTask):
     @classmethod
     def bzip2_to_gzip(
         cls, src_bz2_path, dest_gz_path, pbzip2="pbzip2", pigz="pigz", n_cpu=1
-    ):
+    ) -> None:
         cls.run_shell(
             args=(
                 f"set -eo pipefail && {pbzip2} -p{n_cpu} -dc {src_bz2_path}"
@@ -197,7 +197,7 @@ class FtarcTask(ShellTask):
         ])
 
     @classmethod
-    def samtools_index(cls, sam_path, samtools="samtools", n_cpu=1):
+    def samtools_index(cls, sam_path, samtools="samtools", n_cpu=1) -> None:
         cls.run_shell(
             args=(
                 f"set -e && {samtools} quickcheck -v {sam_path}"
@@ -218,7 +218,7 @@ class FtarcTask(ShellTask):
         add_args=None,
         index_sam=False,
         remove_input=False,
-    ):
+    ) -> None:
         cls.run_shell(
             args=(
                 f"set -e && {samtools} quickcheck -v {input_sam_path}"

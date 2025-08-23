@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
+"""FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing.
 
 Usage:
     ftarc download [--debug|--info] [--cpus=<int>] [--workers=<int>]
@@ -93,15 +93,16 @@ from pathlib import Path
 from docopt import docopt
 from psutil import cpu_count, virtual_memory
 
-from .. import __version__
-from ..task.bwa import AlignReads
-from ..task.controller import CollectMultipleSamMetrics
-from ..task.downloader import DownloadAndProcessResourceFiles
-from ..task.fastqc import CollectFqMetricsWithFastqc
-from ..task.gatk import ApplyBqsr, MarkDuplicates
-from ..task.picard import ValidateSamFile
-from ..task.samtools import RemoveDuplicates, SoundReadDepthsWithSamtools
-from ..task.trimgalore import TrimAdapters
+from ftarc import __version__
+from ftarc.task.bwa import AlignReads
+from ftarc.task.controller import CollectMultipleSamMetrics
+from ftarc.task.downloader import DownloadAndProcessResourceFiles
+from ftarc.task.fastqc import CollectFqMetricsWithFastqc
+from ftarc.task.gatk import ApplyBqsr, MarkDuplicates
+from ftarc.task.picard import ValidateSamFile
+from ftarc.task.samtools import RemoveDuplicates, SoundReadDepthsWithSamtools
+from ftarc.task.trimgalore import TrimAdapters
+
 from .pipeline import run_processing_pipeline
 from .util import (
     build_luigi_tasks,
@@ -113,7 +114,7 @@ from .util import (
 )
 
 
-def main():
+def main() -> None:
     args = docopt(__doc__, version=__version__)
     if args["--debug"]:
         log_level = "DEBUG"

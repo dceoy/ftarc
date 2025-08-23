@@ -18,10 +18,10 @@ class TrimAdapters(FtarcTask):
     trim_galore = luigi.Parameter(default="trim_galore")
     cutadapt = luigi.Parameter(default="cutadapt")
     fastqc = luigi.Parameter(default="fastqc")
-    add_trim_galore_args = luigi.ListParameter(default=list())
+    add_trim_galore_args = luigi.ListParameter(default=[])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 50
 
     def output(self):
@@ -43,7 +43,7 @@ class TrimAdapters(FtarcTask):
             for i, p in enumerate(self.fq_paths)
         ]
 
-    def run(self):
+    def run(self) -> None:
         run_id = self.sample_name or Path(Path(Path(self.fq_paths[0]).stem).stem).stem
         self.print_log(f"Trim adapters:\t{run_id}")
         output_fq_paths = [o.path for o in self.output()]
@@ -96,7 +96,7 @@ class LocateFastqs(FtarcTask):
     pigz = luigi.Parameter(default="pigz")
     pbzip2 = luigi.Parameter(default="pbzip2")
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 50
 
     def output(self):
@@ -110,7 +110,7 @@ class LocateFastqs(FtarcTask):
             for p in self.fq_paths
         ]
 
-    def run(self):
+    def run(self) -> None:
         run_id = Path(Path(Path(self.fq_paths[0]).stem).stem).stem
         self.print_log(f"Bunzip2 and Gzip a file:\t{run_id}")
         self.setup_shell(

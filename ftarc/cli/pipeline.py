@@ -10,7 +10,7 @@ from pprint import pformat
 
 from psutil import cpu_count, virtual_memory
 
-from ..cli.util import (
+from ftarc.cli.util import (
     build_luigi_tasks,
     fetch_executable,
     load_default_dict,
@@ -20,7 +20,7 @@ from ..cli.util import (
     read_yml,
     render_luigi_log_cfg,
 )
-from ..task.controller import PrintEnvVersions, RunPreprocessingPipeline
+from ftarc.task.controller import PrintEnvVersions, RunPreprocessingPipeline
 
 
 def run_processing_pipeline(
@@ -34,7 +34,7 @@ def run_processing_pipeline(
     file_log_level="DEBUG",
     use_spark=False,
     use_bwa_mem2=True,
-):
+) -> None:
     logger = logging.getLogger(__name__)
     logger.info(f"config_yml_path:\t{config_yml_path}")
     config = _read_config_yml(path=config_yml_path)
@@ -43,7 +43,7 @@ def run_processing_pipeline(
     dest_dir = Path(dest_dir_path).resolve()
     log_dir = dest_dir.joinpath("log")
 
-    adapter_removal = config["adapter_removal"] if "adapter_removal" in config else True
+    adapter_removal = config.get("adapter_removal", True)
     logger.debug(f"adapter_removal:\t{adapter_removal}")
 
     default_dict = load_default_dict(stem="example_ftarc")
@@ -54,7 +54,7 @@ def run_processing_pipeline(
             if config["metrics_collectors"].get(k)
         ]
         if "metrics_collectors" in config
-        else list()
+        else []
     )
     logger.debug("metrics_collectors:" + os.linesep + pformat(metrics_collectors))
 
@@ -70,7 +70,7 @@ def run_processing_pipeline(
                 "pigz",
                 "samtools",
                 "tabix",
-                *(["gnuplot"] if "samtools" in metrics_collectors else list()),
+                *(["gnuplot"] if "samtools" in metrics_collectors else []),
                 *({"cutadapt", "fastqc", "trim_galore"} if adapter_removal else set()),
             }
         },
@@ -123,7 +123,7 @@ def run_processing_pipeline(
             )
         ]
         if runs
-        else list()
+        else []
     )
     logger.debug("sample_dict_list:" + os.linesep + pformat(sample_dict_list))
 
@@ -233,7 +233,7 @@ def _resolve_input_file_paths(path_list=None, path_dict=None):
     if path_list:
         return [_resolve_file_path(s) for s in path_list]
     elif path_dict:
-        new_dict = dict()
+        new_dict = {}
         for k, v in path_dict.items():
             if isinstance(v, str):
                 new_dict[f"{k}_path"] = _resolve_file_path(v)
@@ -243,7 +243,7 @@ def _resolve_input_file_paths(path_list=None, path_dict=None):
 
 
 def _determine_input_samples(run_dict):
-    g = run_dict.get("read_group") or dict()
+    g = run_dict.get("read_group") or {}
     return {
         "fq_paths": _resolve_input_file_paths(path_list=run_dict["fq"]),
         "read_group": g,

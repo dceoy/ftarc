@@ -11,17 +11,17 @@ from .core import FtarcTask
 class CreateSequenceDictionary(FtarcTask):
     fa_path = luigi.Parameter()
     gatk = luigi.Parameter(default="gatk")
-    add_createsequencedictionary_args = luigi.ListParameter(default=list())
+    add_createsequencedictionary_args = luigi.ListParameter(default=[])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
         fa = Path(self.fa_path).resolve()
         return luigi.LocalTarget(fa.parent.joinpath(f"{fa.stem}.dict"))
 
-    def run(self):
+    def run(self) -> None:
         run_id = Path(self.fa_path).stem
         self.print_log(f"Create a sequence dictionary:\t{run_id}")
         fa = Path(self.fa_path).resolve()
@@ -60,7 +60,7 @@ class ValidateSamFile(FtarcTask):
     )
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = luigi.IntParameter(default=100)
 
     def output(self):
@@ -70,7 +70,7 @@ class ValidateSamFile(FtarcTask):
             .joinpath(Path(self.sam_path).name + ".ValidateSamFile.txt")
         )
 
-    def run(self):
+    def run(self) -> None:
         run_id = Path(self.sam_path).name
         self.print_log(f"Validate a SAM file:\t{run_id}")
         sam = Path(self.sam_path).resolve()
@@ -124,7 +124,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
     )
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 100
 
     def output(self):
@@ -153,7 +153,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
             ]
         )
 
-    def run(self):
+    def run(self) -> None:
         run_id = Path(self.sam_path).name
         self.print_log(f"Collect SAM metrics using Picard:\t{run_id}")
         sam = Path(self.sam_path).resolve()
@@ -210,7 +210,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
                     + "".join(
                         f" {a}"
                         for a in [
-                            *(self.add_picard_command_args.get(c) or list()),
+                            *(self.add_picard_command_args.get(c) or []),
                             *output_args,
                         ]
                     )

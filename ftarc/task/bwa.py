@@ -13,8 +13,8 @@ class CreateBwaIndices(FtarcTask):
     fa_path = luigi.Parameter()
     bwa = luigi.Parameter(default="bwa")
     use_bwa_mem2 = luigi.BoolParameter(default=False)
-    add_index_args = luigi.ListParameter(default=list())
-    sh_config = luigi.DictParameter(default=dict())
+    add_index_args = luigi.ListParameter(default=[])
+    sh_config = luigi.DictParameter(default={})
     priority = 100
 
     def output(self):
@@ -27,7 +27,7 @@ class CreateBwaIndices(FtarcTask):
             )
         ]
 
-    def run(self):
+    def run(self) -> None:
         fa = Path(self.fa_path)
         run_id = fa.stem
         self.print_log(f"Create BWA indices:\t{run_id}")
@@ -51,7 +51,7 @@ class AlignReads(FtarcTask):
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default=".")
     sample_name = luigi.Parameter()
-    read_group = luigi.DictParameter(default=dict())
+    read_group = luigi.DictParameter(default={})
     output_stem = luigi.Parameter(default="")
     bwa = luigi.Parameter(default="bwa")
     samtools = luigi.Parameter(default="samtools")
@@ -59,7 +59,7 @@ class AlignReads(FtarcTask):
     add_mem_args = luigi.ListParameter(default=["-P", "-T", "0"])
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 70
 
     def output(self):
@@ -72,7 +72,7 @@ class AlignReads(FtarcTask):
             luigi.LocalTarget(dest_dir.joinpath(output_cram_name + ".crai")),
         ]
 
-    def run(self):
+    def run(self) -> None:
         output_cram = Path(self.output()[0].path)
         run_id = output_cram.stem
         self.print_log(f"Align reads:\t{run_id}")
@@ -92,7 +92,7 @@ class AlignReads(FtarcTask):
             + [
                 f"{k}:{v}"
                 for k, v in self.read_group.items()
-                if k not in ["ID", "PU", "SM", "PL", "LB"]
+                if k not in {"ID", "PU", "SM", "PL", "LB"}
             ]
         )
         fa = Path(self.fa_path).resolve()

@@ -24,19 +24,19 @@ class DownloadResourceFiles(FtarcTask):
     pbzip2 = luigi.Parameter(default="pbzip2")
     bgzip = luigi.Parameter(default="bgzip")
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 10
 
     def output(self):
         dest_dir = Path(self.dest_dir_path).resolve()
-        target_paths = list()
+        target_paths = []
         for u in self.src_urls:
             p = str(dest_dir.joinpath(Path(u).name))
             if u.endswith(
-                tuple([
+                tuple(
                     f".{a}.{b}"
                     for a, b in product(("fa", "fna", "fasta", "txt"), ("gz", "bz2"))
-                ])
+                )
             ):
                 target_paths.append(re.sub(r"\.(gz|bz2)$", "", p))
             elif u.endswith(".bgz"):
@@ -47,7 +47,7 @@ class DownloadResourceFiles(FtarcTask):
                 target_paths.append(p)
         return [luigi.LocalTarget(p) for p in target_paths]
 
-    def run(self):
+    def run(self) -> None:
         dest_dir = Path(self.dest_dir_path).resolve()
         self.print_log(f"Download resource files:\t{dest_dir}")
         self.setup_shell(
@@ -91,7 +91,7 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
     use_bwa_mem2 = luigi.BoolParameter(default=False)
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 10
 
     def output(self):
@@ -100,11 +100,11 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
             if self.use_bwa_mem2
             else ["pac", "bwt", "ann", "amb", "sa"]
         )
-        fa = [
+        fa = next(
             Path(i.path)
             for i in self.input()
             if i.path.endswith((".fa", ".fna", ".fasta"))
-        ][0]
+        )
         return self.input() + [
             luigi.LocalTarget(p)
             for p in [
@@ -141,7 +141,7 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
     bgzip = luigi.Parameter(default="bgzip")
     tabix = luigi.Parameter(default="tabix")
     n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 10
 
     def output(self):
@@ -179,7 +179,7 @@ class DownloadAndProcessResourceFiles(luigi.WrapperTask):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     use_bwa_mem2 = luigi.BoolParameter(default=False)
-    sh_config = luigi.DictParameter(default=dict())
+    sh_config = luigi.DictParameter(default={})
     priority = 10
 
     def requires(self):
