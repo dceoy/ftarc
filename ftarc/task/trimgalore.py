@@ -24,7 +24,7 @@ class TrimAdapters(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 50
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_dir = Path(self.dest_dir_path).resolve()
         standard_suffixes = tuple(
             "".join(t) for t in product([".fastq", ".fq"], [".gz", ""])
@@ -99,7 +99,7 @@ class LocateFastqs(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 50
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_dir = Path(self.dest_dir_path).resolve()
         return [
             luigi.LocalTarget(

@@ -27,7 +27,7 @@ class DownloadResourceFiles(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_dir = Path(self.dest_dir_path).resolve()
         target_paths = []
         for u in self.src_urls:
@@ -94,7 +94,7 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         bwa_suffixes = (
             ["0123", "amb", "ann", "pac", "bwt.2bit.64"]
             if self.use_bwa_mem2
@@ -114,7 +114,7 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
             ]
         ]
 
-    def run(self):
+    def run(self) -> None:
         fa_path = self.input()[0].path
         yield [
             SamtoolsFaidx(
@@ -144,14 +144,14 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         return self.input() + [
             luigi.LocalTarget(f"{i.path}.tbi")
             for i in self.input()
             if i.path.endswith(".vcf.gz")
         ]
 
-    def run(self):
+    def run(self) -> None:
         yield [
             FetchResourceVcf(
                 src_path=i.path,
@@ -182,7 +182,7 @@ class DownloadAndProcessResourceFiles(luigi.WrapperTask):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def requires(self):
+    def requires(self) -> list[luigi.Task]:
         return [
             DownloadAndIndexReferenceFasta(
                 src_urls=[
@@ -221,7 +221,7 @@ class DownloadAndProcessResourceFiles(luigi.WrapperTask):
             ),
         ]
 
-    def output(self):
+    def output(self) -> list[luigi.Target]:
         return self.input()
 
 

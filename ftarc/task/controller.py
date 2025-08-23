@@ -24,7 +24,7 @@ class PrintEnvVersions(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     __is_completed = False
 
-    def complete(self):
+    def complete(self) -> bool:
         return self.__is_completed
 
     def run(self) -> None:
@@ -52,7 +52,7 @@ class PrepareFastqs(luigi.WrapperTask):
     sh_config = luigi.DictParameter(default={})
     priority = 50
 
-    def requires(self):
+    def requires(self) -> luigi.Task | list[luigi.Task]:
         if self.adapter_removal:
             return TrimAdapters(
                 fq_paths=self.fq_paths,
@@ -78,7 +78,7 @@ class PrepareFastqs(luigi.WrapperTask):
                 sh_config=self.sh_config,
             )
 
-    def output(self):
+    def output(self) -> list[luigi.Target]:
         return self.input()
 
 
@@ -100,7 +100,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_dir = Path(self.align_dir_path).resolve().joinpath(self.sample_name)
         output_stem = (
             self.sample_name
@@ -119,7 +119,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
             ]
         ]
 
-    def run(self):
+    def run(self) -> None:
         fa_path = self.input()[1][0].path
         output_cram = Path(self.output()[0].path)
         dest_dir_path = str(output_cram.parent)
@@ -211,7 +211,7 @@ class RunPreprocessingPipeline(luigi.Task):
     sh_config = luigi.DictParameter(default={})
     priority = luigi.IntParameter(default=sys.maxsize)
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         cram = Path(self.input()[0][0].path)
         qc_dir = Path(self.qc_dir_path)
         return (
@@ -254,7 +254,7 @@ class RunPreprocessingPipeline(luigi.Task):
             ]
         )
 
-    def run(self):
+    def run(self) -> None:
         qc_dir = Path(self.qc_dir_path)
         if "fastqc" in self.metrics_collectors:
             yield CollectFqMetricsWithFastqc(
@@ -314,7 +314,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def requires(self):
+    def requires(self) -> list[luigi.Task]:
         return [
             CollectSamMetricsWithPicard(
                 sam_path=self.sam_path,
@@ -348,7 +348,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
             )
         ]
 
-    def output(self):
+    def output(self) -> list[luigi.Target]:
         return self.input()
 
 

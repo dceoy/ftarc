@@ -35,7 +35,7 @@ class MarkDuplicates(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_dir = Path(self.dest_dir_path).resolve()
         output_stem = Path(self.input_sam_path).stem + ".markdup"
         return [
@@ -184,7 +184,7 @@ class ApplyBqsr(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_dir = Path(self.dest_dir_path).resolve()
         output_stem = Path(self.input_sam_path).stem + ".bqsr"
         return [

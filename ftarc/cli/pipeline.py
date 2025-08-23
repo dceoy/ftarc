@@ -4,9 +4,11 @@ import logging
 import os
 import re
 import shutil
+from collections.abc import Mapping, Sequence
 from math import floor
 from pathlib import Path
 from pprint import pformat
+from typing import Any
 
 from psutil import cpu_count, virtual_memory
 
@@ -24,16 +26,16 @@ from ftarc.task.controller import PrintEnvVersions, RunPreprocessingPipeline
 
 
 def run_processing_pipeline(
-    config_yml_path,
-    dest_dir_path=None,
-    max_n_cpu=None,
-    max_n_worker=None,
-    skip_cleaning=False,
-    print_subprocesses=False,
-    console_log_level="WARNING",
-    file_log_level="DEBUG",
-    use_spark=False,
-    use_bwa_mem2=True,
+    config_yml_path: str | os.PathLike[str],
+    dest_dir_path: str | os.PathLike[str] | None = None,
+    max_n_cpu: int | None = None,
+    max_n_worker: int | None = None,
+    skip_cleaning: bool = False,
+    print_subprocesses: bool = False,
+    console_log_level: str = "WARNING",
+    file_log_level: str = "DEBUG",
+    use_spark: bool = False,
+    use_bwa_mem2: bool = True,
 ) -> None:
     logger = logging.getLogger(__name__)
     logger.info(f"config_yml_path:\t{config_yml_path}")
@@ -187,7 +189,7 @@ def run_processing_pipeline(
                 shutil.rmtree(str(c))
 
 
-def _read_config_yml(path):
+def _read_config_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
     config = read_yml(path=Path(path).resolve())
     assert isinstance(config, dict) and config.get("resources"), config
     assert isinstance(config["resources"], dict), config["resources"]
@@ -219,21 +221,24 @@ def _read_config_yml(path):
     return config
 
 
-def _has_unique_elements(elements):
+def _has_unique_elements(elements: Sequence[object]) -> bool:
     return len(set(elements)) == len(tuple(elements))
 
 
-def _resolve_file_path(path):
+def _resolve_file_path(path: str | os.PathLike[str]) -> str:
     p = Path(path).resolve()
     assert p.is_file(), f"file not found: {p}"
     return str(p)
 
 
-def _resolve_input_file_paths(path_list=None, path_dict=None):
-    if path_list:
+def _resolve_input_file_paths(
+    path_list: Sequence[str] | None = None,
+    path_dict: Mapping[str, Any] | None = None,
+) -> list[str] | dict[str, list[str] | str]:
+    if path_list is not None:
         return [_resolve_file_path(s) for s in path_list]
-    elif path_dict:
-        new_dict = {}
+    elif path_dict is not None:
+        new_dict: dict[str, list[str] | str] = {}
         for k, v in path_dict.items():
             if isinstance(v, str):
                 new_dict[f"{k}_path"] = _resolve_file_path(v)
@@ -242,7 +247,7 @@ def _resolve_input_file_paths(path_list=None, path_dict=None):
         return new_dict
 
 
-def _determine_input_samples(run_dict):
+def _determine_input_samples(run_dict: Mapping[str, Any]) -> dict[str, Any]:
     g = run_dict.get("read_group") or {}
     return {
         "fq_paths": _resolve_input_file_paths(path_list=run_dict["fq"]),

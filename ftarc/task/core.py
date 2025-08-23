@@ -5,6 +5,7 @@ import os
 import re
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -15,19 +16,19 @@ from shoper.shelloperator import ShellOperator
 class ShellTask(luigi.Task, ABC):
     retry_count = 0
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
         self.initialize_shell()
 
     @luigi.Task.event_handler(luigi.Event.PROCESSING_TIME)
-    def print_execution_time(self, processing_time) -> None:
+    def print_execution_time(self, processing_time: float) -> None:
         logger = logging.getLogger("task-timer")
         message = f"{self.__class__.__module__}.{self.__class__.__name__} - total elapsed time:\t{timedelta(seconds=processing_time)}"
         logger.info(message)
         print(message, flush=True)
 
     @classmethod
-    def print_log(cls, message, new_line=True) -> None:
+    def print_log(cls, message: str, new_line: bool = True) -> None:
         logger = logging.getLogger(cls.__name__)
         logger.info(message)
         print((os.linesep if new_line else "") + f">>\t{message}", flush=True)
@@ -41,17 +42,17 @@ class ShellTask(luigi.Task, ABC):
     @classmethod
     def setup_shell(
         cls,
-        run_id=None,
-        log_dir_path=None,
-        commands=None,
-        cwd=None,
-        remove_if_failed=True,
-        clear_log_txt=False,
-        print_command=True,
-        quiet=True,
-        executable="/bin/bash",
-        env=None,
-        **kwargs,
+        run_id: str | int | None = None,
+        log_dir_path: str | os.PathLike[str] | None = None,
+        commands: str | Sequence[str] | None = None,
+        cwd: str | os.PathLike[str] | None = None,
+        remove_if_failed: bool = True,
+        clear_log_txt: bool = False,
+        print_command: bool = True,
+        quiet: bool = True,
+        executable: str = "/bin/bash",
+        env: Mapping[str, str] | None = None,
+        **kwargs: object,
     ) -> None:
         cls.__log_txt_path = (
             str(
@@ -85,7 +86,7 @@ class ShellTask(luigi.Task, ABC):
             cls.run_shell(args=list(cls.generate_version_commands(commands)))
 
     @classmethod
-    def make_dirs(cls, *paths) -> None:
+    def make_dirs(cls, *paths: object) -> None:
         for p in paths:
             if p:
                 d = Path(str(p)).resolve()
@@ -94,7 +95,7 @@ class ShellTask(luigi.Task, ABC):
                     d.mkdir(parents=True, exist_ok=True)
 
     @classmethod
-    def run_shell(cls, *args, **kwargs) -> None:
+    def run_shell(cls, *args: object, **kwargs: object) -> None:
         logger = logging.getLogger(cls.__name__)
         start_datetime = datetime.now()
         cls.__sh.run(
@@ -112,7 +113,7 @@ class ShellTask(luigi.Task, ABC):
                 f.write(f"### {message}{os.linesep}")
 
     @classmethod
-    def remove_files_and_dirs(cls, *paths) -> None:
+    def remove_files_and_dirs(cls, *paths: str | os.PathLike[str]) -> None:
         targets = [Path(str(p)) for p in paths if Path(str(p)).exists()]
         if targets:
             cls.run_shell(
@@ -146,16 +147,16 @@ class ShellTask(luigi.Task, ABC):
 
     @staticmethod
     @abstractmethod
-    def generate_version_commands(commands):
-        pass
+    def generate_version_commands(commands: str | Sequence[str]) -> Iterable[str]:
+        raise NotImplementedError
 
 
 class FtarcTask(ShellTask):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
 
     @staticmethod
-    def generate_version_commands(commands):
+    def generate_version_commands(commands: str | Sequence[str]) -> Iterable[str]:
         for c in [commands] if isinstance(commands, str) else commands:
             n = Path(c).name
             if n == "java" or n.endswith(".jar"):
@@ -173,7 +174,12 @@ class FtarcTask(ShellTask):
 
     @classmethod
     def bzip2_to_gzip(
-        cls, src_bz2_path, dest_gz_path, pbzip2="pbzip2", pigz="pigz", n_cpu=1
+        cls,
+        src_bz2_path: str | os.PathLike[str],
+        dest_gz_path: str | os.PathLike[str],
+        pbzip2: str = "pbzip2",
+        pigz: str = "pigz",
+        n_cpu: int = 1,
     ) -> None:
         cls.run_shell(
             args=(
@@ -185,7 +191,7 @@ class FtarcTask(ShellTask):
         )
 
     @staticmethod
-    def generate_gatk_java_options(n_cpu=1, memory_mb=4096):
+    def generate_gatk_java_options(n_cpu: int = 1, memory_mb: int = 4096) -> str:
         return " ".join([
             "-Dsamjdk.compression_level=5",
             "-Dsamjdk.use_async_io_read_samtools=true",
@@ -197,7 +203,12 @@ class FtarcTask(ShellTask):
         ])
 
     @classmethod
-    def samtools_index(cls, sam_path, samtools="samtools", n_cpu=1) -> None:
+    def samtools_index(
+        cls,
+        sam_path: str | os.PathLike[str],
+        samtools: str = "samtools",
+        n_cpu: int = 1,
+    ) -> None:
         cls.run_shell(
             args=(
                 f"set -e && {samtools} quickcheck -v {sam_path}"
@@ -210,14 +221,14 @@ class FtarcTask(ShellTask):
     @classmethod
     def samtools_view(
         cls,
-        input_sam_path,
-        fa_path,
-        output_sam_path,
-        samtools="samtools",
-        n_cpu=1,
-        add_args=None,
-        index_sam=False,
-        remove_input=False,
+        input_sam_path: str | os.PathLike[str],
+        fa_path: str | os.PathLike[str],
+        output_sam_path: str | os.PathLike[str],
+        samtools: str = "samtools",
+        n_cpu: int = 1,
+        add_args: str | Sequence[str] | None = None,
+        index_sam: bool = False,
+        remove_input: bool = False,
     ) -> None:
         cls.run_shell(
             args=(

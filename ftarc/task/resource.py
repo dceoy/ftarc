@@ -21,7 +21,7 @@ class FetchReferenceFasta(luigi.Task):
     sh_config = luigi.DictParameter(default={})
     priority = 100
 
-    def requires(self):
+    def requires(self) -> luigi.Task:
         return FetchResourceFile(
             src_path=self.fa_path,
             pigz=self.pigz,
@@ -30,7 +30,7 @@ class FetchReferenceFasta(luigi.Task):
             sh_config=self.sh_config,
         )
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         fa = Path(self.input().path)
         return [
             luigi.LocalTarget(fa),
@@ -38,7 +38,7 @@ class FetchReferenceFasta(luigi.Task):
             luigi.LocalTarget(fa.parent.joinpath(f"{fa.stem}.dict")),
         ]
 
-    def run(self):
+    def run(self) -> None:
         fa_path = self.input().path
         yield [
             SamtoolsFaidx(
@@ -62,7 +62,7 @@ class FetchResourceFile(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> luigi.LocalTarget:
         return luigi.LocalTarget(
             Path(self.src_path).parent.joinpath(
                 re.sub(r"\.(gz|bz2)$", "", Path(self.src_path).name)
@@ -104,7 +104,7 @@ class FetchResourceVcf(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_vcf = Path(self.src_path).parent.joinpath(
             re.sub(r"\.(gz|bgz)$", ".gz", Path(self.src_path).name)
         )
@@ -147,7 +147,7 @@ class FetchKnownSitesVcfs(luigi.WrapperTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def requires(self):
+    def requires(self) -> list[luigi.Task]:
         return [
             FetchResourceVcf(
                 src_path=p,
@@ -159,7 +159,7 @@ class FetchKnownSitesVcfs(luigi.WrapperTask):
             for p in self.known_sites_vcf_paths
         ]
 
-    def output(self):
+    def output(self) -> list[luigi.Target]:
         return self.input()
 
 

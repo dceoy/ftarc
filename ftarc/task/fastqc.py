@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import os
 import re
+from collections.abc import Iterable
 from pathlib import Path
 
 import luigi
@@ -18,7 +20,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         return [
             luigi.LocalTarget(o) for o in self._generate_output_files(*self.fq_paths)
         ]
@@ -49,7 +51,7 @@ class CollectFqMetricsWithFastqc(FtarcTask):
         tmp_dir = dest_dir.joinpath("?")
         self.remove_files_and_dirs(tmp_dir)
 
-    def _generate_output_files(self, *paths):
+    def _generate_output_files(self, *paths: str | os.PathLike[str]) -> Iterable[Path]:
         dest_dir = Path(self.dest_dir_path).resolve()
         for p in paths:
             stem = re.sub(r"\.(fq|fastq)$", "", Path(str(p)).stem)

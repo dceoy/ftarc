@@ -17,7 +17,7 @@ class CreateSequenceDictionary(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> luigi.LocalTarget:
         fa = Path(self.fa_path).resolve()
         return luigi.LocalTarget(fa.parent.joinpath(f"{fa.stem}.dict"))
 
@@ -63,7 +63,7 @@ class ValidateSamFile(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = luigi.IntParameter(default=100)
 
-    def output(self):
+    def output(self) -> luigi.LocalTarget:
         return luigi.LocalTarget(
             Path(self.dest_dir_path)
             .resolve()
@@ -127,7 +127,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 100
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         sam_name = Path(self.sam_path).name
         dest_dir = Path(self.dest_dir_path).resolve()
         return (

@@ -17,7 +17,7 @@ class CreateBwaIndices(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 100
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         return [
             luigi.LocalTarget(f"{self.fa_path}.{s}")
             for s in (
@@ -62,7 +62,7 @@ class AlignReads(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         dest_dir = Path(self.dest_dir_path).resolve()
         output_cram_name = "{}.cram".format(
             self.output_stem or (self.sample_name + "." + Path(self.fa_path).stem)

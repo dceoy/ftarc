@@ -16,7 +16,7 @@ class SamtoolsFaidx(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 70
 
-    def output(self):
+    def output(self) -> luigi.LocalTarget:
         fa = Path(self.fa_path).resolve()
         return luigi.LocalTarget(f"{fa}.fai")
 
@@ -52,7 +52,7 @@ class SamtoolsView(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 90
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         output_sam = Path(self.output_sam_path).resolve()
         return [
             luigi.LocalTarget(output_sam),
@@ -123,7 +123,7 @@ class RemoveDuplicates(luigi.WrapperTask):
     sh_config = luigi.DictParameter(default={})
     priority = 90
 
-    def requires(self):
+    def requires(self) -> luigi.Task:
         return SamtoolsView(
             input_sam_path=str(Path(self.input_sam_path).resolve()),
             fa_path=str(Path(self.fa_path).resolve()),
@@ -141,7 +141,7 @@ class RemoveDuplicates(luigi.WrapperTask):
             sh_config=self.sh_config,
         )
 
-    def output(self):
+    def output(self) -> list[luigi.Target]:
         return self.input()
 
 
@@ -161,7 +161,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def requires(self):
+    def requires(self) -> luigi.Task:
         if self.fa_path:
             return SamtoolsView(
                 fa_path=self.fa_path,
@@ -172,7 +172,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
         else:
             return super().requires()
 
-    def output(self):
+    def output(self) -> list[luigi.LocalTarget]:
         sam_name = Path(self.sam_path).name
         dest_dir = Path(self.dest_dir_path).resolve()
         return [
@@ -254,7 +254,7 @@ class SoundReadDepthsWithSamtools(FtarcTask):
     sh_config = luigi.DictParameter(default={})
     priority = 10
 
-    def requires(self):
+    def requires(self) -> luigi.Task:
         if self.fa_path:
             return SamtoolsView(
                 fa_path=self.fa_path,
@@ -265,7 +265,7 @@ class SoundReadDepthsWithSamtools(FtarcTask):
         else:
             return super().requires()
 
-    def output(self):
+    def output(self) -> luigi.LocalTarget:
         return luigi.LocalTarget(
             Path(self.dest_dir_path)
             .resolve()

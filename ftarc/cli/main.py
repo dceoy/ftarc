@@ -372,8 +372,8 @@ def main() -> None:
             )
 
 
-def _find_fq_paths(fq_path_prefix):
-    hits = sorted(
+def _find_fq_paths(fq_path_prefix: str | os.PathLike[str]) -> list[str]:
+    hits: list[Path] = sorted(
         o
         for o in Path(fq_path_prefix).resolve().parent.iterdir()
         if o.name.startswith(Path(fq_path_prefix).name)

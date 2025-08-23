@@ -7,13 +7,16 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from pprint import pformat
+from typing import Any
 
 import luigi
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
 
-def write_config_yml(path, src_yml="example_ftarc.yml") -> None:
+def write_config_yml(
+    path: str | os.PathLike[str], src_yml: str = "example_ftarc.yml"
+) -> None:
     if Path(path).is_file():
         print_log(f"The file exists:\t{path}")
     else:
@@ -24,13 +27,13 @@ def write_config_yml(path, src_yml="example_ftarc.yml") -> None:
         )
 
 
-def print_log(message) -> None:
+def print_log(message: str) -> None:
     logger = logging.getLogger(__name__)
     logger.debug(message)
     print(f">>\t{message}", flush=True)
 
 
-def fetch_executable(cmd, ignore_errors=False):
+def fetch_executable(cmd: str, ignore_errors: bool = False) -> str | None:
     executables = [
         cp
         for cp in [
@@ -47,7 +50,7 @@ def fetch_executable(cmd, ignore_errors=False):
         raise RuntimeError(msg)
 
 
-def read_yml(path):
+def read_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
     logger = logging.getLogger(__name__)
     with open(str(path), encoding="utf-8") as f:
         d = yaml.load(f, Loader=yaml.FullLoader)
@@ -55,12 +58,15 @@ def read_yml(path):
     return d
 
 
-def print_yml(data) -> None:
+def print_yml(data: object) -> None:
     print(yaml.dump(data))
 
 
 def render_luigi_log_cfg(
-    log_cfg_path, log_dir_path=None, console_log_level="WARNING", file_log_level="DEBUG"
+    log_cfg_path: str | os.PathLike[str],
+    log_dir_path: str | os.PathLike[str] | None = None,
+    console_log_level: str = "WARNING",
+    file_log_level: str = "DEBUG",
 ) -> None:
     log_cfg = Path(str(log_cfg_path)).resolve()
     cfg_dir = log_cfg.parent
@@ -96,12 +102,14 @@ def render_luigi_log_cfg(
         )
 
 
-def load_default_dict(stem):
+def load_default_dict(stem: str) -> dict[str, Any]:
     return read_yml(path=Path(__file__).parent.parent.joinpath(f"static/{stem}.yml"))
 
 
 def build_luigi_tasks(
-    check_scheduling_succeeded=True, hide_summary=False, **kwargs
+    check_scheduling_succeeded: bool = True,
+    hide_summary: bool = False,
+    **kwargs: object,
 ) -> None:
     r = luigi.build(local_scheduler=True, detailed_summary=True, **kwargs)
     if not hide_summary:
@@ -112,7 +120,7 @@ def build_luigi_tasks(
         assert r.scheduling_succeeded, r.one_line_summary
 
 
-def parse_fq_id(fq_path):
+def parse_fq_id(fq_path: str | os.PathLike[str]) -> str:
     fq_stem = Path(fq_path).name
     for _ in range(3):
         if fq_stem.endswith(("fq", "fastq")):
