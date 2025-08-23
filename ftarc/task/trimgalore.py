@@ -7,6 +7,7 @@ using Trim Galore, which wraps Cutadapt and FastQC.
 import re
 from itertools import product
 from pathlib import Path
+from typing import Any
 
 import luigi
 
@@ -34,19 +35,19 @@ class TrimAdapters(FtarcTask):
         sh_config: Shell configuration parameters.
     """
 
-    fq_paths = luigi.ListParameter()
-    dest_dir_path = luigi.Parameter(default=".")
-    sample_name = luigi.Parameter(default="")
-    pigz = luigi.Parameter(default="pigz")
-    pbzip2 = luigi.Parameter(default="pbzip2")
-    trim_galore = luigi.Parameter(default="trim_galore")
-    cutadapt = luigi.Parameter(default="cutadapt")
-    fastqc = luigi.Parameter(default="fastqc")
-    add_trim_galore_args = luigi.ListParameter(default=[])
-    n_cpu = luigi.IntParameter(default=1)
-    memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default={})
-    priority = 50
+    fq_paths: list[str] = luigi.ListParameter()
+    dest_dir_path: str = luigi.Parameter(default=".")
+    sample_name: str = luigi.Parameter(default="")
+    pigz: str = luigi.Parameter(default="pigz")
+    pbzip2: str = luigi.Parameter(default="pbzip2")
+    trim_galore: str = luigi.Parameter(default="trim_galore")
+    cutadapt: str = luigi.Parameter(default="cutadapt")
+    fastqc: str = luigi.Parameter(default="fastqc")
+    add_trim_galore_args: list[str] = luigi.ListParameter(default=[])
+    n_cpu: int = luigi.IntParameter(default=1)
+    memory_mb: float = luigi.FloatParameter(default=4096)
+    sh_config: dict[str, Any] = luigi.DictParameter(default={})
+    priority: int = 50
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for trimmed FASTQ files.
@@ -147,14 +148,14 @@ class LocateFastqs(FtarcTask):
         sample_name: Sample identifier.
     """
 
-    fq_paths = luigi.Parameter()
-    dest_dir_path = luigi.Parameter(default=".")
-    sample_name = luigi.Parameter(default="")
-    pigz = luigi.Parameter(default="pigz")
-    pbzip2 = luigi.Parameter(default="pbzip2")
-    n_cpu = luigi.IntParameter(default=1)
-    sh_config = luigi.DictParameter(default={})
-    priority = 50
+    fq_paths: list[str] = luigi.Parameter()
+    dest_dir_path: str = luigi.Parameter(default=".")
+    sample_name: str = luigi.Parameter(default="")
+    pigz: str = luigi.Parameter(default="pigz")
+    pbzip2: str = luigi.Parameter(default="pbzip2")
+    n_cpu: int = luigi.IntParameter(default=1)
+    sh_config: dict[str, Any] = luigi.DictParameter(default={})
+    priority: int = 50
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for located and processed FASTQ files.

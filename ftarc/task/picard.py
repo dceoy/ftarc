@@ -34,7 +34,7 @@ class CreateSequenceDictionary(FtarcTask):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def output(self) -> luigi.LocalTarget:
         """Return the output target for the sequence dictionary.
@@ -207,7 +207,7 @@ class CollectSamMetricsWithPicard(FtarcTask):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 100
+    priority: int = 100
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for all Picard metrics collection.

@@ -5,6 +5,7 @@ including creating necessary indices and preparing known variant sites for BQSR.
 """
 
 import re
+from collections.abc import Generator
 from pathlib import Path
 
 import luigi
@@ -39,7 +40,7 @@ class FetchReferenceFasta(luigi.Task):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 100
+    priority: int = 100
 
     def requires(self) -> luigi.Task:
         """Return the dependency task for fetching the resource file.
@@ -71,7 +72,7 @@ class FetchReferenceFasta(luigi.Task):
             luigi.LocalTarget(fa.parent.joinpath(f"{fa.stem}.dict")),
         ]
 
-    def run(self) -> None:
+    def run(self) -> Generator[list[luigi.Task], None, None]:
         """Execute reference FASTA file preparation with indexing.
 
         This method yields tasks to create both samtools and GATK indices for the
@@ -115,7 +116,7 @@ class FetchResourceFile(FtarcTask):
     pbzip2 = luigi.Parameter(default="pbzip2")
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def output(self) -> luigi.LocalTarget:
         """Return the output target for the decompressed resource file.
@@ -188,7 +189,7 @@ class FetchResourceVcf(FtarcTask):
     tabix = luigi.Parameter(default="tabix")
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for the VCF file and index.
@@ -260,7 +261,7 @@ class FetchKnownSitesVcfs(luigi.WrapperTask):
     tabix = luigi.Parameter(default="tabix")
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def requires(self) -> list[luigi.Task]:
         """Return the dependency tasks for fetching all known sites VCF files.

@@ -30,7 +30,7 @@ class SamtoolsFaidx(FtarcTask):
     samtools = luigi.Parameter(default="samtools")
     add_faidx_args = luigi.ListParameter(default=[])
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def output(self) -> luigi.LocalTarget:
         """Return the output target for the FASTA index file.
@@ -94,7 +94,7 @@ class SamtoolsView(FtarcTask):
     remove_input = luigi.BoolParameter(default=True)
     index_sam = luigi.BoolParameter(default=False)
     sh_config = luigi.DictParameter(default={})
-    priority = 90
+    priority: int = 90
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for the samtools view operation.
@@ -200,7 +200,7 @@ class RemoveDuplicates(luigi.WrapperTask):
     remove_input = luigi.BoolParameter(default=False)
     index_sam = luigi.BoolParameter(default=True)
     sh_config = luigi.DictParameter(default={})
-    priority = 90
+    priority: int = 90
 
     def requires(self) -> luigi.Task:
         """Return the dependency task for duplicate removal.
@@ -267,7 +267,7 @@ class CollectSamMetricsWithSamtools(FtarcTask):
     add_faidx_args = luigi.ListParameter(default=[])
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default={})
-    priority = 10
+    priority: int = 10
 
     def requires(self) -> luigi.Task:
         """Return the dependency task for FASTA indexing if needed.
@@ -402,7 +402,7 @@ class SoundReadDepthsWithSamtools(FtarcTask):
     add_faidx_args = luigi.ListParameter(default=[])
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default={})
-    priority = 10
+    priority: int = 10
 
     def requires(self) -> luigi.Task:
         """Return the dependency task for FASTA indexing if needed.

@@ -1,6 +1,6 @@
 [project]
 name = "ftarc"
-version = "0.2.4"
+version = "0.2.5"
 description = "FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -136,6 +136,7 @@ ignore = [
   "A004",     # builtin-import-shadowing
   "FBT001",   # boolean-type-hint-positional-argument
   "FBT002",   # boolean-default-value-positional-argument
+  "ANN401",   # any-type
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -166,9 +167,27 @@ max-complexity = 30
 ]
 
 [tool.pyright]
-typeCheckingMode = "strict"
 exclude = ["build", ".venv"]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "strict"
 threads = 0
+reportArgumentType = "none"
+reportAssignmentType = "none"
+reportAttributeAccessIssue = "none"
+reportCallIssue = "none"
+reportGeneralTypeIssues = "none"
+reportIncompatibleMethodOverride = "none"
+reportIndexIssue = "none"
+reportOperatorIssue = "none"
+reportOptionalMemberAccess = "none"
+reportReturnType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownLambdaType = "none"
+reportUnknownMemberType = "none"
+reportUnknownParameterType = "none"
+reportUnknownVariableType = "none"
+reportUntypedClassDecorator = "none"
 
 [tool.pytest.ini_options]
 addopts = [

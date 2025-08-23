@@ -58,7 +58,7 @@ class MarkDuplicates(FtarcTask):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for the MarkDuplicates task.
@@ -252,7 +252,7 @@ class ApplyBqsr(FtarcTask):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for the ApplyBqsr task.

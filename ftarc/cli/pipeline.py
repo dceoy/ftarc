@@ -59,13 +59,16 @@ def run_processing_pipeline(
         file_log_level: File logging level (WARNING, INFO, DEBUG, etc.)
         use_spark: Use Spark-enabled GATK tools for large-scale processing
         use_bwa_mem2: Use bwa-mem2 instead of bwa for read alignment
+
+    Raises:
+        TypeError: If resource_path_dict is not a dictionary
     """
     logger = logging.getLogger(__name__)
     logger.info("config_yml_path:\t%s", config_yml_path)
     config = _read_config_yml(path=config_yml_path)
     runs = config.get("runs")
     logger.info("dest_dir_path:\t%s", dest_dir_path)
-    dest_dir = Path(dest_dir_path).resolve()
+    dest_dir = Path(dest_dir_path or ".").resolve()
     log_dir = dest_dir.joinpath("log")
 
     adapter_removal = config.get("adapter_removal", True)
@@ -102,9 +105,15 @@ def run_processing_pipeline(
     }
     logger.debug("command_dict:%s%s", os.linesep, pformat(command_dict))
 
-    n_cpu = cpu_count()
-    n_worker = min(int(max_n_worker or max_n_cpu or n_cpu), (len(runs) or 1))
-    n_cpu_per_worker = max(1, floor(int(max_n_cpu or n_cpu) / n_worker))
+    n_cpu = cpu_count() or 1
+    max_workers = (
+        max_n_worker
+        if max_n_worker is not None
+        else (max_n_cpu if max_n_cpu is not None else n_cpu)
+    )
+    n_worker = min(max_workers, (len(runs) if runs else 1))
+    max_cpus = max_n_cpu if max_n_cpu is not None else n_cpu
+    n_cpu_per_worker = max(1, floor(max_cpus / n_worker))
     memory_mb = virtual_memory().total / 1024 / 1024 / 2
     memory_mb_per_worker = int(memory_mb / n_worker)
     cf_dict = {
@@ -138,6 +147,9 @@ def run_processing_pipeline(
             "known_sites_vcf": config["resources"]["known_sites_vcf"],
         }
     )
+    if not isinstance(resource_path_dict, dict):
+        msg = "resource_path_dict must be a dictionary"
+        raise TypeError(msg)
     logger.debug("resource_path_dict:%s%s", os.linesep, pformat(resource_path_dict))
 
     sample_dict_list = (
@@ -165,7 +177,7 @@ def run_processing_pipeline(
         },
         {
             "input": [
-                {"n_sample": len(runs)},
+                {"n_sample": len(runs) if runs else 0},
                 {"samples": [d["sample_name"] for d in sample_dict_list]},
             ]
         },
@@ -226,7 +238,7 @@ def _read_config_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
         TypeError: If configuration values have incorrect types
     """
     config = read_yml(path=Path(path).resolve())
-    if not (isinstance(config, dict) and config.get("resources")):
+    if not config.get("resources"):
         msg = f"Invalid config structure: {config}"
         raise ValueError(msg)
     if not isinstance(config["resources"], dict):
@@ -294,7 +306,7 @@ def _read_config_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
     return config
 
 
-def _has_unique_elements(elements: Sequence[object]) -> bool:
+def _has_unique_elements(elements: Sequence[Any]) -> bool:
     """Check if all elements in a sequence are unique.
 
     Args:
@@ -348,6 +360,8 @@ def _resolve_input_file_paths(
             elif v:
                 new_dict[f"{k}_paths"] = [_resolve_file_path(s) for s in v]
         return new_dict
+    else:
+        return []
 
 
 def _determine_input_samples(run_dict: Mapping[str, Any]) -> dict[str, Any]:

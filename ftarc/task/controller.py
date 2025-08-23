@@ -7,6 +7,7 @@ analysis-ready CRAM.
 
 import re
 import sys
+from collections.abc import Generator
 from pathlib import Path
 from socket import gethostname
 
@@ -38,7 +39,7 @@ class PrintEnvVersions(FtarcTask):
     command_paths = luigi.ListParameter(default=[])
     run_id = luigi.Parameter(default=gethostname())
     sh_config = luigi.DictParameter(default={})
-    __is_completed = False
+    __is_completed: bool = False
 
     def complete(self) -> bool:
         """Check if the task has been completed.
@@ -93,9 +94,9 @@ class PrepareFastqs(luigi.WrapperTask):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 50
+    priority: int = 50
 
-    def requires(self) -> luigi.Task | list[luigi.Task]:
+    def requires(self) -> luigi.Task:
         """Determine prerequisite tasks based on adapter removal configuration.
 
         Returns:
@@ -175,7 +176,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 70
+    priority: int = 70
 
     def output(self) -> list[luigi.LocalTarget]:
         """Define output targets for analysis-ready CRAM preparation.
@@ -209,7 +210,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
             ]
         ]
 
-    def run(self) -> None:
+    def run(self) -> Generator[luigi.Task, None, None]:
         """Execute the complete analysis-ready CRAM preparation pipeline.
 
         Orchestrates the sequential execution of genomic preprocessing steps:
@@ -232,7 +233,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
         fa_path = self.input()[1][0].path
         output_cram = Path(self.output()[0].path)
         dest_dir_path = str(output_cram.parent)
-        align_target = yield AlignReads(
+        align_target: AlignReads = yield AlignReads(
             fq_paths=[i.path for i in self.input()[0]],
             fa_path=fa_path,
             dest_dir_path=dest_dir_path,
@@ -246,7 +247,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
             memory_mb=self.memory_mb,
             sh_config=self.sh_config,
         )
-        markdup_target = yield MarkDuplicates(
+        markdup_target: MarkDuplicates = yield MarkDuplicates(
             input_sam_path=align_target[0].path,
             fa_path=fa_path,
             dest_dir_path=dest_dir_path,
@@ -257,7 +258,7 @@ class PrepareAnalysisReadyCram(luigi.Task):
             memory_mb=self.memory_mb,
             sh_config=self.sh_config,
         )
-        bqsr_target = yield ApplyBqsr(
+        bqsr_target: ApplyBqsr = yield ApplyBqsr(
             input_sam_path=markdup_target[0].path,
             fa_path=fa_path,
             known_sites_vcf_paths=[i[0].path for i in self.input()[2]],
@@ -396,7 +397,7 @@ class RunPreprocessingPipeline(luigi.Task):
             ]
         )
 
-    def run(self) -> None:
+    def run(self) -> Generator[list[luigi.Task], None, None]:
         """Execute the complete preprocessing pipeline with quality control.
 
         Coordinates the execution of quality control tasks based on the configured
@@ -491,7 +492,7 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 10
+    priority: int = 10
 
     def requires(self) -> list[luigi.Task]:
         """Define prerequisite tasks for multiple SAM metrics collection.

@@ -89,7 +89,7 @@ from itertools import product
 from math import ceil, floor
 from pathlib import Path
 
-from docopt import docopt
+from docopt import docopt  # type: ignore[reportMissingTypeStubss]
 from psutil import cpu_count, virtual_memory
 
 from ftarc import __version__
@@ -132,22 +132,22 @@ def main() -> None:
     logger.debug("args:%s%s", os.linesep, args)
     print_log(f"Start the workflow of ftarc {__version__}")
     if args["init"]:
-        write_config_yml(path=args["--yml"])
+        write_config_yml(path=str(args["--yml"]))
     elif args["pipeline"]:
         run_processing_pipeline(
-            config_yml_path=args["--yml"],
-            dest_dir_path=args["--dest-dir"],
-            max_n_cpu=args["--cpus"],
-            max_n_worker=args["--workers"],
-            skip_cleaning=args["--skip-cleaning"],
-            print_subprocesses=args["--print-subprocesses"],
+            config_yml_path=str(args["--yml"]),
+            dest_dir_path=str(args["--dest-dir"]),
+            max_n_cpu=int(args["--cpus"]) if args["--cpus"] else None,
+            max_n_worker=int(args["--workers"]) if args["--workers"] else None,
+            skip_cleaning=bool(args["--skip-cleaning"]),
+            print_subprocesses=bool(args["--print-subprocesses"]),
             console_log_level=log_level,
-            use_spark=args["--use-spark"],
-            use_bwa_mem2=args["--use-bwa-mem2"],
+            use_spark=bool(args["--use-spark"]),
+            use_bwa_mem2=bool(args["--use-bwa-mem2"]),
         )
     else:
-        n_cpu = int(args["--cpus"] or cpu_count())
-        n_worker = min(int(args["--workers"] or 1), n_cpu)
+        n_cpu = int(args["--cpus"]) if args["--cpus"] else cpu_count() or 1
+        n_worker = min(int(args["--workers"]) if args["--workers"] else 1, n_cpu)
         n_cpu_per_worker = max(floor(n_cpu / n_worker), 1)
         memory_mb_per_worker = ceil(virtual_memory().total / 1024 / 1024 / 2 / n_worker)
         print_yml([
@@ -196,7 +196,7 @@ def main() -> None:
             )
         elif args["trim"]:
             kwargs = {
-                "dest_dir_path": args["--dest-dir"],
+                "dest_dir_path": str(args["--dest-dir"]),
                 "n_cpu": n_cpu_per_worker,
                 "memory_mb": memory_mb_per_worker,
                 "sh_config": sh_config,
@@ -208,8 +208,8 @@ def main() -> None:
             build_luigi_tasks(
                 tasks=[
                     TrimAdapters(
-                        fq_paths=_find_fq_paths(fq_path_prefix=p),
-                        sample_name=Path(p).stem,
+                        fq_paths=_find_fq_paths(fq_path_prefix=str(p)),
+                        sample_name=Path(str(p)).stem,
                         **kwargs,
                     )
                     for p in args["<fq_path_prefix>"]
@@ -219,13 +219,13 @@ def main() -> None:
             )
         elif args["align"]:
             kwargs = {
-                "fa_path": args["<fa_path>"],
-                "dest_dir_path": args["--dest-dir"],
+                "fa_path": str(args["<fa_path>"]),
+                "dest_dir_path": str(args["--dest-dir"]),
                 "bwa": fetch_executable(
                     "bwa-mem2" if args["--use-bwa-mem2"] else "bwa"
                 ),
                 "samtools": fetch_executable("samtools"),
-                "use_bwa_mem2": args["--use-bwa-mem2"],
+                "use_bwa_mem2": bool(args["--use-bwa-mem2"]),
                 "n_cpu": n_cpu_per_worker,
                 "memory_mb": memory_mb_per_worker,
                 "sh_config": sh_config,
@@ -233,8 +233,8 @@ def main() -> None:
             build_luigi_tasks(
                 tasks=[
                     AlignReads(
-                        fq_paths=_find_fq_paths(fq_path_prefix=p),
-                        sample_name=Path(p).stem,
+                        fq_paths=_find_fq_paths(fq_path_prefix=str(p)),
+                        sample_name=Path(str(p)).stem,
                         **kwargs,
                     )
                     for p in args["<fq_path_prefix>"]
@@ -244,18 +244,18 @@ def main() -> None:
             )
         elif args["markdup"]:
             kwargs = {
-                "fa_path": args["<fa_path>"],
-                "dest_dir_path": args["--dest-dir"],
+                "fa_path": str(args["<fa_path>"]),
+                "dest_dir_path": str(args["--dest-dir"]),
                 "gatk": gatk_or_picard,
                 "samtools": fetch_executable("samtools"),
-                "use_spark": args["--use-spark"],
+                "use_spark": bool(args["--use-spark"]),
                 "n_cpu": n_cpu_per_worker,
                 "memory_mb": memory_mb_per_worker,
                 "sh_config": sh_config,
             }
             build_luigi_tasks(
                 tasks=[
-                    MarkDuplicates(input_sam_path=p, **kwargs)
+                    MarkDuplicates(input_sam_path=str(p), **kwargs)
                     for p in args["<sam_path>"]
                 ],
                 workers=n_worker,
@@ -263,13 +263,13 @@ def main() -> None:
             )
         elif args["bqsr"]:
             kwargs = {
-                "fa_path": args["<fa_path>"],
-                "known_sites_vcf_paths": args["--known-sites-vcf"],
-                "interval_list_path": (args["--interval-list"] or ""),
-                "dest_dir_path": args["--dest-dir"],
+                "fa_path": str(args["<fa_path>"]),
+                "known_sites_vcf_paths": [str(p) for p in args["--known-sites-vcf"]],
+                "interval_list_path": str(args["--interval-list"] or ""),
+                "dest_dir_path": str(args["--dest-dir"]),
                 "gatk": gatk_or_picard,
                 "samtools": fetch_executable("samtools"),
-                "use_spark": args["--use-spark"],
+                "use_spark": bool(args["--use-spark"]),
                 "n_cpu": n_cpu_per_worker,
                 "memory_mb": memory_mb_per_worker,
                 "save_memory": (memory_mb_per_worker < MEMORY_THRESHOLD_MB),
@@ -277,22 +277,23 @@ def main() -> None:
             }
             build_luigi_tasks(
                 tasks=[
-                    ApplyBqsr(input_sam_path=p, **kwargs) for p in args["<sam_path>"]
+                    ApplyBqsr(input_sam_path=str(p), **kwargs)
+                    for p in args["<sam_path>"]
                 ],
                 workers=n_worker,
                 log_level=log_level,
             )
         elif args["dedup"]:
             kwargs = {
-                "fa_path": args["<fa_path>"],
-                "dest_dir_path": args["--dest-dir"],
+                "fa_path": str(args["<fa_path>"]),
+                "dest_dir_path": str(args["--dest-dir"]),
                 "samtools": fetch_executable("samtools"),
                 "n_cpu": n_cpu_per_worker,
                 "sh_config": sh_config,
             }
             build_luigi_tasks(
                 tasks=[
-                    RemoveDuplicates(input_sam_path=p, **kwargs)
+                    RemoveDuplicates(input_sam_path=str(p), **kwargs)
                     for p in args["<sam_path>"]
                 ],
                 workers=n_worker,
@@ -300,8 +301,8 @@ def main() -> None:
             )
         elif args["validate"]:
             kwargs = {
-                "fa_path": args["<fa_path>"],
-                "dest_dir_path": args["--dest-dir"],
+                "fa_path": str(args["<fa_path>"]),
+                "dest_dir_path": str(args["--dest-dir"]),
                 "picard": gatk_or_picard,
                 "add_validatesamfile_args": [
                     "--MODE",
@@ -315,14 +316,15 @@ def main() -> None:
             }
             build_luigi_tasks(
                 tasks=[
-                    ValidateSamFile(sam_path=p, **kwargs) for p in args["<sam_path>"]
+                    ValidateSamFile(sam_path=str(p), **kwargs)
+                    for p in args["<sam_path>"]
                 ],
                 workers=n_worker,
                 log_level=log_level,
             )
         elif args["fastqc"]:
             kwargs = {
-                "dest_dir_path": args["--dest-dir"],
+                "dest_dir_path": str(args["--dest-dir"]),
                 "fastqc": fetch_executable("fastqc"),
                 "n_cpu": n_cpu_per_worker,
                 "memory_mb": memory_mb_per_worker,
@@ -330,7 +332,7 @@ def main() -> None:
             }
             build_luigi_tasks(
                 tasks=[
-                    CollectFqMetricsWithFastqc(fq_paths=[p], **kwargs)
+                    CollectFqMetricsWithFastqc(fq_paths=[str(p)], **kwargs)
                     for p in args["<fq_path>"]
                 ],
                 workers=n_worker,
@@ -338,8 +340,8 @@ def main() -> None:
             )
         elif args["samqc"]:
             kwargs = {
-                "fa_path": args["<fa_path>"],
-                "dest_dir_path": args["--dest-dir"],
+                "fa_path": str(args["<fa_path>"]),
+                "dest_dir_path": str(args["--dest-dir"]),
                 "samtools": fetch_executable("samtools"),
                 "plot_bamstats": fetch_executable("plot-bamstats"),
                 "picard": gatk_or_picard,
@@ -349,7 +351,7 @@ def main() -> None:
             }
             build_luigi_tasks(
                 tasks=[
-                    CollectMultipleSamMetrics(sam_path=p, **kwargs)
+                    CollectMultipleSamMetrics(sam_path=str(p), **kwargs)
                     for p in args["<sam_path>"]
                 ],
                 workers=n_worker,
@@ -357,15 +359,15 @@ def main() -> None:
             )
         elif args["depth"]:
             kwargs = {
-                "bed_path": args["--bed"],
-                "dest_dir_path": args["--dest-dir"],
+                "bed_path": str(args["--bed"] or ""),
+                "dest_dir_path": str(args["--dest-dir"]),
                 "samtools": fetch_executable("samtools"),
                 "n_cpu": n_cpu_per_worker,
                 "sh_config": sh_config,
             }
             build_luigi_tasks(
                 tasks=[
-                    SoundReadDepthsWithSamtools(sam_path=p, **kwargs)
+                    SoundReadDepthsWithSamtools(sam_path=str(p), **kwargs)
                     for p in args["<sam_path>"]
                 ],
                 workers=n_worker,

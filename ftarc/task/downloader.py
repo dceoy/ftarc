@@ -5,6 +5,7 @@ resources, including FASTA files, known variant databases, and associated indice
 """
 
 import re
+from collections.abc import Generator
 from itertools import product
 from pathlib import Path
 from socket import gethostname
@@ -46,7 +47,7 @@ class DownloadResourceFiles(FtarcTask):
     bgzip = luigi.Parameter(default="bgzip")
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default={})
-    priority = 10
+    priority: int = 10
 
     def output(self) -> list[luigi.LocalTarget]:
         """Define output file targets based on input URLs and file types.
@@ -158,7 +159,7 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
     n_cpu = luigi.IntParameter(default=1)
     memory_mb = luigi.FloatParameter(default=4096)
     sh_config = luigi.DictParameter(default={})
-    priority = 10
+    priority: int = 10
 
     def output(self) -> list[luigi.LocalTarget]:
         """Define output targets including downloaded FASTA and all required indices.
@@ -197,7 +198,7 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
             ]
         ]
 
-    def run(self) -> None:
+    def run(self) -> Generator[list[luigi.Task], None, None]:
         """Execute indexing tasks for the downloaded reference FASTA file.
 
         Yields Luigi tasks to create all necessary indices for the reference genome,
@@ -251,7 +252,7 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
     tabix = luigi.Parameter(default="tabix")
     n_cpu = luigi.IntParameter(default=1)
     sh_config = luigi.DictParameter(default={})
-    priority = 10
+    priority: int = 10
 
     def output(self) -> list[luigi.LocalTarget]:
         """Define output targets including downloaded VCFs and their tabix indices.
@@ -274,7 +275,7 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
             if i.path.endswith(".vcf.gz")
         ]
 
-    def run(self) -> None:
+    def run(self) -> Generator[list[luigi.Task], None, None]:
         """Execute tabix indexing tasks for downloaded VCF files.
 
         Yields Luigi tasks to create tabix indices for all bgzip-compressed VCF files,
@@ -338,7 +339,7 @@ class DownloadAndProcessResourceFiles(luigi.WrapperTask):
     memory_mb = luigi.FloatParameter(default=4096)
     use_bwa_mem2 = luigi.BoolParameter(default=False)
     sh_config = luigi.DictParameter(default={})
-    priority = 10
+    priority: int = 10
 
     def requires(self) -> list[luigi.Task]:
         """Define prerequisite tasks for downloading and processing all resources.

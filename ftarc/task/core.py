@@ -12,9 +12,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import luigi
-from shoper.shelloperator import ShellOperator
+from shoper.shelloperator import ShellOperator  # type: ignore[reportMissingTypeStubs]
 
 
 class ShellTask(luigi.Task, ABC):
@@ -28,9 +29,9 @@ class ShellTask(luigi.Task, ABC):
         retry_count: Number of times to retry the task on failure (default: 0).
     """
 
-    retry_count = 0
+    retry_count: int = 0
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize the ShellTask with shell environment setup."""
         super().__init__(*args, **kwargs)
         self.initialize_shell()
@@ -65,9 +66,9 @@ class ShellTask(luigi.Task, ABC):
     @classmethod
     def initialize_shell(cls) -> None:
         """Initialize shell-related class attributes to None."""
-        cls.__log_txt_path = None
-        cls.__sh = None
-        cls.__run_kwargs = None
+        cls.__log_txt_path: str | None = None
+        cls.__sh: ShellOperator | None = None
+        cls.__run_kwargs: dict[str, Any] | None = None
 
     @classmethod
     def setup_shell(
@@ -82,7 +83,7 @@ class ShellTask(luigi.Task, ABC):
         quiet: bool = True,
         executable: str = "/bin/bash",
         env: Mapping[str, str] | None = None,
-        **kwargs: object,
+        **kwargs: Any,
     ) -> None:
         """Configure shell execution environment and run version commands.
 
@@ -131,7 +132,7 @@ class ShellTask(luigi.Task, ABC):
             cls.run_shell(args=list(cls.generate_version_commands(commands)))
 
     @classmethod
-    def make_dirs(cls, *paths: object) -> None:
+    def make_dirs(cls, *paths: Any) -> None:
         """Create directories for the given paths if they don't exist.
 
         Args:
@@ -145,7 +146,7 @@ class ShellTask(luigi.Task, ABC):
                     d.mkdir(parents=True, exist_ok=True)
 
     @classmethod
-    def run_shell(cls, *args: object, **kwargs: object) -> None:
+    def run_shell(cls, *args: Any, **kwargs: Any) -> None:
         """Execute shell command using configured ShellOperator.
 
         Args:
@@ -222,7 +223,7 @@ class FtarcTask(ShellTask):
     conversion utilities, and GATK Java options configuration.
     """
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Initialize FtarcTask with parent class initialization."""
         super().__init__(*args, **kwargs)
 

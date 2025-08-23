@@ -8,6 +8,7 @@ import os
 import re
 from collections.abc import Iterable
 from pathlib import Path
+from typing import Any
 
 import luigi
 
@@ -31,14 +32,14 @@ class CollectFqMetricsWithFastqc(FtarcTask):
         sh_config: Shell configuration parameters.
     """
 
-    fq_paths = luigi.ListParameter()
-    dest_dir_path = luigi.Parameter(default=".")
-    fastqc = luigi.Parameter(default="fastqc")
-    add_fastqc_args = luigi.ListParameter(default=["--nogroup"])
-    n_cpu = luigi.IntParameter(default=1)
-    memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default={})
-    priority = 10
+    fq_paths: list[str] = luigi.ListParameter()
+    dest_dir_path: str = luigi.Parameter(default=".")
+    fastqc: str = luigi.Parameter(default="fastqc")
+    add_fastqc_args: list[str] = luigi.ListParameter(default=["--nogroup"])
+    n_cpu: int = luigi.IntParameter(default=1)
+    memory_mb: float = luigi.FloatParameter(default=4096)
+    sh_config: dict[str, Any] = luigi.DictParameter(default={})
+    priority: int = 10
 
     def output(self) -> list[luigi.LocalTarget]:
         """Return the output targets for the FastQC task.

@@ -93,7 +93,7 @@ def read_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
     return d
 
 
-def print_yml(data: object) -> None:
+def print_yml(data: Any) -> None:
     """Print data in YAML format.
 
     Args:
@@ -166,7 +166,7 @@ def load_default_dict(stem: str) -> dict[str, Any]:
 def build_luigi_tasks(
     check_scheduling_succeeded: bool = True,
     hide_summary: bool = False,
-    **kwargs: object,
+    **kwargs: Any,
 ) -> None:
     """Build and execute Luigi tasks.
 

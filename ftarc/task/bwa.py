@@ -5,6 +5,7 @@ including index creation and read mapping to reference genomes.
 """
 
 from pathlib import Path
+from typing import Any
 
 import luigi
 from luigi.util import requires
@@ -27,12 +28,12 @@ class CreateBwaIndices(FtarcTask):
         sh_config: Shell configuration parameters.
     """
 
-    fa_path = luigi.Parameter()
-    bwa = luigi.Parameter(default="bwa")
-    use_bwa_mem2 = luigi.BoolParameter(default=False)
-    add_index_args = luigi.ListParameter(default=[])
-    sh_config = luigi.DictParameter(default={})
-    priority = 100
+    fa_path: str = luigi.Parameter()
+    bwa: str = luigi.Parameter(default="bwa")
+    use_bwa_mem2: bool = luigi.BoolParameter(default=False)
+    add_index_args: list[str] = luigi.ListParameter(default=[])
+    sh_config: dict[str, Any] = luigi.DictParameter(default={})
+    priority: int = 100
 
     def output(self) -> list[luigi.LocalTarget]:
         """Define the output targets for BWA index files.
@@ -106,20 +107,20 @@ class AlignReads(FtarcTask):
         sh_config: Shell configuration parameters.
     """
 
-    fq_paths = luigi.ListParameter()
-    fa_path = luigi.Parameter()
-    dest_dir_path = luigi.Parameter(default=".")
-    sample_name = luigi.Parameter()
-    read_group = luigi.DictParameter(default={})
-    output_stem = luigi.Parameter(default="")
-    bwa = luigi.Parameter(default="bwa")
-    samtools = luigi.Parameter(default="samtools")
-    use_bwa_mem2 = luigi.BoolParameter(default=False)
-    add_mem_args = luigi.ListParameter(default=["-P", "-T", "0"])
-    n_cpu = luigi.IntParameter(default=1)
-    memory_mb = luigi.FloatParameter(default=4096)
-    sh_config = luigi.DictParameter(default={})
-    priority = 70
+    fq_paths: list[str] = luigi.ListParameter()
+    fa_path: str = luigi.Parameter()
+    dest_dir_path: str = luigi.Parameter(default=".")
+    sample_name: str = luigi.Parameter()
+    read_group: dict[str, str] = luigi.DictParameter(default={})
+    output_stem: str = luigi.Parameter(default="")
+    bwa: str = luigi.Parameter(default="bwa")
+    samtools: str = luigi.Parameter(default="samtools")
+    use_bwa_mem2: bool = luigi.BoolParameter(default=False)
+    add_mem_args: list[str] = luigi.ListParameter(default=["-P", "-T", "0"])
+    n_cpu: int = luigi.IntParameter(default=1)
+    memory_mb: float = luigi.FloatParameter(default=4096)
+    sh_config: dict[str, Any] = luigi.DictParameter(default={})
+    priority: int = 70
 
     def output(self) -> list[luigi.LocalTarget]:
         """Define the output targets for aligned reads.
