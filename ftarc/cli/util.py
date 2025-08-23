@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Utility functions for ftarc command-line interface.
+
+This module provides shared utilities for Luigi task building, executable detection,
+and common CLI operations used across different ftarc commands.
+"""
 
 import logging
 import os
@@ -17,6 +22,12 @@ from jinja2 import Environment, FileSystemLoader
 def write_config_yml(
     path: str | os.PathLike[str], src_yml: str = "example_ftarc.yml"
 ) -> None:
+    """Write a configuration YAML file from template.
+
+    Args:
+        path: Destination path for the configuration file
+        src_yml: Source template filename (defaults to example_ftarc.yml)
+    """
     if Path(path).is_file():
         print_log(f"The file exists:\t{path}")
     else:
@@ -28,12 +39,29 @@ def write_config_yml(
 
 
 def print_log(message: str) -> None:
+    """Print a log message to both logger and stdout.
+
+    Args:
+        message: Message to log and print
+    """
     logger = logging.getLogger(__name__)
     logger.debug(message)
     print(f">>\t{message}", flush=True)
 
 
 def fetch_executable(cmd: str, ignore_errors: bool = False) -> str | None:
+    """Find executable command in PATH.
+
+    Args:
+        cmd: Command name to search for
+        ignore_errors: Return None instead of raising error if not found
+
+    Returns:
+        Path to executable or None if not found and ignore_errors is True
+
+    Raises:
+        RuntimeError: If command not found and ignore_errors is False
+    """
     executables = [
         cp
         for cp in [
@@ -51,6 +79,14 @@ def fetch_executable(cmd: str, ignore_errors: bool = False) -> str | None:
 
 
 def read_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
+    """Read and parse a YAML file.
+
+    Args:
+        path: Path to the YAML file
+
+    Returns:
+        Parsed YAML data as dictionary
+    """
     logger = logging.getLogger(__name__)
     with open(str(path), encoding="utf-8") as f:
         d = yaml.load(f, Loader=yaml.FullLoader)
@@ -59,6 +95,11 @@ def read_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
 
 
 def print_yml(data: object) -> None:
+    """Print data in YAML format.
+
+    Args:
+        data: Data to serialize and print as YAML
+    """
     print(yaml.dump(data))
 
 
@@ -68,6 +109,14 @@ def render_luigi_log_cfg(
     console_log_level: str = "WARNING",
     file_log_level: str = "DEBUG",
 ) -> None:
+    """Render Luigi logging configuration file from template.
+
+    Args:
+        log_cfg_path: Path to write the logging configuration file
+        log_dir_path: Directory for log files (defaults to config directory)
+        console_log_level: Log level for console output
+        file_log_level: Log level for file output
+    """
     log_cfg = Path(str(log_cfg_path)).resolve()
     cfg_dir = log_cfg.parent
     log_dir = Path(str(log_dir_path)).resolve() if log_dir_path else cfg_dir
@@ -103,6 +152,14 @@ def render_luigi_log_cfg(
 
 
 def load_default_dict(stem: str) -> dict[str, Any]:
+    """Load default configuration from static YAML file.
+
+    Args:
+        stem: Base filename (without .yml extension) in static directory
+
+    Returns:
+        Configuration dictionary
+    """
     return read_yml(path=Path(__file__).parent.parent.joinpath(f"static/{stem}.yml"))
 
 
@@ -111,6 +168,16 @@ def build_luigi_tasks(
     hide_summary: bool = False,
     **kwargs: object,
 ) -> None:
+    """Build and execute Luigi tasks.
+
+    Args:
+        check_scheduling_succeeded: Assert that scheduling succeeded
+        hide_summary: Skip printing execution summary
+        **kwargs: Additional arguments passed to luigi.build()
+
+    Raises:
+        AssertionError: If scheduling failed and check_scheduling_succeeded is True
+    """
     r = luigi.build(local_scheduler=True, detailed_summary=True, **kwargs)
     if not hide_summary:
         print(
@@ -121,6 +188,17 @@ def build_luigi_tasks(
 
 
 def parse_fq_id(fq_path: str | os.PathLike[str]) -> str:
+    """Extract sample ID from FASTQ file path.
+
+    Removes common FASTQ file suffixes and read pair indicators to extract
+    the base sample identifier.
+
+    Args:
+        fq_path: Path to FASTQ file
+
+    Returns:
+        Extracted sample ID string
+    """
     fq_stem = Path(fq_path).name
     for _ in range(3):
         if fq_stem.endswith(("fq", "fastq")):

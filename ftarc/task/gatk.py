@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""GATK tool tasks for the ftarc pipeline.
+
+This module provides Luigi tasks for Genome Analysis Toolkit (GATK) operations,
+including duplicate marking, base quality score recalibration (BQSR), and variant calling.
+"""
 
 from pathlib import Path
 
@@ -12,6 +17,26 @@ from .samtools import SamtoolsFaidx
 
 @requires(SamtoolsFaidx, CreateSequenceDictionary)
 class MarkDuplicates(FtarcTask):
+    """Luigi task for marking duplicate reads in aligned sequencing data.
+
+    This task identifies and marks duplicate reads in SAM/BAM/CRAM files using
+    GATK's MarkDuplicates tool, which helps improve variant calling accuracy.
+
+    Parameters:
+        input_sam_path: Path to the input SAM/BAM/CRAM file.
+        fa_path: Path to the reference FASTA file.
+        dest_dir_path: Output directory for processed files.
+        gatk: Path to the GATK executable.
+        samtools: Path to the samtools executable.
+        use_spark: Use Spark-enabled version of MarkDuplicates.
+        add_markduplicatesspark_args: Additional arguments for MarkDuplicatesSpark.
+        add_markduplicates_args: Additional arguments for MarkDuplicates.
+        add_setnmmdanduqtags_args: Additional arguments for SetNmMdAndUqTags.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default=".")
@@ -36,6 +61,14 @@ class MarkDuplicates(FtarcTask):
     priority = 70
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Return the output targets for the MarkDuplicates task.
+
+        Returns:
+            list[luigi.LocalTarget]: List of output file targets including:
+                - CRAM file with marked duplicates
+                - CRAM index file (.crai)
+                - Duplicate metrics text file
+        """
         dest_dir = Path(self.dest_dir_path).resolve()
         output_stem = Path(self.input_sam_path).stem + ".markdup"
         return [
@@ -44,6 +77,21 @@ class MarkDuplicates(FtarcTask):
         ]
 
     def run(self) -> None:
+        """Execute duplicate marking on aligned sequencing data.
+
+        This method marks duplicate reads in SAM/BAM/CRAM files using GATK's
+        MarkDuplicates or MarkDuplicatesSpark tool, depending on the use_spark
+        parameter. It also sets NM, MD, and UQ tags and converts the output to CRAM format.
+
+        The process includes:
+        1. Running MarkDuplicates/MarkDuplicatesSpark to identify duplicates
+        2. Setting NM, MD, and UQ tags using SetNmMdAndUqTags
+        3. Converting output to CRAM format with indexing
+
+        Raises:
+            subprocess.CalledProcessError: If GATK or samtools execution fails.
+            FileNotFoundError: If input files or reference files are not found.
+        """
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
         self.print_log(f"Mark duplicates:\t{run_id}")
@@ -135,6 +183,28 @@ class MarkDuplicates(FtarcTask):
 
 @requires(SamtoolsFaidx, CreateSequenceDictionary)
 class ApplyBqsr(FtarcTask):
+    """Luigi task for applying Base Quality Score Recalibration (BQSR) to sequencing data.
+
+    This task recalibrates base quality scores in aligned reads using GATK's BQSR tools,
+    improving the accuracy of variant calling by correcting systematic errors in base quality scores.
+
+    Parameters:
+        input_sam_path: Path to the input SAM/BAM/CRAM file.
+        fa_path: Path to the reference FASTA file.
+        known_sites_vcf_paths: List of known variant VCF files for recalibration.
+        interval_list_path: Optional interval list for targeted analysis.
+        dest_dir_path: Output directory for processed files.
+        gatk: Path to the GATK executable.
+        samtools: Path to the samtools executable.
+        use_spark: Use Spark-enabled version of BQSR.
+        add_bqsrpipelinespark_args: Additional arguments for BQSRPipelineSpark.
+        add_baserecalibrator_args: Additional arguments for BaseRecalibrator.
+        add_applybqsr_args: Additional arguments for ApplyBQSR.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     input_sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     known_sites_vcf_paths = luigi.ListParameter()
@@ -185,6 +255,13 @@ class ApplyBqsr(FtarcTask):
     priority = 70
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Return the output targets for the ApplyBqsr task.
+
+        Returns:
+            list[luigi.LocalTarget]: List of output file targets including:
+                - CRAM file with recalibrated base quality scores
+                - CRAM index file (.crai)
+        """
         dest_dir = Path(self.dest_dir_path).resolve()
         output_stem = Path(self.input_sam_path).stem + ".bqsr"
         return [
@@ -193,6 +270,24 @@ class ApplyBqsr(FtarcTask):
         ]
 
     def run(self) -> None:
+        """Execute Base Quality Score Recalibration (BQSR) on aligned sequencing data.
+
+        This method applies BQSR to correct systematic errors in base quality scores,
+        improving the accuracy of downstream variant calling. It uses either the
+        BQSRPipelineSpark tool for Spark-enabled processing or the traditional
+        BaseRecalibrator + ApplyBQSR workflow.
+
+        The process includes:
+        1. BaseRecalibrator: Analyzes covariation among quality scores, position in read, etc.
+        2. ApplyBQSR: Applies the recalibration model to adjust quality scores
+        3. Conversion to CRAM format with indexing
+
+        Uses known variant sites to avoid recalibrating true variants as errors.
+
+        Raises:
+            subprocess.CalledProcessError: If GATK or samtools execution fails.
+            FileNotFoundError: If input files, reference files, or known sites VCFs are not found.
+        """
         target_sam = Path(self.input_sam_path)
         run_id = target_sam.stem
         self.print_log(f"Apply base quality score recalibration:\t{run_id}")

@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Pipeline orchestration and configuration management for ftarc.
+
+This module handles the high-level pipeline execution, including configuration file parsing,
+resource allocation, and coordination of Luigi tasks for the complete genomic data processing workflow.
+"""
 
 import logging
 import os
@@ -37,6 +42,23 @@ def run_processing_pipeline(
     use_spark: bool = False,
     use_bwa_mem2: bool = True,
 ) -> None:
+    """Run the complete genomic data processing pipeline.
+
+    Orchestrates the full FASTQ-to-CRAM workflow including configuration parsing,
+    resource allocation, and Luigi task coordination for genomic data processing.
+
+    Args:
+        config_yml_path: Path to the YAML configuration file
+        dest_dir_path: Output directory path (defaults to current directory)
+        max_n_cpu: Maximum number of CPUs to use (defaults to system CPU count)
+        max_n_worker: Maximum number of parallel workers (defaults to max_n_cpu)
+        skip_cleaning: Skip cleaning temporary files and cache directories
+        print_subprocesses: Print subprocess commands and output
+        console_log_level: Console logging level (WARNING, INFO, DEBUG, etc.)
+        file_log_level: File logging level (WARNING, INFO, DEBUG, etc.)
+        use_spark: Use Spark-enabled GATK tools for large-scale processing
+        use_bwa_mem2: Use bwa-mem2 instead of bwa for read alignment
+    """
     logger = logging.getLogger(__name__)
     logger.info(f"config_yml_path:\t{config_yml_path}")
     config = _read_config_yml(path=config_yml_path)
@@ -190,6 +212,17 @@ def run_processing_pipeline(
 
 
 def _read_config_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
+    """Read and validate the YAML configuration file.
+
+    Args:
+        path: Path to the YAML configuration file
+
+    Returns:
+        Validated configuration dictionary
+
+    Raises:
+        AssertionError: If configuration validation fails
+    """
     config = read_yml(path=Path(path).resolve())
     assert isinstance(config, dict) and config.get("resources"), config
     assert isinstance(config["resources"], dict), config["resources"]
@@ -222,10 +255,29 @@ def _read_config_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
 
 
 def _has_unique_elements(elements: Sequence[object]) -> bool:
+    """Check if all elements in a sequence are unique.
+
+    Args:
+        elements: Sequence to check for uniqueness
+
+    Returns:
+        True if all elements are unique, False otherwise
+    """
     return len(set(elements)) == len(tuple(elements))
 
 
 def _resolve_file_path(path: str | os.PathLike[str]) -> str:
+    """Resolve and validate a file path.
+
+    Args:
+        path: File path to resolve
+
+    Returns:
+        Absolute path string
+
+    Raises:
+        AssertionError: If file does not exist
+    """
     p = Path(path).resolve()
     assert p.is_file(), f"file not found: {p}"
     return str(p)
@@ -235,6 +287,15 @@ def _resolve_input_file_paths(
     path_list: Sequence[str] | None = None,
     path_dict: Mapping[str, Any] | None = None,
 ) -> list[str] | dict[str, list[str] | str]:
+    """Resolve input file paths from list or dictionary format.
+
+    Args:
+        path_list: Optional sequence of file paths
+        path_dict: Optional mapping of keys to file paths or lists of paths
+
+    Returns:
+        List of resolved paths or dictionary with resolved paths
+    """
     if path_list is not None:
         return [_resolve_file_path(s) for s in path_list]
     elif path_dict is not None:
@@ -248,6 +309,14 @@ def _resolve_input_file_paths(
 
 
 def _determine_input_samples(run_dict: Mapping[str, Any]) -> dict[str, Any]:
+    """Extract and process sample information from run configuration.
+
+    Args:
+        run_dict: Run configuration dictionary containing FASTQ paths and read group info
+
+    Returns:
+        Dictionary with processed sample information including paths and metadata
+    """
     g = run_dict.get("read_group") or {}
     return {
         "fq_paths": _resolve_input_file_paths(path_list=run_dict["fq"]),

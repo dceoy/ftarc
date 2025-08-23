@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Picard tools tasks for the ftarc pipeline.
+
+This module provides Luigi tasks for Picard tools operations including sequence dictionary
+creation, SAM file validation, and various quality metrics collection.
+"""
 
 from pathlib import Path
 
@@ -9,6 +14,20 @@ from .core import FtarcTask
 
 
 class CreateSequenceDictionary(FtarcTask):
+    """Luigi task for creating a sequence dictionary for reference FASTA files.
+
+    This task generates a .dict file containing sequence information required by
+    GATK and other tools for efficient reference sequence access.
+
+    Parameters:
+        fa_path: Path to the reference FASTA file.
+        gatk: Path to the GATK executable.
+        add_createsequencedictionary_args: Additional arguments for CreateSequenceDictionary.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     fa_path = luigi.Parameter()
     gatk = luigi.Parameter(default="gatk")
     add_createsequencedictionary_args = luigi.ListParameter(default=[])
@@ -18,10 +37,25 @@ class CreateSequenceDictionary(FtarcTask):
     priority = 70
 
     def output(self) -> luigi.LocalTarget:
+        """Return the output target for the sequence dictionary.
+
+        Returns:
+            luigi.LocalTarget: Path to the generated sequence dictionary file (.dict).
+        """
         fa = Path(self.fa_path).resolve()
         return luigi.LocalTarget(fa.parent.joinpath(f"{fa.stem}.dict"))
 
     def run(self) -> None:
+        """Execute sequence dictionary creation for a reference FASTA file.
+
+        This method creates a sequence dictionary (.dict) file that contains metadata
+        about the reference sequences, including sequence names, lengths, MD5 checksums,
+        and other information required by GATK and other genomics tools.
+
+        Raises:
+            subprocess.CalledProcessError: If GATK CreateSequenceDictionary execution fails.
+            FileNotFoundError: If the reference FASTA file is not found.
+        """
         run_id = Path(self.fa_path).stem
         self.print_log(f"Create a sequence dictionary:\t{run_id}")
         fa = Path(self.fa_path).resolve()
@@ -51,6 +85,22 @@ class CreateSequenceDictionary(FtarcTask):
 
 @requires(CreateSequenceDictionary)
 class ValidateSamFile(FtarcTask):
+    """Luigi task for validating SAM/BAM/CRAM file integrity and format.
+
+    This task uses Picard's ValidateSamFile to check for format compliance,
+    data consistency, and potential issues in alignment files.
+
+    Parameters:
+        sam_path: Path to the SAM/BAM/CRAM file to validate.
+        fa_path: Path to the reference FASTA file.
+        dest_dir_path: Output directory for validation report.
+        picard: Path to the Picard executable.
+        add_validatesamfile_args: Additional arguments for ValidateSamFile.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default=".")
@@ -64,6 +114,11 @@ class ValidateSamFile(FtarcTask):
     priority = luigi.IntParameter(default=100)
 
     def output(self) -> luigi.LocalTarget:
+        """Return the output target for the SAM validation report.
+
+        Returns:
+            luigi.LocalTarget: Path to the validation report text file.
+        """
         return luigi.LocalTarget(
             Path(self.dest_dir_path)
             .resolve()
@@ -71,6 +126,23 @@ class ValidateSamFile(FtarcTask):
         )
 
     def run(self) -> None:
+        """Execute SAM/BAM/CRAM file validation using Picard ValidateSamFile.
+
+        This method performs comprehensive validation of alignment files, checking
+        for format compliance, data consistency, proper sorting, and potential issues.
+        The validation report includes errors, warnings, and summary statistics.
+
+        Common validation checks include:
+        - Format specification compliance
+        - Coordinate sorting verification
+        - Reference sequence consistency
+        - Read group validation
+        - Tag format verification
+
+        Raises:
+            subprocess.CalledProcessError: If Picard ValidateSamFile execution fails.
+            FileNotFoundError: If input files or reference files are not found.
+        """
         run_id = Path(self.sam_path).name
         self.print_log(f"Validate a SAM file:\t{run_id}")
         sam = Path(self.sam_path).resolve()
@@ -104,6 +176,24 @@ class ValidateSamFile(FtarcTask):
 
 @requires(CreateSequenceDictionary)
 class CollectSamMetricsWithPicard(FtarcTask):
+    """Luigi task for collecting comprehensive alignment metrics using Picard tools.
+
+    This task runs multiple Picard metrics collectors to generate detailed quality
+    metrics including alignment summary, insert size distribution, GC bias, and
+    quality score distributions.
+
+    Parameters:
+        sam_path: Path to the SAM/BAM/CRAM file to analyze.
+        fa_path: Path to the reference FASTA file.
+        dest_dir_path: Output directory for metrics files.
+        picard_commands: List of Picard metrics commands to run.
+        picard: Path to the Picard executable.
+        add_picard_command_args: Additional arguments per command.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default=".")
@@ -128,6 +218,14 @@ class CollectSamMetricsWithPicard(FtarcTask):
     priority = 100
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Return the output targets for all Picard metrics collection.
+
+        Returns:
+            list[luigi.LocalTarget]: List of output file targets including:
+                - Text files with metrics data for each command
+                - PDF chart files for visualization (when applicable)
+                - Summary files for specific metrics (e.g., GC bias)
+        """
         sam_name = Path(self.sam_path).name
         dest_dir = Path(self.dest_dir_path).resolve()
         return (
@@ -154,6 +252,25 @@ class CollectSamMetricsWithPicard(FtarcTask):
         )
 
     def run(self) -> None:
+        """Execute comprehensive alignment metrics collection using Picard tools.
+
+        This method runs multiple Picard metrics collectors to generate detailed
+        quality control reports including:
+        - CollectRawWgsMetrics: Whole genome sequencing metrics
+        - CollectAlignmentSummaryMetrics: Alignment statistics
+        - CollectInsertSizeMetrics: Insert size distribution
+        - QualityScoreDistribution: Base quality score distribution
+        - MeanQualityByCycle: Quality scores by sequencing cycle
+        - CollectBaseDistributionByCycle: Base composition by cycle
+        - CollectGcBiasMetrics: GC bias assessment
+
+        Each command generates text-based metrics files and, when applicable,
+        PDF visualization charts.
+
+        Raises:
+            subprocess.CalledProcessError: If any Picard command execution fails.
+            FileNotFoundError: If input files or reference files are not found.
+        """
         run_id = Path(self.sam_path).name
         self.print_log(f"Collect SAM metrics using Picard:\t{run_id}")
         sam = Path(self.sam_path).resolve()

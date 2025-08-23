@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Resource downloading and processing tasks for the ftarc pipeline.
+
+This module provides Luigi tasks for downloading and preparing reference genome resources,
+including FASTA files, known variant databases, and associated indices.
+"""
 
 import re
 from itertools import product
@@ -16,6 +21,23 @@ from .samtools import SamtoolsFaidx
 
 
 class DownloadResourceFiles(FtarcTask):
+    """Luigi task for downloading genomic resource files from URLs.
+
+    This task downloads resource files such as reference genomes and variant databases,
+    automatically handling compression formats and file type conversions.
+
+    Parameters:
+        src_urls: List of URLs to download resources from.
+        dest_dir_path: Destination directory for downloaded files.
+        run_id: Identifier for this download run.
+        wget: Path to the wget executable.
+        pigz: Path to the pigz executable.
+        pbzip2: Path to the pbzip2 executable.
+        bgzip: Path to the bgzip executable.
+        n_cpu: Number of CPU threads to use.
+        sh_config: Shell configuration parameters.
+    """
+
     src_urls = luigi.ListParameter()
     dest_dir_path = luigi.Parameter(default=".")
     run_id = luigi.Parameter(default=gethostname())
@@ -28,6 +50,22 @@ class DownloadResourceFiles(FtarcTask):
     priority = 10
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Define output file targets based on input URLs and file types.
+
+        Determines the expected output file paths after downloading and processing
+        resource files. Handles different compression formats and file extensions,
+        automatically adjusting paths based on the processing that will be performed.
+
+        Returns:
+            list[luigi.LocalTarget]: List of Luigi local file targets representing
+                the expected output files after download and processing.
+
+        Note:
+            - Compressed FASTA/text files (.gz/.bz2) are decompressed
+            - BGZ files are converted to GZ format
+            - VCF and BED files are compressed with bgzip
+            - Other files retain their original format
+        """
         dest_dir = Path(self.dest_dir_path).resolve()
         target_paths = []
         for u in self.src_urls:
@@ -48,6 +86,24 @@ class DownloadResourceFiles(FtarcTask):
         return [luigi.LocalTarget(p) for p in target_paths]
 
     def run(self) -> None:
+        """Download and process genomic resource files from URLs.
+
+        Downloads files from the specified URLs and processes them according to
+        their file types and compression formats. Sets up shell environment and
+        executes appropriate compression/decompression commands.
+
+        Process:
+            1. Downloads each file using wget
+            2. Applies format-specific processing:
+               - BGZ files: converted to GZ format
+               - VCF/BED files: compressed with bgzip
+               - Compressed FASTA/text: decompressed appropriately
+               - Other files: left as-is
+
+        Raises:
+            subprocess.CalledProcessError: If any download or processing command fails.
+            FileNotFoundError: If required executables are not found in PATH.
+        """
         dest_dir = Path(self.dest_dir_path).resolve()
         self.print_log(f"Download resource files:\t{dest_dir}")
         self.setup_shell(
@@ -85,6 +141,21 @@ class DownloadResourceFiles(FtarcTask):
 
 @requires(DownloadResourceFiles)
 class DownloadAndIndexReferenceFasta(luigi.Task):
+    """Luigi task for downloading and indexing reference FASTA files.
+
+    This task coordinates downloading reference genomes and creating all necessary
+    indices for BWA alignment, samtools, and GATK operations.
+
+    Parameters:
+        samtools: Path to the samtools executable.
+        gatk: Path to the GATK executable.
+        bwa: Path to the BWA executable.
+        use_bwa_mem2: Use BWA-MEM2 instead of standard BWA.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     samtools = luigi.Parameter(default="samtools")
     gatk = luigi.Parameter(default="gatk")
     bwa = luigi.Parameter(default="bwa")
@@ -95,6 +166,23 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
     priority = 10
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Define output targets including downloaded FASTA and all required indices.
+
+        Determines the expected output files after downloading reference FASTA files
+        and creating all necessary indices for genome alignment and analysis tools.
+
+        Returns:
+            list[luigi.LocalTarget]: List of file targets including:
+                - Original downloaded files
+                - FASTA index (.fai) for samtools
+                - Sequence dictionary (.dict) for GATK
+                - BWA index files (varies by BWA version)
+
+        Note:
+            BWA-MEM2 uses different index file suffixes than standard BWA:
+            - BWA: .pac, .bwt, .ann, .amb, .sa
+            - BWA-MEM2: .0123, .amb, .ann, .pac, .bwt.2bit.64
+        """
         bwa_suffixes = (
             ["0123", "amb", "ann", "pac", "bwt.2bit.64"]
             if self.use_bwa_mem2
@@ -115,6 +203,20 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
         ]
 
     def run(self) -> None:
+        """Execute indexing tasks for the downloaded reference FASTA file.
+
+        Yields Luigi tasks to create all necessary indices for the reference genome,
+        enabling efficient access by various bioinformatics tools in the pipeline.
+
+        Tasks yielded:
+            - SamtoolsFaidx: Creates .fai index for random access
+            - CreateSequenceDictionary: Creates .dict file for GATK
+            - CreateBwaIndices: Creates BWA alignment indices
+
+        Note:
+            Uses yield instead of return to enable Luigi's dynamic dependency
+            resolution, allowing these indexing tasks to run in parallel.
+        """
         fa_path = self.input()[0].path
         yield [
             SamtoolsFaidx(
@@ -138,6 +240,18 @@ class DownloadAndIndexReferenceFasta(luigi.Task):
 
 @requires(DownloadResourceFiles)
 class DownloadAndIndexResourceVcfs(luigi.Task):
+    """Luigi task for downloading and indexing VCF resource files.
+
+    This task ensures VCF files are properly compressed with bgzip and indexed
+    with tabix for efficient random access during variant calling.
+
+    Parameters:
+        bgzip: Path to the bgzip executable.
+        tabix: Path to the tabix executable.
+        n_cpu: Number of CPU threads to use.
+        sh_config: Shell configuration parameters.
+    """
+
     bgzip = luigi.Parameter(default="bgzip")
     tabix = luigi.Parameter(default="tabix")
     n_cpu = luigi.IntParameter(default=1)
@@ -145,6 +259,20 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
     priority = 10
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Define output targets including downloaded VCFs and their tabix indices.
+
+        Determines the expected output files after downloading VCF files and
+        creating tabix indices for efficient random access during variant calling.
+
+        Returns:
+            list[luigi.LocalTarget]: List of file targets including:
+                - Original downloaded VCF files
+                - Tabix index files (.tbi) for bgzip-compressed VCF files
+
+        Note:
+            Only VCF files ending with .vcf.gz get tabix indices created,
+            as tabix requires bgzip compression.
+        """
         return self.input() + [
             luigi.LocalTarget(f"{i.path}.tbi")
             for i in self.input()
@@ -152,6 +280,18 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
         ]
 
     def run(self) -> None:
+        """Execute tabix indexing tasks for downloaded VCF files.
+
+        Yields Luigi tasks to create tabix indices for all bgzip-compressed VCF files,
+        enabling efficient random access by genomic coordinate during variant analysis.
+
+        Tasks yielded:
+            - FetchResourceVcf: Creates .tbi tabix index for each .vcf.gz file
+
+        Note:
+            Uses yield instead of return to enable Luigi's dynamic dependency
+            resolution, allowing indexing tasks to run in parallel for multiple VCFs.
+        """
         yield [
             FetchResourceVcf(
                 src_path=i.path,
@@ -166,6 +306,29 @@ class DownloadAndIndexResourceVcfs(luigi.Task):
 
 
 class DownloadAndProcessResourceFiles(luigi.WrapperTask):
+    """Luigi wrapper task for downloading and processing all genomic resources.
+
+    This task orchestrates the complete download and indexing workflow for all
+    resources needed by the ftarc pipeline, including reference genomes and known
+    variant databases.
+
+    Parameters:
+        src_url_dict: Dictionary mapping resource types to URLs.
+        dest_dir_path: Destination directory for resources.
+        wget: Path to the wget executable.
+        pigz: Path to the pigz executable.
+        pbzip2: Path to the pbzip2 executable.
+        bgzip: Path to the bgzip executable.
+        tabix: Path to the tabix executable.
+        samtools: Path to the samtools executable.
+        gatk: Path to the GATK executable.
+        bwa: Path to the BWA executable.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        use_bwa_mem2: Use BWA-MEM2 instead of standard BWA.
+        sh_config: Shell configuration parameters.
+    """
+
     src_url_dict = luigi.DictParameter()
     dest_dir_path = luigi.Parameter(default=".")
     wget = luigi.Parameter(default="wget")
@@ -183,6 +346,22 @@ class DownloadAndProcessResourceFiles(luigi.WrapperTask):
     priority = 10
 
     def requires(self) -> list[luigi.Task]:
+        """Define prerequisite tasks for downloading and processing all resources.
+
+        Creates two main task dependencies that handle different types of genomic
+        resources required by the ftarc pipeline.
+
+        Returns:
+            list[luigi.Task]: List of required tasks:
+                - DownloadAndIndexReferenceFasta: Downloads and indexes reference
+                  genome FASTA files (primary and ALT sequences)
+                - DownloadAndIndexResourceVcfs: Downloads and indexes known variant
+                  databases and other non-FASTA resources
+
+        Note:
+            The URL dictionary is partitioned to separate reference FASTA files
+            from other resources (VCFs, BED files, etc.) for appropriate processing.
+        """
         return [
             DownloadAndIndexReferenceFasta(
                 src_urls=[
@@ -222,6 +401,17 @@ class DownloadAndProcessResourceFiles(luigi.WrapperTask):
         ]
 
     def output(self) -> list[luigi.Target]:
+        """Return output targets from prerequisite tasks.
+
+        As a wrapper task, this returns the combined outputs from all required
+        subtasks, representing all downloaded and indexed genomic resources.
+
+        Returns:
+            list[luigi.Target]: All file targets from the required download and
+                indexing tasks, including:
+                - Reference FASTA files and their indices
+                - Known variant VCF files and their tabix indices
+        """
         return self.input()
 
 

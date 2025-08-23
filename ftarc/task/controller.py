@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""High-level pipeline controller tasks for ftarc.
+
+This module provides controller tasks that orchestrate the complete preprocessing pipeline,
+coordinating multiple processing stages for genomic data from FASTQ to analysis-ready CRAM.
+"""
 
 import re
 import sys
@@ -19,6 +24,17 @@ from .trimgalore import LocateFastqs, TrimAdapters
 
 
 class PrintEnvVersions(FtarcTask):
+    """Luigi task for printing environment and tool versions.
+
+    This task displays version information for all tools used in the pipeline,
+    helping with reproducibility and debugging.
+
+    Parameters:
+        command_paths: List of command executables to check versions.
+        run_id: Identifier for this run (defaults to hostname).
+        sh_config: Shell configuration parameters.
+    """
+
     command_paths = luigi.ListParameter(default=[])
     run_id = luigi.Parameter(default=gethostname())
     sh_config = luigi.DictParameter(default={})
@@ -37,6 +53,27 @@ class PrintEnvVersions(FtarcTask):
 
 
 class PrepareFastqs(luigi.WrapperTask):
+    """Luigi wrapper task for preparing FASTQ files for alignment.
+
+    This task coordinates either adapter trimming or direct FASTQ location
+    based on the adapter_removal parameter.
+
+    Parameters:
+        fq_paths: List of input FASTQ file paths.
+        sample_name: Sample identifier.
+        trim_dir_path: Directory for trimmed files.
+        align_dir_path: Directory for alignment files.
+        pigz: Path to the pigz executable.
+        pbzip2: Path to the pbzip2 executable.
+        trim_galore: Path to the trim_galore executable.
+        cutadapt: Path to the cutadapt executable.
+        fastqc: Path to the FastQC executable.
+        adapter_removal: Whether to perform adapter trimming.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     fq_paths = luigi.ListParameter()
     sample_name = luigi.Parameter()
     trim_dir_path = luigi.Parameter(default=".")
@@ -79,11 +116,40 @@ class PrepareFastqs(luigi.WrapperTask):
             )
 
     def output(self) -> list[luigi.Target]:
+        """Return the output targets for the FASTQ preparation task.
+
+        The output is identical to the input, as this is a wrapper task that
+        delegates actual processing to either trimming or locating subtasks.
+
+        Returns:
+            list[luigi.Target]: List of prepared FASTQ file targets.
+        """
         return self.input()
 
 
 @requires(PrepareFastqs, FetchReferenceFasta, FetchKnownSitesVcfs)
 class PrepareAnalysisReadyCram(luigi.Task):
+    """Luigi task for preparing analysis-ready CRAM files from FASTQ inputs.
+
+    This task orchestrates the complete preprocessing workflow including alignment,
+    duplicate marking, BQSR, and duplicate removal to produce analysis-ready CRAM files.
+
+    Parameters:
+        sample_name: Sample identifier.
+        read_group: Read group dictionary for SAM header.
+        align_dir_path: Directory for alignment outputs.
+        bwa: Path to the BWA executable.
+        samtools: Path to the samtools executable.
+        gatk: Path to the GATK executable.
+        reference_name: Reference genome identifier.
+        adapter_removal: Whether adapter trimming was performed.
+        use_bwa_mem2: Use BWA-MEM2 instead of standard BWA.
+        use_spark: Use Spark-enabled GATK tools.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     sample_name = luigi.Parameter()
     read_group = luigi.DictParameter()
     align_dir_path = luigi.Parameter(default=".")
@@ -101,6 +167,19 @@ class PrepareAnalysisReadyCram(luigi.Task):
     priority = 70
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Define output targets for analysis-ready CRAM preparation.
+
+        Creates output paths for the final analysis-ready CRAM files including
+        the main CRAM file, its index, validation report, and deduplicated version.
+
+        Returns:
+            list[luigi.LocalTarget]: List of output file targets including:
+                - Main CRAM file with BQSR applied
+                - CRAM index file (.crai)
+                - SAM validation report
+                - Deduplicated CRAM file
+                - Deduplicated CRAM index
+        """
         dest_dir = Path(self.align_dir_path).resolve().joinpath(self.sample_name)
         output_stem = (
             self.sample_name
@@ -120,6 +199,23 @@ class PrepareAnalysisReadyCram(luigi.Task):
         ]
 
     def run(self) -> None:
+        """Execute the complete analysis-ready CRAM preparation pipeline.
+
+        Orchestrates the sequential execution of genomic preprocessing steps:
+        1. Read alignment using BWA or BWA-MEM2
+        2. Duplicate marking with GATK MarkDuplicates
+        3. Base Quality Score Recalibration (BQSR) with GATK
+        4. Duplicate removal and SAM file validation
+
+        Each step uses the output of the previous step as input, creating a
+        complete preprocessing pipeline from raw aligned reads to analysis-ready
+        CRAM files suitable for variant calling and other downstream analyses.
+
+        Raises:
+            RuntimeError: If any step in the pipeline fails.
+            FileNotFoundError: If reference files or known sites VCFs are missing.
+            subprocess.CalledProcessError: If external tools fail during execution.
+        """
         fa_path = self.input()[1][0].path
         output_cram = Path(self.output()[0].path)
         dest_dir_path = str(output_cram.parent)
@@ -184,6 +280,27 @@ class PrepareAnalysisReadyCram(luigi.Task):
 
 @requires(PrepareAnalysisReadyCram, FetchReferenceFasta, PrepareFastqs)
 class RunPreprocessingPipeline(luigi.Task):
+    """Luigi task for running the complete preprocessing and QC pipeline.
+
+    This task coordinates the full workflow from FASTQ to analysis-ready CRAM,
+    including all quality control metrics collection steps.
+
+    Parameters:
+        sample_name: Sample identifier.
+        qc_dir_path: Directory for QC output files.
+        fastqc: Path to the FastQC executable.
+        gatk: Path to the GATK executable.
+        samtools: Path to the samtools executable.
+        plot_bamstats: Path to the plot-bamstats executable.
+        gnuplot: Path to the gnuplot executable.
+        metrics_collectors: List of QC tools to run.
+        picard_qc_commands: List of Picard QC commands.
+        samtools_qc_commands: List of samtools QC commands.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     sample_name = luigi.Parameter()
     qc_dir_path = luigi.Parameter(default=".")
     fastqc = luigi.Parameter(default="fastqc")
@@ -212,6 +329,18 @@ class RunPreprocessingPipeline(luigi.Task):
     priority = luigi.IntParameter(default=sys.maxsize)
 
     def output(self) -> list[luigi.LocalTarget]:
+        """Define output targets for the complete preprocessing pipeline.
+
+        Creates output paths for all pipeline products including the analysis-ready
+        CRAM files and all quality control metrics from the specified collectors.
+
+        Returns:
+            list[luigi.LocalTarget]: Comprehensive list of output targets including:
+                - Analysis-ready CRAM files and indices from PrepareAnalysisReadyCram
+                - FastQC HTML reports (if fastqc in metrics_collectors)
+                - Picard metrics files (if picard in metrics_collectors)
+                - Samtools statistics files (if samtools in metrics_collectors)
+        """
         cram = Path(self.input()[0][0].path)
         qc_dir = Path(self.qc_dir_path)
         return (
@@ -255,6 +384,21 @@ class RunPreprocessingPipeline(luigi.Task):
         )
 
     def run(self) -> None:
+        """Execute the complete preprocessing pipeline with quality control.
+
+        Coordinates the execution of quality control tasks based on the configured
+        metrics collectors. Runs FastQC on FASTQ files and Picard/samtools metrics
+        on the final CRAM files to provide comprehensive quality assessment.
+
+        The quality control includes:
+        - FastQC analysis of input FASTQ files (read quality, adapter content, etc.)
+        - Picard metrics collection (alignment summary, insert size, GC bias, etc.)
+        - Samtools statistics (coverage, flagstat, idxstats)
+
+        Raises:
+            RuntimeError: If any QC collection task fails.
+            subprocess.CalledProcessError: If external QC tools fail during execution.
+        """
         qc_dir = Path(self.qc_dir_path)
         if "fastqc" in self.metrics_collectors:
             yield CollectFqMetricsWithFastqc(
@@ -287,6 +431,27 @@ class RunPreprocessingPipeline(luigi.Task):
 
 
 class CollectMultipleSamMetrics(luigi.WrapperTask):
+    """Luigi wrapper task for collecting multiple SAM/BAM/CRAM metrics.
+
+    This task coordinates running various metrics collection tools (Picard, samtools)
+    on aligned sequencing data.
+
+    Parameters:
+        sam_path: Path to the SAM/BAM/CRAM file to analyze.
+        fa_path: Path to the reference FASTA file.
+        dest_dir_path: Output directory for metrics files.
+        metrics_collectors: List of metrics tools to run.
+        picard_qc_commands: List of Picard QC commands.
+        samtools_qc_commands: List of samtools QC commands.
+        picard: Path to the Picard executable.
+        samtools: Path to the samtools executable.
+        plot_bamstats: Path to the plot-bamstats executable.
+        gnuplot: Path to the gnuplot executable.
+        n_cpu: Number of CPU threads to use.
+        memory_mb: Memory allocation in MB.
+        sh_config: Shell configuration parameters.
+    """
+
     sam_path = luigi.Parameter()
     fa_path = luigi.Parameter()
     dest_dir_path = luigi.Parameter(default=".")
@@ -315,6 +480,18 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
     priority = 10
 
     def requires(self) -> list[luigi.Task]:
+        """Define prerequisite tasks for multiple SAM metrics collection.
+
+        Creates individual collection tasks for each requested Picard and samtools
+        command based on the metrics_collectors configuration. This allows for
+        fine-grained control over which QC metrics are generated.
+
+        Returns:
+            list[luigi.Task]: List of metrics collection tasks including:
+                - Individual Picard tasks for each command in picard_qc_commands
+                - Individual samtools tasks for each command in samtools_qc_commands
+                Only tasks for collectors specified in metrics_collectors are included.
+        """
         return [
             CollectSamMetricsWithPicard(
                 sam_path=self.sam_path,
@@ -349,6 +526,15 @@ class CollectMultipleSamMetrics(luigi.WrapperTask):
         ]
 
     def output(self) -> list[luigi.Target]:
+        """Return the output targets for the multiple metrics collection task.
+
+        The output is identical to the input from prerequisite tasks, as this is
+        a wrapper task that delegates actual processing to individual metrics
+        collection subtasks.
+
+        Returns:
+            list[luigi.Target]: List of metrics file targets from all subtasks.
+        """
         return self.input()
 
 

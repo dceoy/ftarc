@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Core base classes and shared functionality for ftarc Luigi tasks.
+
+This module provides the base task classes, common utilities, and shared patterns used by
+all specialized task implementations in the ftarc pipeline.
+"""
 
 import logging
 import os
@@ -14,6 +19,16 @@ from shoper.shelloperator import ShellOperator
 
 
 class ShellTask(luigi.Task, ABC):
+    """Abstract base class for Luigi tasks that execute shell commands.
+
+    This class provides a framework for running shell commands with proper logging,
+    error handling, and execution time tracking. It serves as the foundation for
+    all command-line tool integration in the ftarc pipeline.
+
+    Attributes:
+        retry_count: Number of times to retry the task on failure (default: 0).
+    """
+
     retry_count = 0
 
     def __init__(self, *args: object, **kwargs: object) -> None:
@@ -22,6 +37,11 @@ class ShellTask(luigi.Task, ABC):
 
     @luigi.Task.event_handler(luigi.Event.PROCESSING_TIME)
     def print_execution_time(self, processing_time: float) -> None:
+        """Print task execution time when task completes.
+
+        Args:
+            processing_time: Total processing time in seconds
+        """
         logger = logging.getLogger("task-timer")
         message = f"{self.__class__.__module__}.{self.__class__.__name__} - total elapsed time:\t{timedelta(seconds=processing_time)}"
         logger.info(message)
@@ -29,12 +49,19 @@ class ShellTask(luigi.Task, ABC):
 
     @classmethod
     def print_log(cls, message: str, new_line: bool = True) -> None:
+        """Print log message to both logger and stdout.
+
+        Args:
+            message: Message to log and print
+            new_line: Prepend newline to output
+        """
         logger = logging.getLogger(cls.__name__)
         logger.info(message)
         print((os.linesep if new_line else "") + f">>\t{message}", flush=True)
 
     @classmethod
     def initialize_shell(cls) -> None:
+        """Initialize shell-related class attributes to None."""
         cls.__log_txt_path = None
         cls.__sh = None
         cls.__run_kwargs = None
@@ -54,6 +81,21 @@ class ShellTask(luigi.Task, ABC):
         env: Mapping[str, str] | None = None,
         **kwargs: object,
     ) -> None:
+        """Configure shell execution environment and run version commands.
+
+        Args:
+            run_id: Unique identifier for this run (used in log filename)
+            log_dir_path: Directory to store log files
+            commands: Commands to run for version checking
+            cwd: Working directory for shell execution
+            remove_if_failed: Remove output files if command fails
+            clear_log_txt: Clear log file before writing
+            print_command: Print commands before execution
+            quiet: Suppress stdout from commands
+            executable: Shell executable to use
+            env: Environment variables to set
+            **kwargs: Additional arguments for shell execution
+        """
         cls.__log_txt_path = (
             str(
                 Path(log_dir_path)
@@ -87,6 +129,11 @@ class ShellTask(luigi.Task, ABC):
 
     @classmethod
     def make_dirs(cls, *paths: object) -> None:
+        """Create directories for the given paths if they don't exist.
+
+        Args:
+            *paths: Paths to create as directories
+        """
         for p in paths:
             if p:
                 d = Path(str(p)).resolve()
@@ -96,6 +143,12 @@ class ShellTask(luigi.Task, ABC):
 
     @classmethod
     def run_shell(cls, *args: object, **kwargs: object) -> None:
+        """Execute shell command using configured ShellOperator.
+
+        Args:
+            *args: Arguments to pass to shell operator
+            **kwargs: Keyword arguments to pass to shell operator
+        """
         logger = logging.getLogger(cls.__name__)
         start_datetime = datetime.now()
         cls.__sh.run(
@@ -114,6 +167,11 @@ class ShellTask(luigi.Task, ABC):
 
     @classmethod
     def remove_files_and_dirs(cls, *paths: str | os.PathLike[str]) -> None:
+        """Remove files and directories using shell rm command.
+
+        Args:
+            *paths: File and directory paths to remove
+        """
         targets = [Path(str(p)) for p in paths if Path(str(p)).exists()]
         if targets:
             cls.run_shell(
@@ -126,6 +184,7 @@ class ShellTask(luigi.Task, ABC):
 
     @classmethod
     def print_env_versions(cls) -> None:
+        """Print version information for Python and system environment."""
         python = sys.executable
         version_files = [
             Path("/proc/version"),
@@ -152,11 +211,26 @@ class ShellTask(luigi.Task, ABC):
 
 
 class FtarcTask(ShellTask):
+    """Base task class for ftarc pipeline operations.
+
+    This class extends ShellTask with ftarc-specific functionality including
+    version command generation for various bioinformatics tools, file format
+    conversion utilities, and GATK Java options configuration.
+    """
+
     def __init__(self, *args: object, **kwargs: object) -> None:
         super().__init__(*args, **kwargs)
 
     @staticmethod
     def generate_version_commands(commands: str | Sequence[str]) -> Iterable[str]:
+        """Generate version checking commands for bioinformatics tools.
+
+        Args:
+            commands: Command name(s) to generate version commands for
+
+        Yields:
+            Version checking command strings
+        """
         for c in [commands] if isinstance(commands, str) else commands:
             n = Path(c).name
             if n == "java" or n.endswith(".jar"):
@@ -181,6 +255,15 @@ class FtarcTask(ShellTask):
         pigz: str = "pigz",
         n_cpu: int = 1,
     ) -> None:
+        """Convert bzip2 file to gzip format.
+
+        Args:
+            src_bz2_path: Source bzip2 file path
+            dest_gz_path: Destination gzip file path
+            pbzip2: Path to pbzip2 executable
+            pigz: Path to pigz executable
+            n_cpu: Number of CPU threads to use
+        """
         cls.run_shell(
             args=(
                 f"set -eo pipefail && {pbzip2} -p{n_cpu} -dc {src_bz2_path}"
@@ -192,6 +275,15 @@ class FtarcTask(ShellTask):
 
     @staticmethod
     def generate_gatk_java_options(n_cpu: int = 1, memory_mb: int = 4096) -> str:
+        """Generate optimized Java options for GATK tools.
+
+        Args:
+            n_cpu: Number of CPU threads for parallel GC
+            memory_mb: Maximum memory in megabytes
+
+        Returns:
+            String of Java options for GATK execution
+        """
         return " ".join([
             "-Dsamjdk.compression_level=5",
             "-Dsamjdk.use_async_io_read_samtools=true",
@@ -209,6 +301,13 @@ class FtarcTask(ShellTask):
         samtools: str = "samtools",
         n_cpu: int = 1,
     ) -> None:
+        """Index SAM/BAM/CRAM file using samtools.
+
+        Args:
+            sam_path: Path to SAM/BAM/CRAM file
+            samtools: Path to samtools executable
+            n_cpu: Number of CPU threads to use
+        """
         cls.run_shell(
             args=(
                 f"set -e && {samtools} quickcheck -v {sam_path}"
@@ -230,6 +329,18 @@ class FtarcTask(ShellTask):
         index_sam: bool = False,
         remove_input: bool = False,
     ) -> None:
+        """Convert SAM/BAM/CRAM files using samtools view.
+
+        Args:
+            input_sam_path: Input SAM/BAM/CRAM file path
+            fa_path: Reference genome FASTA file path
+            output_sam_path: Output SAM/BAM/CRAM file path
+            samtools: Path to samtools executable
+            n_cpu: Number of CPU threads to use
+            add_args: Additional arguments for samtools view
+            index_sam: Create index for output file
+            remove_input: Remove input file after conversion
+        """
         cls.run_shell(
             args=(
                 f"set -e && {samtools} quickcheck -v {input_sam_path}"
