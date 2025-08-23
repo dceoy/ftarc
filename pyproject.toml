@@ -1,6 +1,6 @@
 [project]
 name = "ftarc"
-version = "0.2.5"
+version = "0.3.0"
 description = "FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing"
 license = "MIT"
 license-files = ["LICENSE"]
