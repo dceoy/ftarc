@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """BWA alignment tasks for the ftarc pipeline.
 
 This module provides Luigi tasks for BWA and BWA-MEM2 read alignment operations,

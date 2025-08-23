@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """GATK tool tasks for the ftarc pipeline.
 
 This module provides Luigi tasks for Genome Analysis Toolkit (GATK) operations,

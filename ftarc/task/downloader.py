@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Resource downloading and processing tasks for the ftarc pipeline.
 
 This module provides Luigi tasks for downloading and preparing reference genome resources,

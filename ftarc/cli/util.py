@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Utility functions for ftarc command-line interface.
 
 This module provides shared utilities for Luigi task building, executable detection,

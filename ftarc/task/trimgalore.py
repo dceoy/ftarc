@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Trim Galore adapter trimming tasks for the ftarc pipeline.
 
 This module provides Luigi tasks for adapter removal and quality trimming of FASTQ files

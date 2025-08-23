@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing.
 
 Usage:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Pipeline orchestration and configuration management for ftarc.
 
 This module handles the high-level pipeline execution, including configuration file parsing,

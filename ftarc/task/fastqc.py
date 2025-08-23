@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """FastQC quality control tasks for the ftarc pipeline.
 
 This module provides Luigi tasks for running FastQC quality control analysis on

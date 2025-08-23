@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Samtools operations for the ftarc pipeline.
 
 This module provides Luigi tasks for samtools operations including FASTA indexing,

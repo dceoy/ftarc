@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """High-level pipeline controller tasks for ftarc.
 
 This module provides controller tasks that orchestrate the complete preprocessing pipeline,

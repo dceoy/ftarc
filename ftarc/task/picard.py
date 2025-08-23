@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Picard tools tasks for the ftarc pipeline.
 
 This module provides Luigi tasks for Picard tools operations including sequence dictionary

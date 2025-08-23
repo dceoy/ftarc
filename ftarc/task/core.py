@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Core base classes and shared functionality for ftarc Luigi tasks.
 
 This module provides the base task classes, common utilities, and shared patterns used by

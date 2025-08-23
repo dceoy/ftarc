@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """Resource management utilities for the ftarc pipeline.
 
 This module provides Luigi tasks for managing genomic reference resources,
