@@ -4,31 +4,96 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ftarc is a FASTQ-to-analysis-ready-CRAM workflow executor for human genome sequencing. It provides a Luigi-based pipeline system for processing genomic sequencing data through various stages including adapter trimming, read alignment, duplicate marking, base quality score recalibration (BQSR), and quality control metrics collection.
+FTARC (FASTQ-to-analysis-ready-CRAM) is a Luigi-based workflow executor for human genome sequencing. It provides a comprehensive pipeline system for processing genomic sequencing data through various stages including adapter trimming, read alignment, duplicate marking, base quality score recalibration (BQSR), and quality control metrics collection.
 
-## Commands
+## Development Commands
 
-### Development and Testing
+### Environment Setup
 
-```bash
-# Install the package in development mode
-pip install -e .
+```sh
+uv sync
+```
 
-# Run linting (when linting tools are installed)
-pip install -U autopep8 flake8 flake8-bugbear flake8-isort pep8-naming
-find . -name '*.py' | xargs flake8
+### Testing
 
+```sh
 # Test basic functionality
 ftarc init
 ftarc --help
 ```
 
-### Running the Pipeline
+### Code Quality
 
-```bash
+```sh
+# Run linting
+uv run ruff check .
+
+# Run linting with auto-fix
+uv run ruff check --fix .
+
+# Run type checking
+uv run pyright .
+```
+
+### Building and Packaging
+
+```sh
+uv build
+```
+
+## Architecture
+
+### Core Components
+
+1. **CLI Interface (`ftarc/cli/`)**: Command-line interface using docopt
+   - `main.py`: Main entry point with command parsing
+   - `pipeline.py`: Pipeline orchestration and configuration management
+   - `util.py`: Shared utilities for Luigi task building and executable fetching
+
+2. **Task Layer (`ftarc/task/`)**: Luigi-based task definitions
+   - `controller.py`: High-level pipeline coordination tasks
+   - `core.py`: Base task classes and shared functionality
+   - Tool-specific modules: `bwa.py`, `gatk.py`, `picard.py`, `samtools.py`, `trimgalore.py`, `fastqc.py`
+   - `downloader.py`: Resource file downloading and processing
+   - `resource.py`: Resource management utilities
+
+3. **Configuration (`ftarc/static/`)**: Static configuration files
+   - `example_ftarc.yml`: Template configuration file
+   - `urls.yml`: Resource download URLs
+
+### Data Flow
+
+1. User provides FASTQ files and configuration
+2. CLI parses arguments and initializes Luigi pipeline
+3. Pipeline executes tasks in dependency order:
+   - Adapter trimming (trim_galore)
+   - Read alignment (bwa mem or bwa-mem2)
+   - Duplicate marking (GATK MarkDuplicates)
+   - BQSR (GATK BaseRecalibrator + ApplyBQSR)
+   - Duplicate removal (samtools view)
+   - Validation (GATK ValidateSamFile)
+   - QC metrics collection (FastQC, Samtools, GATK)
+4. Final CRAM files and QC reports are generated
+
+### Key Design Patterns
+
+- **Task Graph Pattern**: Luigi manages complex task dependencies
+- **Command Pattern**: Each processing step encapsulated as a Luigi task
+- **Factory Pattern**: Dynamic task creation based on configuration
+- **Template Pattern**: Base task classes provide common functionality
+
+## CLI Commands
+
+### Resource Management
+
+```sh
 # Download reference genome resources
 ftarc download --dest-dir=/path/to/resources
+```
 
+### Pipeline Execution
+
+```sh
 # Initialize configuration
 ftarc init  # Creates ftarc.yml template
 
@@ -47,67 +112,42 @@ ftarc samqc <fa_path> <sam_path>...
 ftarc depth <sam_path>...
 ```
 
-## Architecture
+## Dependencies
 
-### Core Components
+### External Tools (must be in PATH)
 
-1. **CLI Layer** (`ftarc/cli/`)
-   - `main.py`: Main entry point using docopt for command parsing
-   - `pipeline.py`: Pipeline orchestration and configuration management
-   - `util.py`: Shared utilities for Luigi task building and executable fetching
+- Compression: `pigz`, `pbzip2`, `bgzip`, `tabix`
+- Alignment: `bwa` or `bwa-mem2`
+- SAM/BAM processing: `samtools`, `plot-bamstats`
+- Variant calling: `java`, `gatk`
+- QC: `cutadapt`, `fastqc`, `trim_galore`
+- Visualization: `gnuplot` (for plot-bamstats)
 
-2. **Task Layer** (`ftarc/task/`)
-   - Luigi-based task definitions for each processing step
-   - `controller.py`: High-level pipeline coordination tasks
-   - `core.py`: Base task classes and shared functionality
-   - Tool-specific modules: `bwa.py`, `gatk.py`, `picard.py`, `samtools.py`, `trimgalore.py`, `fastqc.py`
-   - `downloader.py`: Resource file downloading and processing
-   - `resource.py`: Resource management utilities
+### Python Dependencies
 
-3. **Configuration** (`ftarc/static/`)
-   - `example_ftarc.yml`: Template configuration file
-   - `urls.yml`: Resource download URLs
+- Core: `docopt`, `jinja2`, `luigi`, `pip`, `psutil`, `pyyaml`, `shoper`
 
-### Workflow Pipeline
-
-The standard workflow (`RunPreprocessingPipeline`) executes:
-1. Adapter trimming (trim_galore)
-2. Read alignment (bwa mem or bwa-mem2)
-3. Duplicate marking (GATK MarkDuplicates)
-4. BQSR (GATK BaseRecalibrator + ApplyBQSR)
-5. Duplicate removal (samtools view)
-6. Validation (GATK ValidateSamFile)
-7. QC metrics collection (FastQC, Samtools, GATK)
-
-### Key Design Patterns
-
-- **Luigi Task System**: All processing steps are Luigi tasks with proper dependency management
-- **Shell Command Execution**: Tasks use subprocess calls with configurable logging and error handling
-- **Resource Management**: Automatic CPU and memory allocation based on system resources
-- **Parallel Processing**: Support for multiple workers to process samples concurrently
-- **Spark Support**: Optional Spark-enabled GATK tools for large-scale processing
-
-### Dependencies
-
-Required external tools (must be in PATH):
-- `pigz`, `pbzip2`, `bgzip`, `tabix`
-- `samtools`, `plot-bamstats`
-- `java`, `gatk`
-- `cutadapt`, `fastqc`, `trim_galore`
-- `bwa` or `bwa-mem2`
-- `gnuplot` (for plot-bamstats)
-
-Python dependencies:
-- `docopt`, `jinja2`, `luigi`, `pip`, `psutil`, `pyyaml`, `shoper`
-
-### Configuration File Structure
+## Configuration File Structure
 
 The `ftarc.yml` configuration includes:
-- `reference_name`: Reference genome identifier
-- `adapter_removal`: Boolean for adapter trimming
-- `metrics_collectors`: Dictionary of QC tools to run
-- `resources`: Paths to reference files and known variant sites
-- `runs`: List of sample runs with FASTQ paths and read group information
+
+```yaml
+reference_name: GRCh38  # Reference genome identifier
+adapter_removal: true  # Boolean for adapter trimming
+metrics_collectors:  # QC tools to run
+  fastqc: true
+  samtools: true
+  gatk: true
+resources:  # Paths to reference files
+  ref_fa: /path/to/reference.fa
+  known_sites_vcf:
+    - /path/to/dbsnp.vcf.gz
+    - /path/to/mills.vcf.gz
+runs:  # Sample information
+  - fq1: /path/to/sample_1.fq.gz
+    fq2: /path/to/sample_2.fq.gz
+    read_group: "@RG\\tID:1\\tSM:sample\\tPL:ILLUMINA"
+```
 
 ## Web Search Instructions
 

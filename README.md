@@ -3,9 +3,7 @@ ftarc
 
 FASTQ-to-analysis-ready-CRAM Workflow Executor for Human Genome Sequencing
 
-[![Test](https://github.com/dceoy/ftarc/actions/workflows/test.yml/badge.svg)](https://github.com/dceoy/ftarc/actions/workflows/test.yml)
-[![Upload Python Package](https://github.com/dceoy/ftarc/actions/workflows/python-publish.yml/badge.svg)](https://github.com/dceoy/ftarc/actions/workflows/python-publish.yml)
-[![CI to Docker Hub](https://github.com/dceoy/ftarc/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/dceoy/ftarc/actions/workflows/docker-publish.yml)
+[![CI/CD](https://github.com/dceoy/ftarc/actions/workflows/ci.yml/badge.svg)](https://github.com/dceoy/ftarc/actions/workflows/ci.yml)
 
 Installation
 ------------

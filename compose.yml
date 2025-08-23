@@ -1,0 +1,22 @@
+---
+services:
+  ftarc:
+    container_name: ftarc
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+      args:
+        UBUNTU_VERSION: '24.04'
+        PYTHON_VERSION: '3.13'
+        USER_NAME: ftarc
+        USER_UID: '1001'
+        USER_GID: '1001'
+    image: dceoy/ftarc:latest
+    volumes:
+      - ${PWD}:/mnt/host
+    working_dir: /mnt/host
+    entrypoint:
+      - /opt/conda/bin/ftarc
+    command:
+      - --version

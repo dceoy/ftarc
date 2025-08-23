@@ -1,28 +1,57 @@
 ---
-name: Test
+name: Python package tests
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      uv-version:
+        required: false
+        type: string
+        description: Version of uv to use
+        default: latest
+      runs-on:
+        required: false
+        type: string
+        description: Runner to use
+        default: ubuntu-latest
+  workflow_dispatch:
+    inputs:
+      uv-version:
+        required: false
+        type: string
+        description: Version of uv to use
+        default: latest
+      runs-on:
+        required: false
+        type: string
+        description: Runner to use
+        default: ubuntu-latest
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+    working-directory: .
 jobs:
-  test_installation:
-    runs-on: ubuntu-latest
+  unit-tests:
+    uses: dceoy/gh-actions-for-devops/.github/workflows/python-package-test.yml@main
+    with:
+      package-path: .
+      uv-version: ${{ inputs.uv-version }}
+      runs-on: ${{ inputs.runs-on }}
+  cli-tests:
+    runs-on: ${{ inputs.runs-on }}
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Checkout repository
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332  # v4.1.7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@d9e0f98d3fc6adb07d1e3d37f3043649ddad06a1  # v6.5.0
         with:
-          python-version: '3.x'
-      - name: Install ftarc
+          version: ${{ inputs.uv-version || 'latest' }}
+      - name: Install package
         run: |
-          pip install -U \
-            autopep8 flake8 flake8-bugbear flake8-isort pep8-naming .
-      - name: Validate the codes using flake8
+          uv sync
+      - name: Test CLI commands
         run: |
-          find . -name '*.py' | xargs flake8
-      - name: Test a command
-        run: |
-          ftarc init
+          uv run ftarc --version
+          uv run ftarc --help
+          uv run ftarc init
+          uv run ftarc init --yml ftarc-test.yml
+          test -f ftarc-test.yml
