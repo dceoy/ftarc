@@ -10,7 +10,7 @@ import re
 import sys
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import luigi
@@ -153,7 +153,7 @@ class ShellTask(luigi.Task, ABC):
             **kwargs: Keyword arguments to pass to shell operator
         """
         logger = logging.getLogger(cls.__name__)
-        start_datetime = datetime.now()
+        start_datetime = datetime.now(UTC)
         cls.__sh.run(
             *args,
             **kwargs,
@@ -161,11 +161,11 @@ class ShellTask(luigi.Task, ABC):
         )
         if "asynchronous" in kwargs:
             cls.__sh.wait()
-        elapsed_timedelta = datetime.now() - start_datetime
+        elapsed_timedelta = datetime.now(UTC) - start_datetime
         message = f"shell elapsed time:\t{elapsed_timedelta}"
         logger.info(message)
         if cls.__log_txt_path:
-            with open(cls.__log_txt_path, "a", encoding="utf-8") as f:
+            with Path(cls.__log_txt_path).open("a", encoding="utf-8") as f:
                 f.write(f"### {message}{os.linesep}")
 
     @classmethod

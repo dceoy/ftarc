@@ -102,6 +102,7 @@ from ftarc.task.picard import ValidateSamFile
 from ftarc.task.samtools import RemoveDuplicates, SoundReadDepthsWithSamtools
 from ftarc.task.trimgalore import TrimAdapters
 
+from .constants import MEMORY_THRESHOLD_MB
 from .pipeline import run_processing_pipeline
 from .util import (
     build_luigi_tasks,
@@ -128,7 +129,7 @@ def main() -> None:
         level=log_level,
     )
     logger = logging.getLogger(__name__)
-    logger.debug(f"args:{os.linesep}{args}")
+    logger.debug("args:%s%s", os.linesep, args)
     print_log(f"Start the workflow of ftarc {__version__}")
     if args["init"]:
         write_config_yml(path=args["--yml"])
@@ -271,7 +272,7 @@ def main() -> None:
                 "use_spark": args["--use-spark"],
                 "n_cpu": n_cpu_per_worker,
                 "memory_mb": memory_mb_per_worker,
-                "save_memory": (memory_mb_per_worker < 8192),
+                "save_memory": (memory_mb_per_worker < MEMORY_THRESHOLD_MB),
                 "sh_config": sh_config,
             }
             build_luigi_tasks(
@@ -386,10 +387,14 @@ def _find_fq_paths(fq_path_prefix: str | os.PathLike[str]) -> list[str]:
             )
         )
     )
-    assert bool(hits), f"FASTQ files not found: {hits}"
+    if not hits:
+        msg = f"FASTQ files not found: {hits}"
+        raise FileNotFoundError(msg)
     if len(hits) == 1:
         pass
     else:
         for a, b in zip(hits[0].stem, hits[1].stem, strict=False):
-            assert a == b or (a == "1" and b == "2"), "invalid path prefix"
+            if not (a == b or (a == "1" and b == "2")):
+                msg = "invalid path prefix"
+                raise ValueError(msg)
     return [str(o) for o in hits[:2]]

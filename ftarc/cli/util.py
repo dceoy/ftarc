@@ -8,14 +8,14 @@ import logging
 import os
 import re
 import shutil
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from pprint import pformat
 from typing import Any
 
 import luigi
 import yaml
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
 def write_config_yml(
@@ -87,9 +87,9 @@ def read_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
         Parsed YAML data as dictionary
     """
     logger = logging.getLogger(__name__)
-    with open(str(path), encoding="utf-8") as f:
-        d = yaml.load(f, Loader=yaml.FullLoader)
-    logger.debug("YAML data:" + os.linesep + pformat(d))
+    with Path(path).open(encoding="utf-8") as f:
+        d = yaml.safe_load(f)
+    logger.debug("YAML data:%s%s", os.linesep, pformat(d))
     return d
 
 
@@ -121,7 +121,7 @@ def render_luigi_log_cfg(
     log_dir = Path(str(log_dir_path)).resolve() if log_dir_path else cfg_dir
     log_txt = log_dir.joinpath(
         "luigi.{}.{}.log.txt".format(
-            file_log_level, datetime.now().strftime("%Y%m%d_%H%M%S")
+            file_log_level, datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
         )
     )
     for d in {cfg_dir, log_dir}:
@@ -138,7 +138,8 @@ def render_luigi_log_cfg(
             Environment(
                 loader=FileSystemLoader(
                     str(Path(__file__).parent.joinpath("../template")), encoding="utf8"
-                )
+                ),
+                autoescape=select_autoescape(),
             )
             .get_template("luigi.log.cfg.j2")
             .render({
@@ -173,14 +174,18 @@ def build_luigi_tasks(
         check_scheduling_succeeded: Assert that scheduling succeeded
         hide_summary: Skip printing execution summary
         **kwargs: Additional arguments passed to luigi.build()
+
+    Raises:
+        RuntimeError: If Luigi scheduling fails and check_scheduling_succeeded is True
     """
     r = luigi.build(local_scheduler=True, detailed_summary=True, **kwargs)
     if not hide_summary:
         print(
             os.linesep + os.linesep.join(["Execution summary:", r.summary_text, str(r)])
         )
-    if check_scheduling_succeeded:
-        assert r.scheduling_succeeded, r.one_line_summary
+    if check_scheduling_succeeded and not r.scheduling_succeeded:
+        msg = f"Luigi scheduling failed: {r.one_line_summary}"
+        raise RuntimeError(msg)
 
 
 def parse_fq_id(fq_path: str | os.PathLike[str]) -> str:

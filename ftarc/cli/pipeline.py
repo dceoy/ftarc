@@ -17,6 +17,7 @@ from typing import Any
 
 from psutil import cpu_count, virtual_memory
 
+from ftarc.cli.constants import MAX_FQ_FILES, MEMORY_THRESHOLD_MB
 from ftarc.cli.util import (
     build_luigi_tasks,
     fetch_executable,
@@ -60,15 +61,15 @@ def run_processing_pipeline(
         use_bwa_mem2: Use bwa-mem2 instead of bwa for read alignment
     """
     logger = logging.getLogger(__name__)
-    logger.info(f"config_yml_path:\t{config_yml_path}")
+    logger.info("config_yml_path:\t%s", config_yml_path)
     config = _read_config_yml(path=config_yml_path)
     runs = config.get("runs")
-    logger.info(f"dest_dir_path:\t{dest_dir_path}")
+    logger.info("dest_dir_path:\t%s", dest_dir_path)
     dest_dir = Path(dest_dir_path).resolve()
     log_dir = dest_dir.joinpath("log")
 
     adapter_removal = config.get("adapter_removal", True)
-    logger.debug(f"adapter_removal:\t{adapter_removal}")
+    logger.debug("adapter_removal:\t%s", adapter_removal)
 
     default_dict = load_default_dict(stem="example_ftarc")
     metrics_collectors = (
@@ -80,7 +81,7 @@ def run_processing_pipeline(
         if "metrics_collectors" in config
         else []
     )
-    logger.debug("metrics_collectors:" + os.linesep + pformat(metrics_collectors))
+    logger.debug("metrics_collectors:%s%s", os.linesep, pformat(metrics_collectors))
 
     command_dict = {
         "bwa": fetch_executable("bwa-mem2" if use_bwa_mem2 else "bwa"),
@@ -99,7 +100,7 @@ def run_processing_pipeline(
             }
         },
     }
-    logger.debug("command_dict:" + os.linesep + pformat(command_dict))
+    logger.debug("command_dict:%s%s", os.linesep, pformat(command_dict))
 
     n_cpu = cpu_count()
     n_worker = min(int(max_n_worker or max_n_cpu or n_cpu), (len(runs) or 1))
@@ -117,11 +118,11 @@ def run_processing_pipeline(
             else ""
         ),
         "metrics_collectors": metrics_collectors,
-        "save_memory": (memory_mb_per_worker < 8192),
+        "save_memory": (memory_mb_per_worker < MEMORY_THRESHOLD_MB),
         **{f"{k}_dir_path": str(dest_dir.joinpath(k)) for k in ("trim", "align", "qc")},
         **{k: v for k, v in command_dict.items() if k != "java"},
     }
-    logger.debug("cf_dict:" + os.linesep + pformat(cf_dict))
+    logger.debug("cf_dict:%s%s", os.linesep, pformat(cf_dict))
 
     sh_config = {
         "log_dir_path": str(log_dir),
@@ -129,7 +130,7 @@ def run_processing_pipeline(
         "quiet": (not print_subprocesses),
         "executable": fetch_executable("bash"),
     }
-    logger.debug("sh_config:" + os.linesep + pformat(sh_config))
+    logger.debug("sh_config:%s%s", os.linesep, pformat(sh_config))
 
     resource_path_dict = _resolve_input_file_paths(
         path_dict={
@@ -137,7 +138,7 @@ def run_processing_pipeline(
             "known_sites_vcf": config["resources"]["known_sites_vcf"],
         }
     )
-    logger.debug("resource_path_dict:" + os.linesep + pformat(resource_path_dict))
+    logger.debug("resource_path_dict:%s%s", os.linesep, pformat(resource_path_dict))
 
     sample_dict_list = (
         [
@@ -149,7 +150,7 @@ def run_processing_pipeline(
         if runs
         else []
     )
-    logger.debug("sample_dict_list:" + os.linesep + pformat(sample_dict_list))
+    logger.debug("sample_dict_list:%s%s", os.linesep, pformat(sample_dict_list))
 
     print_log(f"Prepare analysis-ready CRAM files:\t{dest_dir}")
     print_yml([
@@ -219,35 +220,77 @@ def _read_config_yml(path: str | os.PathLike[str]) -> dict[str, Any]:
 
     Returns:
         Validated configuration dictionary
+
+    Raises:
+        ValueError: If the configuration is invalid or malformed
+        TypeError: If configuration values have incorrect types
     """
     config = read_yml(path=Path(path).resolve())
-    assert isinstance(config, dict) and config.get("resources"), config
-    assert isinstance(config["resources"], dict), config["resources"]
+    if not (isinstance(config, dict) and config.get("resources")):
+        msg = f"Invalid config structure: {config}"
+        raise ValueError(msg)
+    if not isinstance(config["resources"], dict):
+        msg = f"Invalid resources structure: {config['resources']}"
+        raise TypeError(msg)
     for k in ["reference_fa", "known_sites_vcf"]:
         v = config["resources"].get(k)
         if k == "known_sites_vcf":
-            assert isinstance(v, list), k
-            assert len(v) > 0, k
-            assert _has_unique_elements(v), k
+            if not isinstance(v, list):
+                msg = f"Expected list for {k}, got {type(v)}"
+                raise ValueError(msg)
+            if len(v) == 0:
+                msg = f"Empty list not allowed for {k}"
+                raise ValueError(msg)
+            if not _has_unique_elements(v):
+                msg = f"Duplicate elements found in {k}"
+                raise ValueError(msg)
             for s in v:
-                assert isinstance(s, str), k
-        else:
-            assert isinstance(v, str), k
-    assert config.get("runs"), config
-    assert isinstance(config["runs"], list), config["runs"]
+                if not isinstance(s, str):
+                    msg = f"Expected string in {k}, got {type(s)}"
+                    raise TypeError(msg)
+        elif not isinstance(v, str):
+            msg = f"Expected string for {k}, got {type(v)}"
+            raise TypeError(msg)
+    if not config.get("runs"):
+        msg = f"Missing 'runs' in config: {config}"
+        raise ValueError(msg)
+    if not isinstance(config["runs"], list):
+        msg = f"Expected list for runs, got {type(config['runs'])}"
+        raise TypeError(msg)
     for r in config["runs"]:
-        assert isinstance(r, dict), r
-        assert r.get("fq"), r
-        assert isinstance(r["fq"], list), r
-        assert _has_unique_elements(r["fq"]), r
-        assert len(r["fq"]) <= 2, r
+        if not isinstance(r, dict):
+            msg = f"Expected dict for run, got {type(r)}: {r}"
+            raise TypeError(msg)
+        if not r.get("fq"):
+            msg = f"Missing 'fq' in run: {r}"
+            raise ValueError(msg)
+        if not isinstance(r["fq"], list):
+            msg = f"Expected list for fq, got {type(r['fq'])}: {r}"
+            raise TypeError(msg)
+        if not _has_unique_elements(r["fq"]):
+            msg = f"Duplicate fq files found: {r}"
+            raise ValueError(msg)
+        if len(r["fq"]) > MAX_FQ_FILES:
+            msg = f"Too many fq files (max {MAX_FQ_FILES}): {r}"
+            raise ValueError(msg)
         for p in r["fq"]:
-            assert p.endswith((".gz", ".bz2")), p
+            if not p.endswith((".gz", ".bz2")):
+                msg = f"fq file must be compressed (.gz or .bz2): {p}"
+                raise ValueError(msg)
         if r.get("read_group"):
-            assert isinstance(r["read_group"], dict), r
+            if not isinstance(r["read_group"], dict):
+                msg = f"Expected dict for read_group: {r}"
+                raise ValueError(msg)
             for k, v in r["read_group"].items():
-                assert re.fullmatch(r"[A-Z]{2}", k), k
-                assert isinstance(v, str), k
+                if not re.fullmatch(r"[A-Z]{2}", k):
+                    msg = (
+                        f"Invalid read group key format "
+                        f"(expected 2 uppercase letters): {k}"
+                    )
+                    raise ValueError(msg)
+                if not isinstance(v, str):
+                    msg = f"Expected string value for read group key {k}, got {type(v)}"
+                    raise TypeError(msg)
     return config
 
 
@@ -271,9 +314,14 @@ def _resolve_file_path(path: str | os.PathLike[str]) -> str:
 
     Returns:
         Absolute path string
+
+    Raises:
+        FileNotFoundError: If the file does not exist
     """
     p = Path(path).resolve()
-    assert p.is_file(), f"file not found: {p}"
+    if not p.is_file():
+        msg = f"file not found: {p}"
+        raise FileNotFoundError(msg)
     return str(p)
 
 
