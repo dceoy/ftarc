@@ -1,0 +1,108 @@
+---
+name: CI/CD
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+  workflow_dispatch:
+    inputs:
+      workflow:
+        required: true
+        type: choice
+        options:
+          - lint-and-test
+          - build-and-push
+          - release
+        description: Choose the workflow to run
+        default: lint-and-test
+jobs:
+  python-lint-and-scan:
+    if: >
+      github.event_name == 'push'
+      || github.event_name == 'pull_request'
+      || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'lint-and-test')
+    uses: dceoy/gh-actions-for-devops/.github/workflows/python-package-lint-and-scan.yml@main
+    with:
+      package-path: .
+  python-test:
+    if: >
+      github.event_name == 'push'
+      || github.event_name == 'pull_request'
+      || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'lint-and-test')
+    uses: ./.github/workflows/test.yml
+  github-codeql-analysis:
+    if: >
+      github.event_name == 'push'
+      || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'lint-and-test')
+    uses: dceoy/gh-actions-for-devops/.github/workflows/github-codeql-analysis.yml@main
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    with:
+      language: >
+        ["python"]
+  dependabot-auto-merge:
+    if: >
+      github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+    needs:
+      - python-lint-and-scan
+      - python-test
+    uses: dceoy/gh-actions-for-devops/.github/workflows/dependabot-auto-merge.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    with:
+      unconditional: true
+    secrets:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  docker-build-and-push:
+    if: >
+      github.event_name == 'push'
+      || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'build-and-push')
+    needs:
+      - python-lint-and-scan
+      - python-test
+    uses: dceoy/gh-actions-for-devops/.github/workflows/docker-build-and-push.yml@main
+    permissions:
+      contents: write
+      packages: write
+    with:
+      registry: docker.io
+      registry-user: ${{ github.repository_owner }}
+      image-name: ${{ github.repository }}
+      platforms: linux/amd64,linux/arm64
+      context: .
+      file: ./Dockerfile
+      push: true
+      image-artifact-name: docker-image
+    secrets:
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  python-package-release:
+    if: >
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+      || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'release')
+    needs:
+      - python-lint-and-scan
+      - python-test
+    uses: dceoy/gh-actions-for-devops/.github/workflows/python-package-release-on-pypi-and-github.yml@main
+    permissions:
+      contents: write
+      id-token: write
+    with:
+      package-path: .
+      create-releases: ${{ github.event_name == 'workflow_dispatch' && inputs.workflow == 'release' }}
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
