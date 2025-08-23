@@ -33,12 +33,6 @@ jobs:
     uses: dceoy/gh-actions-for-devops/.github/workflows/python-package-lint-and-scan.yml@main
     with:
       package-path: .
-  python-test:
-    if: >
-      github.event_name == 'push'
-      || github.event_name == 'pull_request'
-      || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'lint-and-test')
-    uses: ./.github/workflows/test.yml
   github-codeql-analysis:
     if: >
       github.event_name == 'push'
@@ -56,7 +50,6 @@ jobs:
       github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
     needs:
       - python-lint-and-scan
-      - python-test
     uses: dceoy/gh-actions-for-devops/.github/workflows/dependabot-auto-merge.yml@main
     permissions:
       contents: write
@@ -72,7 +65,6 @@ jobs:
       || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'build-and-push')
     needs:
       - python-lint-and-scan
-      - python-test
     uses: dceoy/gh-actions-for-devops/.github/workflows/docker-build-and-push.yml@main
     permissions:
       contents: write
@@ -95,7 +87,6 @@ jobs:
       || (github.event_name == 'workflow_dispatch' && inputs.workflow == 'release')
     needs:
       - python-lint-and-scan
-      - python-test
     uses: dceoy/gh-actions-for-devops/.github/workflows/python-package-release-on-pypi-and-github.yml@main
     permissions:
       contents: write

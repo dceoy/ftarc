@@ -47,7 +47,7 @@ jobs:
           version: ${{ inputs.uv-version || 'latest' }}
       - name: Install package
         run: |
-          uv sync --all-extras
+          uv sync
       - name: Test CLI commands
         run: |
           uv run ftarc --version
