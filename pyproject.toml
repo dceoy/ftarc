@@ -49,6 +49,7 @@ dev-dependencies = [
   "ruff >= 0.12.0,<0.13.0",
   "pyright >= 1.1.379",
   "types-pyyaml >= 6.0.12.20240917",
+  "types-docopt >= 0.6.11.20241107",
 ]
 
 [tool.uv.build-backend]
@@ -168,9 +169,7 @@ reportOperatorIssue = "none"
 reportOptionalMemberAccess = "none"
 reportReturnType = "none"
 reportUnknownArgumentType = "none"
-reportUnknownLambdaType = "none"
 reportUnknownMemberType = "none"
-reportUnknownParameterType = "none"
 reportUnknownVariableType = "none"
 reportUntypedClassDecorator = "none"
 

@@ -89,7 +89,7 @@ from itertools import product
 from math import ceil, floor
 from pathlib import Path
 
-from docopt import docopt  # type: ignore[reportMissingTypeStubss]
+from docopt import docopt
 from psutil import cpu_count, virtual_memory
 
 from ftarc import __version__
