@@ -31,7 +31,7 @@ defaults:
     working-directory: .
 jobs:
   unit-tests:
-    uses: dceoy/gh-actions-for-devops/.github/workflows/python-package-test.yml@main
+    uses: dceoy/gha-for-devops/.github/workflows/python-package-test.yml@main
     with:
       package-path: .
       uv-version: ${{ inputs.uv-version }}
